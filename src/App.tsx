@@ -9,7 +9,6 @@ import { Tuner } from './components/Tuner/Tuner'
 
 const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Home', icon: '⌂' },
-  { id: 'practice', label: 'Practice', icon: '♪' },
   { id: 'skill-tree', label: 'Skills', icon: '◈' },
   { id: 'metronome', label: 'Metronome', icon: '♩' },
   { id: 'tuner', label: 'Tuner', icon: '◎' },

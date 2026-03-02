@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import { SKILLS, type Skill } from '../../data/curriculum'
 import { evaluateSkillStatus } from '../../engine/recommendationEngine'
@@ -20,11 +20,19 @@ const STATUS_COLORS: Record<SkillStatus, string> = {
   mastered: '#9b59b6',
 }
 
-function SkillCard({ skill }: { skill: Skill }) {
+function SkillCard({ skill, isCurrent }: { skill: Skill; isCurrent: boolean }) {
   const skillRecords = useStore((s) => s.skillRecords)
   const practiceSkill = useStore((s) => s.practiceSkill)
+  const ref = useRef<HTMLDivElement>(null)
+
   const record = skillRecords.get(skill.id) ?? null
   const status = evaluateSkillStatus(skill, record, skillRecords)
+
+  useEffect(() => {
+    if (isCurrent && ref.current) {
+      ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [isCurrent])
 
   const bpmDisplay = record?.bestBpm
     ? `${record.bestBpm} BPM`
@@ -36,10 +44,12 @@ function SkillCard({ skill }: { skill: Skill }) {
 
   return (
     <div
-      className={`skill-card skill-card-${status} ${isPlayable ? 'skill-card-clickable' : ''}`}
+      ref={ref}
+      className={`skill-card skill-card-${status} ${isPlayable ? 'skill-card-clickable' : ''} ${isCurrent ? 'skill-card-current' : ''}`}
       onClick={isPlayable ? () => practiceSkill(skill.id) : undefined}
       title={isPlayable ? `Practice: ${skill.name}` : 'Complete prerequisites to unlock'}
     >
+      {isCurrent && <div className="skill-card-here-badge">← Here</div>}
       <div className="skill-card-header">
         <span
           className="skill-status-dot"
@@ -64,6 +74,19 @@ function SkillCard({ skill }: { skill: Skill }) {
 export function SkillTree() {
   const user = useStore((s) => s.user)
   const skillRecords = useStore((s) => s.skillRecords)
+
+  // Find most recently practiced skill to highlight
+  const currentSkillId = useMemo(() => {
+    let bestId: string | null = null
+    let latestTime = ''
+    for (const [id, record] of skillRecords) {
+      if (record.lastPracticed && record.lastPracticed > latestTime) {
+        latestTime = record.lastPracticed
+        bestId = id
+      }
+    }
+    return bestId
+  }, [skillRecords])
 
   const months = useMemo(() => {
     if (!user) return []
@@ -109,7 +132,7 @@ export function SkillTree() {
           </div>
           <div className="skill-card-grid">
             {skills.map((skill) => (
-              <SkillCard key={skill.id} skill={skill} />
+              <SkillCard key={skill.id} skill={skill} isCurrent={skill.id === currentSkillId} />
             ))}
           </div>
         </div>

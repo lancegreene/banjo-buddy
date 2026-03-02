@@ -28,6 +28,7 @@ export interface Skill {
   isMilestone?: boolean        // graduation/assessment songs
   isInformational?: boolean    // no blocking, just surface to user
   lickId?: string              // references LICK_MAP key — enables LickDetector panel
+  rollPatternId?: string       // references ROLL_MAP key — enables BanjoTabDiagram
 }
 
 export const SKILLS: Skill[] = [
@@ -232,6 +233,7 @@ export const SKILLS: Skill[] = [
       { instruction: 'With metronome. 16 reps, no stops.', bpm: 80 },
     ],
     scoringTypes: ['rhythm', 'tempo', 'self_rate'],
+    rollPatternId: 'forward_roll',
     assessmentPrompt: 'Record 16-rep forward roll at target BPM. App scores timing consistency.',
   },
 
@@ -382,6 +384,7 @@ export const SKILLS: Skill[] = [
       { instruction: 'With metronome, 16 reps.', bpm: 80 },
     ],
     scoringTypes: ['rhythm', 'tempo', 'self_rate'],
+    rollPatternId: 'backward_roll',
     assessmentPrompt: 'Record 16-rep backward roll at target BPM.',
   },
   {
@@ -422,6 +425,7 @@ export const SKILLS: Skill[] = [
       { instruction: 'With metronome, 16 reps.', bpm: 70 },
     ],
     scoringTypes: ['rhythm', 'tempo', 'self_rate'],
+    rollPatternId: 'alternating_thumb',
     assessmentPrompt: 'Record 16-rep alternating thumb roll at target BPM.',
   },
   {
@@ -497,6 +501,7 @@ export const SKILLS: Skill[] = [
       { instruction: 'Full 8-note pattern with metronome, 16 reps.', bpm: 70 },
     ],
     scoringTypes: ['rhythm', 'tempo', 'self_rate'],
+    rollPatternId: 'mixed_roll',
     assessmentPrompt: 'Record 16-rep Foggy Mountain roll at target BPM.',
   },
   {
@@ -533,6 +538,7 @@ export const SKILLS: Skill[] = [
       { instruction: 'Full pattern with metronome, 16 reps.', bpm: 70 },
     ],
     scoringTypes: ['rhythm', 'tempo', 'self_rate'],
+    rollPatternId: 'forward_roll',
     assessmentPrompt: 'Record 16-rep forward-reverse roll at target BPM.',
   },
   {

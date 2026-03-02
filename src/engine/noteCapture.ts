@@ -40,11 +40,11 @@ export interface NoteCaptureConfig {
 }
 
 export const DEFAULT_CONFIG: NoteCaptureConfig = {
-  clarityThreshold: 0.85,
+  clarityThreshold: 0.78,
   minFreq: 60,
   maxFreq: 1200,
   onsetRmsThreshold: 0.015,
-  minOnsetGapMs: 100,
+  minOnsetGapMs: 80,
   pitchChangeCents: 50,
   maxNotes: 64,
 }

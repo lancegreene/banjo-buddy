@@ -1,0 +1,80 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Banjo Buddy — Banjo Tab Diagram (dot style)
+// Shows a roll pattern as colored string dots with finger labels.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type Finger = 'T' | 'I' | 'M'
+
+interface BanjoTabDiagramProps {
+  strings: (number | null)[]  // banjo string numbers; null = wildcard (any string)
+  fingers?: Finger[]          // optional finger labels per beat
+  label?: string            // optional title above diagram
+}
+
+// Colors per string — match roll detector
+const STRING_COLORS: Record<number, string> = {
+  5: '#9b59b6',
+  4: '#4a9eff',
+  3: '#7ed321',
+  2: '#f5a623',
+  1: '#e74c3c',
+}
+
+const STRING_ORDER = [5, 4, 3, 2, 1] // top to bottom in diagram
+
+// Derive finger from string: string 5 = thumb, strings 1-4 alternate I/M
+function deriveFingers(strings: (number | null)[]): Finger[] {
+  let imToggle = 0
+  return strings.map((s) => {
+    if (s === 5 || s === null) return 'T'
+    const f: Finger = imToggle % 2 === 0 ? 'I' : 'M'
+    imToggle++
+    return f
+  })
+}
+
+export function BanjoTabDiagram({ strings, fingers, label }: BanjoTabDiagramProps) {
+  const resolvedFingers = fingers ?? deriveFingers(strings)
+  const beats = strings.length
+
+  return (
+    <div className="banjo-tab-diagram">
+      {label && <div className="banjo-tab-label">{label}</div>}
+      <div className="banjo-tab-grid" style={{ gridTemplateColumns: `28px repeat(${beats}, 1fr)` }}>
+        {/* String labels column + dot rows */}
+        {STRING_ORDER.map((stringNum) => (
+          <>
+            {/* String label */}
+            <div key={`label-${stringNum}`} className="banjo-tab-string-label">
+              <span style={{ color: STRING_COLORS[stringNum] }}>{stringNum}</span>
+            </div>
+            {/* Dots for each beat */}
+            {strings.map((s, beatIdx) => (
+              <div key={`dot-${stringNum}-${beatIdx}`} className="banjo-tab-cell">
+                {s === stringNum ? (
+                  <div
+                    className="banjo-tab-dot banjo-tab-dot-active"
+                    style={{ background: STRING_COLORS[stringNum] }}
+                  />
+                ) : s === null ? (
+                  <div className="banjo-tab-dot banjo-tab-dot-wildcard" />
+                ) : (
+                  <div className="banjo-tab-dot banjo-tab-dot-inactive" />
+                )}
+              </div>
+            ))}
+          </>
+        ))}
+
+        {/* Spacer for label column */}
+        <div className="banjo-tab-cell" />
+        {/* Finger labels row */}
+        {resolvedFingers.map((finger, i) => (
+          <div key={`finger-${i}`} className="banjo-tab-finger">
+            {finger}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

@@ -69,8 +69,8 @@ function scoreTimingRegularity(timestamps: number[]): number {
   const variance = gaps.reduce((a, b) => a + (b - mean) ** 2, 0) / gaps.length
   const cv = Math.sqrt(variance) / mean
 
-  // CV of 0 = perfect = 100. CV >= 0.35 = poor = 0
-  return Math.max(0, Math.round((1 - cv / 0.35) * 100))
+  // CV of 0 = perfect = 100. CV >= 0.45 = poor = 0
+  return Math.max(0, Math.round((1 - cv / 0.45) * 100))
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ export function detectRolls(notes: CapturedNote[]): RollDetectionResult {
     return { pattern, sequenceScore: Math.round(seqScore), timingScore, compositeScore, interNoteGapsMs: gaps }
   }).sort((a, b) => b.compositeScore - a.compositeScore)
 
-  const bestMatch = matches[0].compositeScore >= 60 ? matches[0] : null
+  const bestMatch = matches[0].compositeScore >= 50 ? matches[0] : null
 
   return { bestMatch, allMatches: matches, isRolling: bestMatch !== null }
 }

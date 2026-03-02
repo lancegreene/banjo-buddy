@@ -9,6 +9,8 @@ import { RollDetector } from '../RollDetector/RollDetector'
 import { LickDetector } from '../LickDetector/LickDetector'
 import { AudioRecorder } from '../AudioRecorder/AudioRecorder'
 import { useNoteCapture } from '../../hooks/useNoteCapture'
+import { BanjoTabDiagram } from '../BanjoTabDiagram/BanjoTabDiagram'
+import { ROLL_MAP } from '../../data/rollPatterns'
 
 type PracticeView = 'plan' | 'item' | 'metronome' | 'complete'
 
@@ -158,6 +160,14 @@ function ExerciseView({
       </div>
 
       <div className="exercise-description">{skill.description}</div>
+
+      {/* Roll pattern diagram */}
+      {skill.rollPatternId && (() => {
+        const pattern = ROLL_MAP.get(skill.rollPatternId!)
+        return pattern ? (
+          <BanjoTabDiagram strings={pattern.strings} label={pattern.name} />
+        ) : null
+      })()}
 
       <BpmProgressBar item={item} />
 
