@@ -3,6 +3,8 @@
 // Shows a roll pattern as colored string dots with finger labels.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import React from 'react'
+
 export type Finger = 'T' | 'I' | 'M'
 
 interface BanjoTabDiagramProps {
@@ -22,11 +24,11 @@ const STRING_COLORS: Record<number, string> = {
 
 const STRING_ORDER = [5, 4, 3, 2, 1] // top to bottom in diagram
 
-// Derive finger from string: string 5 = thumb, strings 1-4 alternate I/M
+// Scruggs 3-finger rule: strings 3, 4, 5 = thumb; strings 1, 2 = alternate I/M
 function deriveFingers(strings: (number | null)[]): Finger[] {
   let imToggle = 0
   return strings.map((s) => {
-    if (s === 5 || s === null) return 'T'
+    if (s === null || s >= 3) return 'T'
     const f: Finger = imToggle % 2 === 0 ? 'I' : 'M'
     imToggle++
     return f
@@ -43,14 +45,14 @@ export function BanjoTabDiagram({ strings, fingers, label }: BanjoTabDiagramProp
       <div className="banjo-tab-grid" style={{ gridTemplateColumns: `28px repeat(${beats}, 1fr)` }}>
         {/* String labels column + dot rows */}
         {STRING_ORDER.map((stringNum) => (
-          <>
+          <React.Fragment key={stringNum}>
             {/* String label */}
-            <div key={`label-${stringNum}`} className="banjo-tab-string-label">
+            <div className="banjo-tab-string-label">
               <span style={{ color: STRING_COLORS[stringNum] }}>{stringNum}</span>
             </div>
             {/* Dots for each beat */}
             {strings.map((s, beatIdx) => (
-              <div key={`dot-${stringNum}-${beatIdx}`} className="banjo-tab-cell">
+              <div key={beatIdx} className="banjo-tab-cell">
                 {s === stringNum ? (
                   <div
                     className="banjo-tab-dot banjo-tab-dot-active"
@@ -63,7 +65,7 @@ export function BanjoTabDiagram({ strings, fingers, label }: BanjoTabDiagramProp
                 )}
               </div>
             ))}
-          </>
+          </React.Fragment>
         ))}
 
         {/* Spacer for label column */}
