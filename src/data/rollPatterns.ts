@@ -14,8 +14,8 @@ export const ROLL_PATTERNS: RollPattern[] = [
   {
     id: 'forward_roll',
     name: 'Forward Roll',
-    strings: [5, 1, 2, 3, 1, 2, 1, 2],
-    description: 'Classic Scruggs roll: thumb on 5th, then ascending index-middle pattern',
+    strings: [5, 1, 2, 5, 1, 2, 5, 1],
+    description: 'Classic Scruggs T-I-M roll cycling on open strings: 5th-1st-2nd repeating',
   },
   {
     id: 'forward_roll_alt',
@@ -43,9 +43,9 @@ export const ROLL_PATTERNS: RollPattern[] = [
   },
   {
     id: 'mixed_roll',
-    name: 'Mixed Roll',
-    strings: [5, 1, 2, 1, 5, 1, 2, 1],
-    description: 'Mixed forward-backward pattern, common in Foggy Mountain Breakdown',
+    name: 'Foggy Mountain Roll',
+    strings: [5, 5, 1, 2, 5, 1, 2, 1],
+    description: 'T-T-I-M-T-I-M-I — signature Foggy Mountain Breakdown roll, double thumb at start',
   },
   {
     id: 'square_roll',
