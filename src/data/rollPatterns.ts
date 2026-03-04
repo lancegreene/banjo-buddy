@@ -7,6 +7,7 @@ export interface RollPattern {
   id: string
   name: string
   strings: (number | null)[]  // Expected string sequence (length = one full roll)
+  fingers?: ('T' | 'I' | 'M')[]  // Explicit finger labels; if absent, derived automatically
   description: string
 }
 
@@ -14,32 +15,28 @@ export const ROLL_PATTERNS: RollPattern[] = [
   {
     id: 'forward_roll',
     name: 'Forward Roll',
-    strings: [5, 1, 2, 5, 1, 2, 5, 1],
-    description: 'Classic Scruggs T-I-M roll cycling on open strings: 5th-1st-2nd repeating',
+    strings: [3, 2, 1, 5, 3, 1, 5, 1],
+    fingers: ['T', 'I', 'M', 'T', 'I', 'M', 'T', 'M'],
+    description: 'Classic Scruggs T-I-M roll: 3-2-1-5 cycling pattern',
   },
   {
     id: 'forward_roll_alt',
-    name: 'Forward Roll (alt)',
-    strings: [5, 1, 2, 5, 1, 2, 1, 2],
-    description: 'Alternating thumb variation of the forward roll',
+    name: 'Forward Roll 2',
+    strings: [3, 1, 5, 3, 1, 5, 3, 1],
+    fingers: ['T', 'M', 'T', 'I', 'M', 'T', 'I', 'M'],
+    description: 'Forward Roll variation: T-M-T-I-M cycling with drone string',
   },
   {
     id: 'alternating_thumb',
     name: 'Alternating Thumb Roll',
-    strings: [5, 1, 5, 1, 5, 1, 5, 1],
-    description: 'Fifth string alternating with first string — very common in bluegrass',
-  },
-  {
-    id: 'alternating_thumb_3',
-    name: 'Alternating Thumb (3rd)',
     strings: [3, 1, 3, 1, 3, 1, 3, 1],
-    description: 'Third string alternating with first string',
+    description: 'Third string (thumb) alternating with first string — T I T M pattern',
   },
   {
     id: 'backward_roll',
     name: 'Backward Roll',
-    strings: [1, 2, 5, 1, 2, 5, 1, 2],
-    description: 'Reverse of forward roll — descending then repeating',
+    strings: [1, 2, 3, 1, 2, 3, 1, 2],
+    description: 'I M T cycling: 1st-2nd-3rd string repeating',
   },
   {
     id: 'mixed_roll',

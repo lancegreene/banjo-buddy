@@ -17,6 +17,7 @@ export interface Skill {
   name: string
   path: Path | 'all'
   month: number
+  week?: number             // week sub-group within the month (1-4)
   description: string
   progressBpm: number | null   // BPM to unlock dependents
   masteryBpm: number | null    // BPM for true mastery
@@ -29,6 +30,7 @@ export interface Skill {
   isInformational?: boolean    // no blocking, just surface to user
   lickId?: string              // references LICK_MAP key — enables LickDetector panel
   rollPatternId?: string       // references ROLL_MAP key — enables BanjoTabDiagram
+  chordId?: string             // references CHORD_MAP key — enables BanjoChordDiagram
 }
 
 export const SKILLS: Skill[] = [
@@ -39,7 +41,7 @@ export const SKILLS: Skill[] = [
     id: 'posture_basic',
     name: 'Posture & banjo positioning',
     path: 'newby',
-    month: 1,
+    month: 1, week: 1,
     description: 'Correct body position, strap height, elbow anchor, and relaxed shoulder.',
     progressBpm: null,
     masteryBpm: null,
@@ -57,7 +59,7 @@ export const SKILLS: Skill[] = [
     id: 'callus_building',
     name: 'Finger soreness & callus expectations',
     path: 'newby',
-    month: 1,
+    month: 1, week: 1,
     description: 'Understanding that fingertip soreness is normal and how to manage it during the first weeks.',
     progressBpm: null,
     masteryBpm: null,
@@ -76,7 +78,7 @@ export const SKILLS: Skill[] = [
     id: 'picks_fitting',
     name: 'Getting picks fitted & comfortable',
     path: 'newby',
-    month: 1,
+    month: 1, week: 1,
     description: 'Thumb pick seated at the knuckle joint; finger picks on the fingertip, not the nail.',
     progressBpm: null,
     masteryBpm: null,
@@ -94,7 +96,7 @@ export const SKILLS: Skill[] = [
     id: 'right_hand_position',
     name: 'Right hand placement',
     path: 'newby',
-    month: 1,
+    month: 1, week: 1,
     description: 'Ring finger anchored on head, thumb clears 5th string, index and middle curve naturally.',
     progressBpm: null,
     masteryBpm: null,
@@ -112,7 +114,7 @@ export const SKILLS: Skill[] = [
     id: 'open_string_names',
     name: 'Open string note names (gDGBD)',
     path: 'newby',
-    month: 1,
+    month: 1, week: 1,
     description: 'Memorize the five open string pitches of standard banjo tuning: 5th=g, 4th=D, 3rd=G, 2nd=B, 1st=D.',
     progressBpm: null,
     masteryBpm: null,
@@ -130,7 +132,7 @@ export const SKILLS: Skill[] = [
     id: 'tuning_basic',
     name: 'Tuning with a chromatic tuner',
     path: 'newby',
-    month: 1,
+    month: 1, week: 1,
     description: 'Using a clip-on or app-based chromatic tuner to get all 5 strings in tune.',
     progressBpm: null,
     masteryBpm: null,
@@ -148,7 +150,7 @@ export const SKILLS: Skill[] = [
     id: 'ear_training_basic',
     name: 'Hearing in-tune vs out-of-tune',
     path: 'newby',
-    month: 1,
+    month: 1, week: 1,
     description: 'Training the ear to detect when a string is sharp or flat.',
     progressBpm: null,
     masteryBpm: null,
@@ -166,7 +168,7 @@ export const SKILLS: Skill[] = [
     id: 'picking_mechanics',
     name: 'Basic T-I-M picking motion',
     path: 'newby',
-    month: 1,
+    month: 1, week: 1,
     description: 'Thumb picks down, index and middle pick up. The core motion all rolls are built on.',
     progressBpm: null,
     masteryBpm: null,
@@ -184,7 +186,7 @@ export const SKILLS: Skill[] = [
     id: 'tab_reading_basic',
     name: 'Reading basic banjo tab',
     path: 'newby',
-    month: 1,
+    month: 1, week: 1,
     description: 'Understanding 5-string banjo tablature: lines = strings, numbers = frets.',
     progressBpm: null,
     masteryBpm: null,
@@ -202,7 +204,7 @@ export const SKILLS: Skill[] = [
     id: 'practice_routine',
     name: 'Building a daily practice habit',
     path: 'newby',
-    month: 1,
+    month: 1, week: 1,
     description: 'Establishing a consistent daily or near-daily practice schedule, even if short.',
     progressBpm: null,
     masteryBpm: null,
@@ -221,7 +223,7 @@ export const SKILLS: Skill[] = [
     id: 'roll_forward_open',
     name: 'Forward roll — open strings',
     path: 'newby',
-    month: 1,
+    month: 1, week: 3,
     description: 'T-I-M pattern on open strings. The foundational roll everything else is built on.',
     progressBpm: 80,
     masteryBpm: 160,
@@ -261,7 +263,8 @@ export const SKILLS: Skill[] = [
     id: 'chord_g',
     name: 'G chord shape',
     path: 'newby',
-    month: 2,
+    month: 1, week: 4,
+    chordId: 'g_major',
     description: 'Open G chord: 2nd string 1st fret, 3rd string 2nd fret (in standard G tuning many notes are already open).',
     progressBpm: null,
     masteryBpm: null,
@@ -279,7 +282,8 @@ export const SKILLS: Skill[] = [
     id: 'chord_c',
     name: 'C chord shape',
     path: 'newby',
-    month: 2,
+    month: 1, week: 4,
+    chordId: 'c_major',
     description: 'C chord requires a 2-finger shape. Produces the IV chord in the key of G.',
     progressBpm: null,
     masteryBpm: null,
@@ -336,7 +340,8 @@ export const SKILLS: Skill[] = [
     id: 'chord_d7',
     name: 'D7 chord shape',
     path: 'newby',
-    month: 3,
+    month: 1, week: 4,
+    chordId: 'd7',
     description: 'D7 chord — the V chord in the key of G. Three fingers, trickier reach.',
     progressBpm: null,
     masteryBpm: null,
@@ -372,7 +377,7 @@ export const SKILLS: Skill[] = [
     id: 'roll_backward_open',
     name: 'Backward roll — open strings',
     path: 'newby',
-    month: 3,
+    month: 1, week: 3,
     description: 'M-I-T pattern on open strings. The complement to the forward roll.',
     progressBpm: 80,
     masteryBpm: 160,
@@ -413,12 +418,12 @@ export const SKILLS: Skill[] = [
     id: 'roll_alternating_thumb',
     name: 'Alternating thumb roll',
     path: 'newby',
-    month: 4,
+    month: 1, week: 3,
     description: 'Thumb alternates between 4th and 5th strings while index and middle fill in. T-I-T-M pattern.',
     progressBpm: 80,
     masteryBpm: 150,
     masteryCriteria: '16 reps, thumb alternates cleanly, even tone.',
-    prerequisites: ['roll_forward_open', 'roll_backward_open'],
+    prerequisites: ['roll_forward_open'],
     exercises: [
       { instruction: 'Isolate the thumb alternation only: 5th-4th-5th-4th, 16 reps.' },
       { instruction: 'Add index and middle: T-I-T-M slowly.' },

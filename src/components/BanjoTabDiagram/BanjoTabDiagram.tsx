@@ -10,7 +10,8 @@ export type Finger = 'T' | 'I' | 'M'
 interface BanjoTabDiagramProps {
   strings: (number | null)[]  // banjo string numbers; null = wildcard (any string)
   fingers?: Finger[]          // optional finger labels per beat
-  label?: string            // optional title above diagram
+  label?: string              // optional title above diagram
+  playedStrings?: number[]    // live played string per beat — enables hit/miss coloring
 }
 
 // Colors per string — match roll detector
@@ -22,7 +23,7 @@ const STRING_COLORS: Record<number, string> = {
   1: '#e74c3c',
 }
 
-const STRING_ORDER = [5, 4, 3, 2, 1] // top to bottom in diagram
+const STRING_ORDER = [1, 2, 3, 4, 5] // top to bottom in diagram
 
 // Scruggs 3-finger rule: strings 3, 4, 5 = thumb; strings 1, 2 = alternate I/M
 function deriveFingers(strings: (number | null)[]): Finger[] {
@@ -35,7 +36,7 @@ function deriveFingers(strings: (number | null)[]): Finger[] {
   })
 }
 
-export function BanjoTabDiagram({ strings, fingers, label }: BanjoTabDiagramProps) {
+export function BanjoTabDiagram({ strings, fingers, label, playedStrings }: BanjoTabDiagramProps) {
   const resolvedFingers = fingers ?? deriveFingers(strings)
   const beats = strings.length
 
@@ -51,20 +52,29 @@ export function BanjoTabDiagram({ strings, fingers, label }: BanjoTabDiagramProp
               <span style={{ color: STRING_COLORS[stringNum] }}>{stringNum}</span>
             </div>
             {/* Dots for each beat */}
-            {strings.map((s, beatIdx) => (
-              <div key={beatIdx} className="banjo-tab-cell">
-                {s === stringNum ? (
-                  <div
-                    className="banjo-tab-dot banjo-tab-dot-active"
-                    style={{ background: STRING_COLORS[stringNum] }}
-                  />
-                ) : s === null ? (
-                  <div className="banjo-tab-dot banjo-tab-dot-wildcard" />
-                ) : (
-                  <div className="banjo-tab-dot banjo-tab-dot-inactive" />
-                )}
-              </div>
-            ))}
+            {strings.map((s, beatIdx) => {
+              const played = playedStrings?.[beatIdx]
+              const isPlayed = played !== undefined
+              const expected = s  // null = wildcard
+              const isHit = isPlayed && (expected === null || played === stringNum) && s === stringNum
+              const isMiss = isPlayed && s === stringNum && expected !== null && played !== stringNum
+              const isCurrent = !isPlayed && playedStrings !== undefined && beatIdx === playedStrings.length
+
+              return (
+                <div key={beatIdx} className="banjo-tab-cell">
+                  {s === stringNum ? (
+                    <div
+                      className={`banjo-tab-dot banjo-tab-dot-active ${isHit ? 'banjo-tab-dot-hit' : ''} ${isMiss ? 'banjo-tab-dot-miss' : ''} ${isCurrent ? 'banjo-tab-dot-current' : ''}`}
+                      style={{ background: STRING_COLORS[stringNum] }}
+                    />
+                  ) : s === null ? (
+                    <div className="banjo-tab-dot banjo-tab-dot-wildcard" />
+                  ) : (
+                    <div className="banjo-tab-dot banjo-tab-dot-inactive" />
+                  )}
+                </div>
+              )
+            })}
           </React.Fragment>
         ))}
 

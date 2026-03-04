@@ -30,23 +30,29 @@ export interface CapturedNote {
 }
 
 export interface NoteCaptureConfig {
-  clarityThreshold: number     // default 0.85
-  minFreq: number              // default 60 Hz
-  maxFreq: number              // default 1200 Hz
-  onsetRmsThreshold: number    // default 0.015
-  minOnsetGapMs: number        // default 100 ms
-  pitchChangeCents: number     // default 50 cents
-  maxNotes: number             // default 64
+  clarityThreshold: number    // min pitchy clarity (0–1)
+  minFreq: number             // Hz floor
+  maxFreq: number             // Hz ceiling
+  onsetRmsThreshold: number   // absolute RMS floor — gates out silence
+  minOnsetGapMs: number       // min ms between consecutive onsets
+  pitchChangeCents: number    // cents shift required to count as a new note (string change)
+  rmsOnsetRatio: number       // RMS spike ratio for same-string onset detection
+  maxNotes: number            // rolling buffer cap
+  onsetLockoutMs: number      // hard lockout after onset fires — blocks all re-detection during note's initial ring
 }
 
 export const DEFAULT_CONFIG: NoteCaptureConfig = {
-  clarityThreshold: 0.78,
-  minFreq: 60,
+  clarityThreshold: 0.60,    // lowered from 0.65: gives more margin on soft index-finger plucks during fast decay
+  minFreq: 130,              // lowest open string is D3=146.83 Hz; 130 Hz blocks sub-D3 body/tap noise
   maxFreq: 1200,
-  onsetRmsThreshold: 0.015,
-  minOnsetGapMs: 80,
-  pitchChangeCents: 50,
+  onsetRmsThreshold: 0.010,  // low floor so soft index-finger plucks (string 1) aren't gated
+  minOnsetGapMs: 80,         // secondary guard within detectOnset — lockout is the primary double-trigger block
+  pitchChangeCents: 80,      // decay drift on a ringing string can reach ~60c — stay above it
+  rmsOnsetRatio: 1.25,       // secondary: less ratio needed — thumb strokes aren't much louder than index
   maxNotes: 64,
+  onsetLockoutMs: 80,        // hard lockout after onset — prevents decay-dip/swell re-trigger.
+                              // 80ms matches minOnsetGapMs and allows rolls up to ~150 BPM (notes every 100ms).
+                              // 120ms was blocking notes at faster tempos.
 }
 
 // ── Pure utility functions ────────────────────────────────────────────────────
@@ -73,16 +79,33 @@ export function getClosestString(
   note: string,
   octave: number,
   cents: number,
-  threshold = 0.05  // tighter than Tuner (was 0.1) to reduce fretted-note false positives
+  threshold = 0.12  // 144 cents — catches B3/G4 attacks 60-130¢ off during the transient.
+                    // Safe: minimum gap between any two open strings is D4↔B3 ≈ 300¢.
+                    // Stops at 144¢ to avoid matching 431 Hz (168¢ from G4, actually G3).
 ): BanjoString | null {
   const freq = freqFromNoteOctave(note, octave, cents)
-  let closest = BANJO_STRINGS[0]
-  let minDiff = Infinity
+
+  // Two-pass: fundamentals take priority over octave harmonics.
+  // Without priority, D4 (293.66 Hz) ties with D3's octave-up (146.83×2=293.66 Hz).
+  // String 4 (D3) appears before string 1 (D4) in BANJO_STRINGS, so a single-pass
+  // loop would let the octave harmonic win and mismap D4 onsets to string 4.
+  // Separating the passes ensures any fundamental match beats a harmonic match,
+  // while B4 (493 Hz) — no open-string fundamental near it — still maps to
+  // string 2 (B3) via the harmonic pass.
+  let closestFund = BANJO_STRINGS[0], minFundDiff = Infinity
+  let closestHarm = BANJO_STRINGS[0], minHarmDiff = Infinity
+
   for (const s of BANJO_STRINGS) {
     const diff = Math.abs(Math.log2(freq / s.freq))
-    if (diff < minDiff) { minDiff = diff; closest = s }
+    if (diff < minFundDiff) { minFundDiff = diff; closestFund = s }
+    // Octave-up harmonic: pitchy sometimes locks on 2× the fundamental
+    const diffOct = Math.abs(Math.log2(freq / (s.freq * 2)))
+    if (diffOct < minHarmDiff) { minHarmDiff = diffOct; closestHarm = s }
   }
-  return minDiff < threshold ? closest : null
+
+  if (minFundDiff < threshold) return closestFund
+  if (minHarmDiff < threshold) return closestHarm
+  return null
 }
 
 export function computeRms(buffer: Float32Array): number {
@@ -91,10 +114,25 @@ export function computeRms(buffer: Float32Array): number {
   return Math.sqrt(sum / buffer.length)
 }
 
+// Hybrid onset detection — two complementary methods:
+//
+// 1. PITCH CHANGE (primary): a shift ≥ pitchChangeCents from the last detected
+//    pitch means a new string was plucked. This is the most reliable signal for
+//    rolls because every string-to-string transition produces a large pitch jump
+//    (≥200 cents in open G tuning). The index finger plucking string 1 (D4)
+//    softly still changes pitch dramatically from the previous string.
+//
+// 2. RMS SPIKE (secondary): catches same-string consecutive plucks that produce
+//    no pitch change — e.g., the double-thumb in Foggy Mountain (5→5→1→...).
+//    We use a faster decay (see useNoteCapture) so the smooth baseline recovers
+//    quickly between notes.
+//
+// Either condition is sufficient to fire an onset.
 export function detectOnset(
   pitch: number,
   clarity: number,
   rms: number,
+  smoothRms: number,      // exponential moving average updated every RAF frame
   lastFreq: number | null,
   lastOnsetTime: number,
   config: NoteCaptureConfig
@@ -104,10 +142,18 @@ export function detectOnset(
   if (rms < config.onsetRmsThreshold) return false
   if (performance.now() - lastOnsetTime < config.minOnsetGapMs) return false
 
+  // Method 1: pitch change (reliable for string-to-string transitions)
   if (lastFreq !== null) {
     const centsDiff = Math.abs(1200 * Math.log2(pitch / lastFreq))
-    if (centsDiff < config.pitchChangeCents) return false
+    if (centsDiff >= config.pitchChangeCents) return true
+  } else {
+    // No prior onset reference — accept any clear frame above the RMS floor.
+    // After clearNotes, smoothRms rebuilds during the attack transient, so by the
+    // time pitchIsStable=true the RMS ratio has dropped below 1.25. Skip Method 2.
+    return true
   }
 
-  return true
+  // Method 2: RMS spike (same-string or consecutive pluck with no pitch change)
+  const ratio = smoothRms > 0 ? rms / smoothRms : 2
+  return ratio >= config.rmsOnsetRatio
 }

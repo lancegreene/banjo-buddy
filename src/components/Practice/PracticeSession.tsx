@@ -11,6 +11,10 @@ import { AudioRecorder } from '../AudioRecorder/AudioRecorder'
 import { useNoteCapture } from '../../hooks/useNoteCapture'
 import { BanjoTabDiagram } from '../BanjoTabDiagram/BanjoTabDiagram'
 import { ROLL_MAP } from '../../data/rollPatterns'
+import { BanjoChordDiagram } from '../BanjoChordDiagram/BanjoChordDiagram'
+import { CHORD_GROUPS } from '../../data/chordDiagrams'
+import { CalibrationWizard } from '../Calibration/CalibrationWizard'
+import { loadCalibration } from '../../utils/calibration'
 
 type PracticeView = 'plan' | 'item' | 'metronome' | 'complete'
 
@@ -65,7 +69,7 @@ function BpmProgressBar({ item }: { item: RecommendedItem }) {
   )
 }
 
-type ActiveTool = 'metronome' | 'tuner' | 'roll' | 'lick' | 'recorder' | null
+type ActiveTool = 'metronome' | 'tuner' | 'roll' | 'lick' | 'recorder' | 'calibrate' | null
 
 function ExerciseView({
   item,
@@ -161,12 +165,34 @@ function ExerciseView({
 
       <div className="exercise-description">{skill.description}</div>
 
-      {/* Roll pattern diagram */}
+      {/* Roll pattern diagram — lights up live when roll tool is active */}
       {skill.rollPatternId && (() => {
         const pattern = ROLL_MAP.get(skill.rollPatternId!)
-        return pattern ? (
-          <BanjoTabDiagram strings={pattern.strings} label={pattern.name} />
-        ) : null
+        if (!pattern) return null
+        const playedStrings = activeTool === 'roll'
+          ? notes.filter((n) => n.banjoString !== null).slice(-8).map((n) => n.banjoString!)
+          : undefined
+        return (
+          <BanjoTabDiagram
+            strings={pattern.strings}
+            fingers={pattern.fingers}
+            label={pattern.name}
+            playedStrings={playedStrings}
+          />
+        )
+      })()}
+
+      {/* Chord diagrams — all voicings for this chord */}
+      {skill.chordId && (() => {
+        const shapes = CHORD_GROUPS[skill.chordId!]
+        if (!shapes?.length) return null
+        return (
+          <div className="chord-diagram-row">
+            {shapes.map((chord) => (
+              <BanjoChordDiagram key={chord.id} chord={chord} />
+            ))}
+          </div>
+        )
       })()}
 
       <BpmProgressBar item={item} />
@@ -235,6 +261,13 @@ function ExerciseView({
             ● Rec
           </button>
         )}
+        <button
+          className={`tool-btn tool-btn-cal ${activeTool === 'calibrate' ? 'tool-btn-active' : ''} ${loadCalibration() ? 'tool-btn-cal-saved' : ''}`}
+          onClick={() => toggleTool('calibrate')}
+          title="Calibrate audio detection to your playing style"
+        >
+          ⚙ Cal
+        </button>
       </div>
 
       {/* Analysis tool Listen/Stop control (shared) */}
@@ -267,7 +300,9 @@ function ExerciseView({
           <RollDetector
             notes={notes}
             isListening={isListening}
+            targetBpm={item.suggestedBpm ?? undefined}
             onScore={(r, t) => { setPendingRhythm(r); setPendingTempo(t) }}
+            onClear={clearNotes}
           />
         </div>
       )}
@@ -289,6 +324,11 @@ function ExerciseView({
             analyserRef={analyserRef}
             streamRef={streamRef}
           />
+        </div>
+      )}
+      {activeTool === 'calibrate' && (
+        <div className="inline-tool-panel">
+          <CalibrationWizard onClose={() => setActiveTool(null)} />
         </div>
       )}
 

@@ -2,9 +2,9 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { PitchDetector } from 'pitchy'
 import { BANJO_STRINGS, freqToNoteInfo, freqFromNoteOctave } from '../../engine/noteCapture'
 
-// Must stay within ±5¢ for 25 consecutive frames (~0.4 s at 60 fps) to lock
-const IN_TUNE_CENTS = 5
-const LOCK_FRAMES = 25
+// Must stay within ±10¢ for 12 consecutive frames (~0.2 s at 60 fps) to lock
+const IN_TUNE_CENTS = 10
+const LOCK_FRAMES = 12
 
 // Tuner uses a looser open-string match threshold (0.1) for maximum string detection
 function getClosestString(note: string, octave: number, cents: number) {
@@ -38,6 +38,8 @@ export function Tuner() {
   // Refs to avoid stale closures inside the RAF loop
   const lockedRef = useRef<Set<number>>(new Set())
   const inTuneFrames = useRef<Map<number, number>>(new Map())
+  const smoothCentsRef = useRef<number>(0)
+  const lastStringRef = useRef<number | null>(null)
 
   const stopListening = useCallback(() => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
@@ -46,6 +48,8 @@ export function Tuner() {
     audioContextRef.current = null
     analyserRef.current = null
     streamRef.current = null
+    smoothCentsRef.current = 0
+    lastStringRef.current = null
     setIsListening(false)
     setDetectedNote(null)
     setClarity(0)
@@ -55,7 +59,10 @@ export function Tuner() {
   const startListening = useCallback(async () => {
     setError(null)
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        video: false,
+      })
       const audioContext = new AudioContext()
       const analyser = audioContext.createAnalyser()
       analyser.fftSize = 2048
@@ -77,10 +84,18 @@ export function Tuner() {
         analyserRef.current.getFloatTimeDomainData(inputRef.current)
         const [pitch, cl] = detectorRef.current.findPitch(inputRef.current, audioContext.sampleRate)
 
-        if (cl > 0.85 && pitch > 60 && pitch < 1200) {
+        if (cl > 0.80 && pitch > 60 && pitch < 1200) {
           const { note, octave, cents: c } = freqToNoteInfo(pitch)
+          // Use raw cents for string matching — smooth value lags on string switches
           const closest = getClosestString(note, octave, c)
-          const currentlyInTune = Math.abs(c) <= IN_TUNE_CENTS
+          // Snap smoother when switching strings so lock counter starts from truth
+          if (closest?.string !== lastStringRef.current) {
+            smoothCentsRef.current = c
+            lastStringRef.current = closest?.string ?? null
+          }
+          smoothCentsRef.current = smoothCentsRef.current * 0.75 + c * 0.25
+          const smoothCents = Math.round(smoothCentsRef.current)
+          const currentlyInTune = Math.abs(smoothCents) <= IN_TUNE_CENTS
 
           if (closest && !lockedRef.current.has(closest.string)) {
             if (currentlyInTune) {
@@ -100,7 +115,7 @@ export function Tuner() {
 
           setDetectedNote(note)
           setDetectedOctave(octave)
-          setCents(c)
+          setCents(smoothCents)
           setClarity(cl)
           setClosestString(closest)
         } else {
