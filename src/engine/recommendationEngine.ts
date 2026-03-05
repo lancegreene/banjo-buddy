@@ -9,7 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { SKILLS, type Skill, type Path } from '../data/curriculum'
-import type { SkillRecord } from '../db/db'
+import type { SkillRecord, SessionItem } from '../db/db'
 import type { SkillStatus } from '../db/db'
 
 export interface RecommendedItem {
@@ -98,39 +98,73 @@ function practiceCountScore(record: SkillRecord | null): number {
   return 0
 }
 
-function computePriority(skill: Skill, record: SkillRecord | null, status: SkillStatus): number {
+function accuracyScore(recentItems: SessionItem[]): number {
+  if (recentItems.length === 0) return 0
+  const scored = recentItems.filter((i) => i.compositeScore !== null)
+  if (scored.length === 0) return 0
+  const avg = scored.reduce((a, b) => a + b.compositeScore!, 0) / scored.length
+  // Low accuracy = high priority boost: score 90+ = 0, score 50 = 40, score 0 = 50
+  if (avg >= 90) return 0
+  return Math.min(50, Math.round((90 - avg) * (50 / 90)))
+}
+
+function computePriority(
+  skill: Skill,
+  record: SkillRecord | null,
+  status: SkillStatus,
+  recentItems: SessionItem[] = []
+): number {
   if (status === 'locked' || status === 'mastered') return 0
-  return bpmGapScore(skill, record) + recencyScore(record) + practiceCountScore(record)
+  return bpmGapScore(skill, record) + recencyScore(record) + practiceCountScore(record) + accuracyScore(recentItems)
 }
 
 // ── BPM suggestion ────────────────────────────────────────────────────────────
 
-function suggestBpm(skill: Skill, record: SkillRecord | null): number | null {
+function suggestBpm(skill: Skill, record: SkillRecord | null, recentItems: SessionItem[] = []): number | null {
   if (!skill.progressBpm && !skill.masteryBpm) return null
 
   const current = record?.bestBpm ?? 0
   const target = skill.progressBpm ?? skill.masteryBpm!
 
+  let suggested: number
   if (current === 0) {
     // First time — start at 60% of progress BPM
-    return Math.round((target * 0.6) / 5) * 5
-  }
-
-  if (current >= target) {
+    suggested = Math.round((target * 0.6) / 5) * 5
+  } else if (current >= target) {
     // Already progressed — suggest 5 BPM above current toward mastery
     const masteryTarget = skill.masteryBpm ?? target
-    return Math.min(current + 5, masteryTarget)
+    suggested = Math.min(current + 5, masteryTarget)
+  } else {
+    // Suggest 5 BPM above their last achievement, capped at target
+    suggested = Math.min(current + 5, target)
   }
 
-  // Suggest 5 BPM above their last achievement, capped at target
-  return Math.min(current + 5, target)
+  // If recent accuracy is low, drop suggested BPM to let them clean up
+  const scored = recentItems.filter((i) => i.compositeScore !== null)
+  if (scored.length > 0) {
+    const avgAccuracy = scored.reduce((a, b) => a + b.compositeScore!, 0) / scored.length
+    if (avgAccuracy < 70) {
+      suggested = Math.max(40, suggested - 10)
+    }
+  }
+
+  return suggested
 }
 
 // ── Reason text ───────────────────────────────────────────────────────────────
 
-function buildReason(skill: Skill, record: SkillRecord | null, status: SkillStatus): string {
+function buildReason(skill: Skill, record: SkillRecord | null, status: SkillStatus, recentItems: SessionItem[] = []): string {
   if (status === 'unlocked' && (!record || record.practiceCount === 0)) {
     return 'New skill ready to start'
+  }
+
+  // Check recent accuracy
+  const scored = recentItems.filter((i) => i.compositeScore !== null)
+  if (scored.length > 0) {
+    const avgAccuracy = Math.round(scored.reduce((a, b) => a + b.compositeScore!, 0) / scored.length)
+    if (avgAccuracy < 70) {
+      return `Accuracy is ${avgAccuracy}% — slow down and focus on clean notes`
+    }
   }
 
   const days = daysSince(record?.lastPracticed ?? null)
@@ -159,7 +193,8 @@ function buildReason(skill: Skill, record: SkillRecord | null, status: SkillStat
 export function buildSessionPlan(
   path: Path,
   allRecords: Map<string, SkillRecord>,
-  targetMinutes = 30
+  targetMinutes = 30,
+  recentItemsBySkill: Map<string, SessionItem[]> = new Map()
 ): SessionPlan {
   // Filter skills for this path
   const pathSkills = SKILLS.filter((s) => s.path === path || s.path === 'all')
@@ -167,10 +202,11 @@ export function buildSessionPlan(
   // Evaluate every skill
   const evaluated = pathSkills.map((skill) => {
     const record = allRecords.get(skill.id) ?? null
+    const recentItems = recentItemsBySkill.get(skill.id) ?? []
     const status = evaluateSkillStatus(skill, record, allRecords)
-    const priority = computePriority(skill, record, status)
-    const reason = buildReason(skill, record, status)
-    const suggestedBpm = suggestBpm(skill, record)
+    const priority = computePriority(skill, record, status, recentItems)
+    const reason = buildReason(skill, record, status, recentItems)
+    const suggestedBpm = suggestBpm(skill, record, recentItems)
     return { skill, record, status, priority, reason, suggestedBpm }
   })
 

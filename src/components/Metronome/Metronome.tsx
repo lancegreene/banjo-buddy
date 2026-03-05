@@ -5,8 +5,12 @@ const MIN_BPM = 40
 const MAX_BPM = 220
 const BPM_STEP = 5
 
-export function Metronome() {
-  const [bpm, setBpm] = useState(80)
+interface MetronomeProps {
+  controlledBpm?: number  // when set, overrides internal BPM state
+}
+
+export function Metronome({ controlledBpm }: MetronomeProps = {}) {
+  const [bpm, setBpm] = useState(controlledBpm ?? 80)
   const [isRunning, setIsRunning] = useState(false)
   const [beat, setBeat] = useState(0)
   const [beatsPerMeasure, setBeatsPerMeasure] = useState(4)
@@ -16,6 +20,14 @@ export function Metronome() {
   const synthRef = useRef<Tone.Synth | null>(null)
   const accentSynthRef = useRef<Tone.Synth | null>(null)
   const beatRef = useRef(0)
+
+  // Sync controlled BPM from parent
+  useEffect(() => {
+    if (controlledBpm !== undefined) {
+      updateBpm(controlledBpm)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlledBpm])
 
   // Tap tempo
   const tapTimesRef = useRef<number[]>([])

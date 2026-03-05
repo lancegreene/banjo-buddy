@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import { db, getOrCreateUser, getSkillRecordMap, upsertSkillRecord, getCurrentStreak, newId, nowISO, todayDate } from '../db/db'
-import type { UserProfile, SkillRecord, PracticeSession, SessionItem, SelfRating } from '../db/db'
+import type { UserProfile, SkillRecord, PracticeSession, SessionItem, SelfRating, NoteAccuracyRecord } from '../db/db'
 import { SKILL_MAP, type Path } from '../data/curriculum'
 import { buildSessionPlan, deriveNewStatus, getNewlyUnlockedSkills, type SessionPlan } from '../engine/recommendationEngine'
+import type { NoteEvaluation } from '../engine/streamingRollMatcher'
 
 export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'progress' | 'metronome' | 'tuner'
 
@@ -40,7 +41,8 @@ interface AppState {
     skillId: string,
     achievedBpm: number | null,
     selfRating: SelfRating,
-    scores: { rhythm?: number; pitch?: number; tempo?: number }
+    scores: { rhythm?: number; pitch?: number; tempo?: number },
+    noteEvaluations?: NoteEvaluation[]
   ) => Promise<{ newlyUnlocked: string[] }>
 
   // Newly unlocked skill IDs (for celebration UI)
@@ -99,10 +101,32 @@ export const useStore = create<AppState>((set, get) => ({
     get().refreshSessionPlan()
   },
 
-  refreshSessionPlan: () => {
+  refreshSessionPlan: async () => {
     const { user, skillRecords } = get()
     if (!user) return
-    const plan = buildSessionPlan(user.path, skillRecords)
+
+    // Fetch recent session items (last 30 days) for accuracy-driven recommendations
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - 30)
+    const cutoffISO = cutoff.toISOString()
+
+    let recentItemsBySkill = new Map<string, SessionItem[]>()
+    try {
+      const recentItems = await db.sessionItems
+        .where('completedAt')
+        .above(cutoffISO)
+        .toArray()
+      for (const item of recentItems) {
+        const arr = recentItemsBySkill.get(item.skillId) ?? []
+        arr.push(item)
+        recentItemsBySkill.set(item.skillId, arr)
+      }
+    } catch {
+      // Fallback: build plan without recent items
+      recentItemsBySkill = new Map()
+    }
+
+    const plan = buildSessionPlan(user.path, skillRecords, 30, recentItemsBySkill)
     set({ sessionPlan: plan })
   },
 
@@ -149,7 +173,7 @@ export const useStore = create<AppState>((set, get) => ({
     set({ activeSession: null })
   },
 
-  logSessionItem: async (skillId, achievedBpm, selfRating, scores) => {
+  logSessionItem: async (skillId, achievedBpm, selfRating, scores, noteEvaluations) => {
     const { user, activeSession, skillRecords } = get()
     if (!user || !activeSession) return { newlyUnlocked: [] }
 
@@ -166,8 +190,9 @@ export const useStore = create<AppState>((set, get) => ({
       : null
 
     // Write session item
+    const itemId = newId()
     const item: SessionItem = {
-      id: newId(),
+      id: itemId,
       sessionId: activeSession.id,
       skillId,
       type: 'exercise',
@@ -183,6 +208,24 @@ export const useStore = create<AppState>((set, get) => ({
       completedAt: nowISO(),
     }
     await db.sessionItems.add(item)
+
+    // Persist per-note accuracy records if provided
+    if (noteEvaluations && noteEvaluations.length > 0 && skill.rollPatternId) {
+      const now = nowISO()
+      const records: NoteAccuracyRecord[] = noteEvaluations.map((ev) => ({
+        id: newId(),
+        sessionItemId: itemId,
+        skillId,
+        patternId: skill.rollPatternId!,
+        position: ev.position,
+        expectedString: ev.expectedString,
+        playedString: ev.playedString,
+        isHit: ev.isHit,
+        timingErrorMs: ev.timingErrorMs,
+        createdAt: now,
+      }))
+      await db.noteAccuracyRecords.bulkAdd(records)
+    }
 
     // Snapshot records BEFORE the update — getNewlyUnlockedSkills needs the pre-update
     // state to correctly detect which skills transition from locked → unlocked

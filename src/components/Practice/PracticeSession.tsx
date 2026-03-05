@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../../store/useStore'
 import { SKILL_MAP, type ScoringType } from '../../data/curriculum'
 import type { RecommendedItem } from '../../engine/recommendationEngine'
 import type { SelfRating } from '../../db/db'
+import type { NoteEvaluation } from '../../engine/streamingRollMatcher'
+import { createAdaptiveTempoState, evaluateTempoAdjustment, type AdaptiveTempoState } from '../../engine/adaptiveTempo'
 import { Metronome } from '../Metronome/Metronome'
 import { Tuner } from '../Tuner/Tuner'
 import { RollDetector } from '../RollDetector/RollDetector'
+import { LiveRollFeedback } from '../RollDetector/LiveRollFeedback'
 import { LickDetector } from '../LickDetector/LickDetector'
 import { AudioRecorder } from '../AudioRecorder/AudioRecorder'
 import { useNoteCapture } from '../../hooks/useNoteCapture'
@@ -13,6 +16,7 @@ import { BanjoTabDiagram } from '../BanjoTabDiagram/BanjoTabDiagram'
 import { ROLL_MAP } from '../../data/rollPatterns'
 import { BanjoChordDiagram } from '../BanjoChordDiagram/BanjoChordDiagram'
 import { CHORD_GROUPS } from '../../data/chordDiagrams'
+import { WeakSpotChart } from '../Progress/WeakSpotChart'
 import { CalibrationWizard } from '../Calibration/CalibrationWizard'
 import { loadCalibration } from '../../utils/calibration'
 
@@ -76,7 +80,7 @@ function ExerciseView({
   onComplete,
 }: {
   item: RecommendedItem
-  onComplete: (achievedBpm: number | null, rating: SelfRating, scores: Record<string, number>) => void
+  onComplete: (achievedBpm: number | null, rating: SelfRating, scores: Record<string, number>, noteEvaluations?: NoteEvaluation[]) => void
 }) {
   const [achievedBpm, setAchievedBpm] = useState<string>(String(item.suggestedBpm ?? ''))
   const [rating, setRating] = useState<SelfRating | null>(null)
@@ -87,12 +91,20 @@ function ExerciseView({
   const [pendingTempo, setPendingTempo] = useState<number | null>(null)
   const [pendingPitch, setPendingPitch] = useState<number | null>(null)
 
+  // Accumulated note evaluations from LiveRollFeedback
+  const noteEvalsRef = useRef<NoteEvaluation[]>([])
+
+  // Adaptive tempo state
+  const [autoTempo, setAutoTempo] = useState(false)
+  const [adaptiveState, setAdaptiveState] = useState<AdaptiveTempoState | null>(null)
+
   const { skill } = item
 
   const hasPitch = skill.scoringTypes.includes('pitch') || skill.scoringTypes.includes('string_ring')
   const hasRoll = skill.scoringTypes.includes('rhythm')
   const hasLick = skill.scoringTypes.includes('audio_match') && !!skill.lickId
   const hasAnalysis = hasRoll || hasLick
+  const hasLiveRoll = hasRoll && !!skill.rollPatternId
 
   // Shared audio capture for Roll, Lick, and Recorder panels
   const {
@@ -165,22 +177,23 @@ function ExerciseView({
 
       <div className="exercise-description">{skill.description}</div>
 
-      {/* Roll pattern diagram — lights up live when roll tool is active */}
-      {skill.rollPatternId && (() => {
+      {/* Roll pattern diagram — shown when roll tool is NOT active (LiveRollFeedback handles its own) */}
+      {skill.rollPatternId && activeTool !== 'roll' && (() => {
         const pattern = ROLL_MAP.get(skill.rollPatternId!)
         if (!pattern) return null
-        const playedStrings = activeTool === 'roll'
-          ? notes.filter((n) => n.banjoString !== null).slice(-8).map((n) => n.banjoString!)
-          : undefined
         return (
           <BanjoTabDiagram
             strings={pattern.strings}
             fingers={pattern.fingers}
             label={pattern.name}
-            playedStrings={playedStrings}
           />
         )
       })()}
+
+      {/* Weak spot chart for roll patterns */}
+      {skill.rollPatternId && activeTool !== 'roll' && (
+        <WeakSpotChart skillId={skill.id} patternId={skill.rollPatternId} />
+      )}
 
       {/* Chord diagrams — all voicings for this chord */}
       {skill.chordId && (() => {
@@ -290,12 +303,53 @@ function ExerciseView({
 
       {/* Inline tool panels */}
       {activeTool === 'metronome' && (
-        <div className="inline-tool-panel"><Metronome /></div>
+        <div className="inline-tool-panel">
+          <Metronome controlledBpm={autoTempo && adaptiveState ? adaptiveState.currentBpm : undefined} />
+        </div>
       )}
       {activeTool === 'tuner' && (
         <div className="inline-tool-panel"><Tuner /></div>
       )}
-      {activeTool === 'roll' && (
+      {activeTool === 'roll' && hasLiveRoll && (
+        <div className="inline-tool-panel">
+          <LiveRollFeedback
+            patternId={skill.rollPatternId!}
+            notes={notes}
+            isListening={isListening}
+            targetBpm={autoTempo && adaptiveState ? adaptiveState.currentBpm : (item.suggestedBpm ?? null)}
+            onCycleComplete={(cycleAccuracy, cycleCount) => {
+              if (autoTempo) {
+                setAdaptiveState((prev) => {
+                  if (!prev) return prev
+                  return evaluateTempoAdjustment(prev, cycleAccuracy, cycleCount)
+                })
+              }
+            }}
+            onScore={(r, t) => { setPendingRhythm(r); setPendingTempo(t) }}
+            onEvaluations={(evals) => { noteEvalsRef.current = evals }}
+          />
+          {/* Auto-tempo toggle */}
+          <div className="auto-tempo-toggle">
+            <label className="auto-tempo-label">
+              <input
+                type="checkbox"
+                checked={autoTempo}
+                onChange={(e) => {
+                  setAutoTempo(e.target.checked)
+                  if (e.target.checked && !adaptiveState) {
+                    setAdaptiveState(createAdaptiveTempoState(item.suggestedBpm ?? 80))
+                  }
+                }}
+              />
+              Auto-tempo: {autoTempo ? 'ON' : 'OFF'}
+            </label>
+            {autoTempo && adaptiveState && (
+              <span className="auto-tempo-bpm">{adaptiveState.currentBpm} BPM</span>
+            )}
+          </div>
+        </div>
+      )}
+      {activeTool === 'roll' && !hasLiveRoll && (
         <div className="inline-tool-panel">
           <RollDetector
             notes={notes}
@@ -382,7 +436,8 @@ function ExerciseView({
             if (pendingRhythm !== null) scores.rhythm = pendingRhythm
             if (pendingPitch !== null) scores.pitch = pendingPitch
             if (pendingTempo !== null) scores.tempo = pendingTempo
-            onComplete(bpm && !isNaN(bpm) ? bpm : null, rating!, scores)
+            const evals = noteEvalsRef.current.length > 0 ? noteEvalsRef.current : undefined
+            onComplete(bpm && !isNaN(bpm) ? bpm : null, rating!, scores, evals)
           }}
         >
           Mark Complete
@@ -447,12 +502,12 @@ export function PracticeSession() {
     setCompletedIds([])
   }
 
-  async function handleItemComplete(achievedBpm: number | null, rating: SelfRating, scores: Record<string, number>) {
+  async function handleItemComplete(achievedBpm: number | null, rating: SelfRating, scores: Record<string, number>, noteEvaluations?: NoteEvaluation[]) {
     const item = allItems[currentIndex]
     if (!item) return
 
     clearNewlyUnlocked()
-    await logSessionItem(item.skill.id, achievedBpm, rating, scores)
+    await logSessionItem(item.skill.id, achievedBpm, rating, scores, noteEvaluations)
     setCompletedIds((prev) => [...prev, item.skill.id])
 
     if (currentIndex < allItems.length - 1) {

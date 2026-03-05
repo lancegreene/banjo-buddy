@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react'
+import type { NoteEvaluation } from '../../engine/streamingRollMatcher'
 
 export type Finger = 'T' | 'I' | 'M'
 
@@ -12,6 +13,8 @@ interface BanjoTabDiagramProps {
   fingers?: Finger[]          // optional finger labels per beat
   label?: string              // optional title above diagram
   playedStrings?: number[]    // live played string per beat — enables hit/miss coloring
+  evaluations?: NoteEvaluation[]  // richer hit/miss data per beat (streaming mode)
+  cursorPosition?: number         // highlights next expected beat with pulse animation
 }
 
 // Colors per string — match roll detector
@@ -36,7 +39,7 @@ function deriveFingers(strings: (number | null)[]): Finger[] {
   })
 }
 
-export function BanjoTabDiagram({ strings, fingers, label, playedStrings }: BanjoTabDiagramProps) {
+export function BanjoTabDiagram({ strings, fingers, label, playedStrings, evaluations, cursorPosition }: BanjoTabDiagramProps) {
   const resolvedFingers = fingers ?? deriveFingers(strings)
   const beats = strings.length
 
@@ -53,18 +56,34 @@ export function BanjoTabDiagram({ strings, fingers, label, playedStrings }: Banj
             </div>
             {/* Dots for each beat */}
             {strings.map((s, beatIdx) => {
+              // Streaming evaluation mode (takes priority over playedStrings)
+              const evalItem = evaluations?.[beatIdx]
+              const isCursorHere = cursorPosition !== undefined && beatIdx === cursorPosition
+
+              // Legacy playedStrings mode
               const played = playedStrings?.[beatIdx]
-              const isPlayed = played !== undefined
+              const isPlayed = evalItem !== undefined || played !== undefined
               const expected = s  // null = wildcard
-              const isHit = isPlayed && (expected === null || played === stringNum) && s === stringNum
-              const isMiss = isPlayed && s === stringNum && expected !== null && played !== stringNum
-              const isCurrent = !isPlayed && playedStrings !== undefined && beatIdx === playedStrings.length
+
+              // Determine hit/miss from evaluations or playedStrings
+              let isHit = false
+              let isMiss = false
+              if (evalItem && s === stringNum) {
+                isHit = evalItem.isHit
+                isMiss = !evalItem.isHit
+              } else if (!evalItem && played !== undefined) {
+                isHit = isPlayed && (expected === null || played === stringNum) && s === stringNum
+                isMiss = isPlayed && s === stringNum && expected !== null && played !== stringNum
+              }
+
+              const isCurrent = isCursorHere && s === stringNum
+              const isLegacyCurrent = !evalItem && !isCursorHere && !isPlayed && playedStrings !== undefined && beatIdx === playedStrings.length
 
               return (
                 <div key={beatIdx} className="banjo-tab-cell">
                   {s === stringNum ? (
                     <div
-                      className={`banjo-tab-dot banjo-tab-dot-active ${isHit ? 'banjo-tab-dot-hit' : ''} ${isMiss ? 'banjo-tab-dot-miss' : ''} ${isCurrent ? 'banjo-tab-dot-current' : ''}`}
+                      className={`banjo-tab-dot banjo-tab-dot-active ${isHit ? 'banjo-tab-dot-hit' : ''} ${isMiss ? 'banjo-tab-dot-miss' : ''} ${isCurrent ? 'banjo-tab-dot-cursor' : ''} ${isLegacyCurrent ? 'banjo-tab-dot-current' : ''}`}
                       style={{ background: STRING_COLORS[stringNum] }}
                     />
                   ) : s === null ? (

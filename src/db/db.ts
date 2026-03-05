@@ -82,6 +82,19 @@ export interface StreakRecord {
   createdAt: string
 }
 
+export interface NoteAccuracyRecord {
+  id: string
+  sessionItemId: string
+  skillId: string
+  patternId: string
+  position: number           // 0-7
+  expectedString: number | null
+  playedString: number | null
+  isHit: boolean
+  timingErrorMs: number | null
+  createdAt: string
+}
+
 // ── Database class ────────────────────────────────────────────────────────────
 
 class BanjoBuddyDB extends Dexie {
@@ -91,6 +104,7 @@ class BanjoBuddyDB extends Dexie {
   sessionItems!: Table<SessionItem>
   recordings!: Table<Recording>
   streakRecords!: Table<StreakRecord>
+  noteAccuracyRecords!: Table<NoteAccuracyRecord>
 
   constructor() {
     super('BanjoBuddyDB')
@@ -102,6 +116,16 @@ class BanjoBuddyDB extends Dexie {
       sessionItems:    'id, sessionId, skillId, completedAt',
       recordings:      'id, sessionItemId, skillId, createdAt',
       streakRecords:   'id, userId, date, [userId+date]',
+    })
+
+    this.version(2).stores({
+      userProfiles:       'id, path',
+      skillRecords:       'id, userId, skillId, status, lastPracticed, [userId+skillId]',
+      practiceSessions:   'id, userId, date, startedAt',
+      sessionItems:       'id, sessionId, skillId, completedAt',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, date, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
     })
   }
 }

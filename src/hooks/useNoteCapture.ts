@@ -50,6 +50,30 @@ const STRING_COOLDOWN_MS = 300
 // block it if string 4 fired within this window.
 const OCTAVE_HARMONIC_BLOCK_MS = 350
 
+// RMS ratio threshold for overriding the octave harmonic block.
+// When candidate onset RMS ≥ this × smoothRms, it's a real fresh pluck,
+// not a lingering harmonic from the lower string's ring.
+// Data shows: D3 harmonic at 294Hz decays to rms 0.01-0.03,
+// while a real D4 pluck arrives at rms 0.05-0.12.
+const HARMONIC_OVERRIDE_RMS_RATIO = 2.5
+
+// Minimum RMS for a string-5 (G4) onset to count.
+// Ghost onsets from sympathetic resonance arrive at rms 0.005-0.015.
+// Real plucks on string 5 are rms 0.03+.
+const STRING5_MIN_RMS = 0.025
+
+// Minimum RMS for D3 (string 4) onsets.
+// Pitchy sometimes reads D4 plucks at half-frequency (~147 Hz) during the
+// attack transient. These misreads have very low RMS compared to a real
+// thumb stroke on string 4.
+const STRING4_MIN_RMS = 0.035
+
+// Per-string onset info: timestamp + RMS at onset
+interface StringOnsetInfo {
+  time: number
+  rms: number
+}
+
 export function useNoteCapture(options: UseNoteCaptureOptions = {}): UseNoteCaptureReturn {
   const calibration = loadCalibration()
   const config: NoteCaptureConfig = { ...DEFAULT_CONFIG, ...calibration, ...options }
@@ -74,7 +98,7 @@ export function useNoteCapture(options: UseNoteCaptureOptions = {}): UseNoteCapt
   const lastOnsetTimeRef = useRef<number>(0)
   const lastClearPitchRef = useRef<number | null>(null)  // previous frame's clear pitch (stability check)
   const lockoutUntilRef = useRef<number>(0)  // timestamp until which global onset detection is locked
-  const lastStringOnsetTime = useRef<Record<number, number>>({})  // per-string last onset timestamp
+  const lastStringOnsetInfo = useRef<Record<number, StringOnsetInfo>>({})  // per-string onset timestamp + RMS
   const lastOnsetStringRef = useRef<number | null>(null)  // banjoString of the most recent onset (null if unmapped)
   const lockoutReclassifiedRef = useRef(false)  // true once we've reclassified the note during this lockout
   const debugModeRef = useRef(options.debug ?? localStorage.getItem('banjo-debug') === 'true')
@@ -191,20 +215,31 @@ export function useNoteCapture(options: UseNoteCaptureOptions = {}): UseNoteCapt
             } else {
               const { note: dn, octave: dOct, cents: dc } = freqToNoteInfo(pitch)
               const dStr = getClosestString(dn, dOct, dc)
-              const lastTime = dStr ? (lastStringOnsetTime.current[dStr.string] ?? 0) : 0
-              if (dStr && now - lastTime < STRING_COOLDOWN_MS) {
-                decision = 'string_cooldown'
-              } else if (dStr && BANJO_STRINGS.some(s => {
-                const hBlock = (s.string === 4 && dStr.string === 1) ? 200 : OCTAVE_HARMONIC_BLOCK_MS
-                return (
-                  s.string !== dStr.string &&
-                  (lastStringOnsetTime.current[s.string] ?? 0) > now - hBlock &&
-                  Math.abs(Math.log2(pitch / s.freq) - 1.0) < 0.12
-                )
-              })) {
-                decision = 'octave_harmonic'
+              // Apply per-string RMS floors (Fix 4 & 5)
+              if (dStr && dStr.string === 5 && rms < STRING5_MIN_RMS) {
+                decision = 'rms_floor_str5'
+              } else if (dStr && dStr.string === 4 && rms < STRING4_MIN_RMS) {
+                decision = 'rms_floor_str4'
               } else {
-                decision = 'onset'
+                const lastInfo = dStr ? (lastStringOnsetInfo.current[dStr.string] ?? null) : null
+                const lastTime = lastInfo?.time ?? 0
+                if (dStr && now - lastTime < STRING_COOLDOWN_MS) {
+                  decision = 'string_cooldown'
+                } else if (dStr && BANJO_STRINGS.some(s => {
+                  if (s.string === dStr.string) return false
+                  const sInfo = lastStringOnsetInfo.current[s.string]
+                  if (!sInfo) return false
+                  const hBlock = (s.string === 4 && dStr.string === 1) ? 200 : OCTAVE_HARMONIC_BLOCK_MS
+                  if (now - sInfo.time >= hBlock) return false
+                  if (Math.abs(Math.log2(pitch / s.freq) - 1.0) >= 0.12) return false
+                  // RMS override: if this onset is strong relative to baseline, it's a real pluck
+                  if (prevSmooth > 0 && rms / prevSmooth >= HARMONIC_OVERRIDE_RMS_RATIO) return false
+                  return true
+                })) {
+                  decision = 'octave_harmonic'
+                } else {
+                  decision = 'onset'
+                }
               }
             }
             debugLogRef.current.push({
@@ -223,25 +258,27 @@ export function useNoteCapture(options: UseNoteCaptureOptions = {}): UseNoteCapt
           // During lockout: once pitch stabilizes, bind cooldown and reclassify note if needed.
           //
           // Onset pitch can be far from the true note during the attack transient:
-          //   • 353 Hz (null) → settles to G5 (392 Hz)         — reclassify null → string 5
-          //   • 444 Hz → mapped to G5 → settles to D4 (294 Hz) — reclassify string 5 → string 1
+          //   • 353 Hz (null) → settles to G4 (392 Hz)         — reclassify null → string 5
+          //   • 444 Hz (null) → settles to D4 (294 Hz)         — reclassify null → string 1
           //
-          // Guard: if the settled pitch is ~1 octave above the onset string (e.g. G3 ringing
-          // produces G5 harmonic during lockout), that's a harmonic of the onset note —
-          // don't reclassify.  Only fires once per lockout (first stable settled pitch).
+          // Only reclassify when the onset had NO valid string match (banjoString was null).
+          // When the onset already mapped to a valid string, the "settled" pitch during
+          // lockout is almost always a partial/harmonic of the real note, not a different
+          // string. Data shows: D4 onsets (293Hz → str 1) produce ~400Hz partials that
+          // falsely reclassify to G4 (str 5). Limiting to null-onset reclassification
+          // eliminates these while preserving the valuable transient→correct-string cases.
+          //
+          // Only fires once per lockout (first stable settled pitch).
           if (isLocked && !lockoutReclassifiedRef.current && pitchIsStable) {
             const { note: ln, octave: lOct, cents: lc } = freqToNoteInfo(pitch)
             const lockStr = getClosestString(ln, lOct, lc)
             if (lockStr !== null) {
-              if ((lastStringOnsetTime.current[lockStr.string] ?? 0) < lastOnsetTimeRef.current) {
-                lastStringOnsetTime.current[lockStr.string] = lastOnsetTimeRef.current
+              const existingInfo = lastStringOnsetInfo.current[lockStr.string]
+              if (!existingInfo || existingInfo.time < lastOnsetTimeRef.current) {
+                lastStringOnsetInfo.current[lockStr.string] = { time: lastOnsetTimeRef.current, rms }
               }
-              const onsetFreq = lastOnsetStringRef.current !== null
-                ? BANJO_STRINGS.find(s => s.string === lastOnsetStringRef.current)?.freq ?? null
-                : null
-              const isOctaveOfOnset = onsetFreq !== null &&
-                Math.abs(Math.log2(pitch / onsetFreq) - 1.0) < 0.12
-              if (!isOctaveOfOnset && lockStr.string !== lastOnsetStringRef.current) {
+              // Only reclassify if the onset had no valid string match
+              if (lastOnsetStringRef.current === null && lockStr.string !== lastOnsetStringRef.current) {
                 const prev = notesRef.current
                 if (prev.length > 0 && prev[prev.length - 1].timestamp === lastOnsetTimeRef.current) {
                   const last = prev[prev.length - 1]
@@ -263,12 +300,24 @@ export function useNoteCapture(options: UseNoteCaptureOptions = {}): UseNoteCapt
             const { note, octave, cents } = freqToNoteInfo(pitch)
             const banjoStr = getClosestString(note, octave, cents)
 
+            // Fix 4: Per-string RMS floors — reject ghost onsets from sympathetic resonance.
+            // String 5 (G4) ghosts: 400-417 Hz at rms 0.005-0.015 from overtones.
+            // String 4 (D3) misreads: pitchy reads D4 plucks at half-frequency with low RMS.
+            if (banjoStr !== null && banjoStr.string === 5 && rms < STRING5_MIN_RMS) {
+              animFrameRef.current = requestAnimationFrame(detect)
+              return
+            }
+            if (banjoStr !== null && banjoStr.string === 4 && rms < STRING4_MIN_RMS) {
+              animFrameRef.current = requestAnimationFrame(detect)
+              return
+            }
+
             // Per-string cooldown: block same banjo string from re-triggering within
             // STRING_COOLDOWN_MS. Catches both B4/B3 octave flips (pitchy reads the
             // octave harmonic of the ringing string) and RMS-spike re-triggers.
             if (banjoStr !== null) {
-              const lastTime = lastStringOnsetTime.current[banjoStr.string] ?? 0
-              if (now - lastTime < STRING_COOLDOWN_MS) {
+              const lastInfo = lastStringOnsetInfo.current[banjoStr.string]
+              if (lastInfo && now - lastInfo.time < STRING_COOLDOWN_MS) {
                 animFrameRef.current = requestAnimationFrame(detect)
                 return
               }
@@ -278,21 +327,36 @@ export function useNoteCapture(options: UseNoteCaptureOptions = {}): UseNoteCapt
             // fired string, it's likely that string's harmonic (e.g. D3 string 4 produces
             // D4 ~293Hz which maps to string 1). Block if the fundamental string fired
             // within the per-pair harmonic window and the new string is a different string.
-            // D3(4)→D4(1): harmonic fades within ~150ms so 200ms is safe.
-            // G3(3)→G5(5) and others: harmonic persists 270ms+, keep at OCTAVE_HARMONIC_BLOCK_MS.
+            //
+            // RMS OVERRIDE (Fix 1): if the candidate onset has strong RMS relative to the
+            // current baseline (smoothRms), it's a real fresh pluck — not a lingering
+            // harmonic. Data shows D3 harmonics decay to rms 0.01-0.03 while D4 plucks
+            // arrive at rms 0.05-0.12. Allow through if rms/smoothRms ≥ threshold.
+            let harmonicBlocked = false
             if (banjoStr !== null) {
               for (const s of BANJO_STRINGS) {
                 if (s.string === banjoStr.string) continue
-                const lastTime = lastStringOnsetTime.current[s.string] ?? 0
+                const sInfo = lastStringOnsetInfo.current[s.string]
+                if (!sInfo) continue
                 const harmonicBlockMs = (s.string === 4 && banjoStr.string === 1)
                   ? 200
                   : OCTAVE_HARMONIC_BLOCK_MS
-                if (now - lastTime < harmonicBlockMs &&
+                if (now - sInfo.time < harmonicBlockMs &&
                     Math.abs(Math.log2(pitch / s.freq) - 1.0) < 0.12) {
-                  animFrameRef.current = requestAnimationFrame(detect)
-                  return
+                  // Check RMS override: strong onset overrides the block
+                  const rmsRatio = prevSmooth > 0 ? rms / prevSmooth : 99
+                  if (rmsRatio >= HARMONIC_OVERRIDE_RMS_RATIO) {
+                    // Real pluck — allow through despite harmonic window
+                    break
+                  }
+                  harmonicBlocked = true
+                  break
                 }
               }
+            }
+            if (harmonicBlocked) {
+              animFrameRef.current = requestAnimationFrame(detect)
+              return
             }
 
             lockoutUntilRef.current = now + config.onsetLockoutMs
@@ -318,7 +382,7 @@ export function useNoteCapture(options: UseNoteCaptureOptions = {}): UseNoteCapt
             lastFreqRef.current = banjoStr?.freq ?? pitch  // use string fundamental, not onset transient — prevents phantom pitch-jump onset when harmonic fires (e.g. B3 at 462Hz → lastFreq=246.94Hz not 462Hz)
             lastOnsetTimeRef.current = now
             lastOnsetStringRef.current = banjoStr?.string ?? null
-            if (banjoStr !== null) lastStringOnsetTime.current[banjoStr.string] = now
+            if (banjoStr !== null) lastStringOnsetInfo.current[banjoStr.string] = { time: now, rms }
 
             setNotes([...notesRef.current])
             onNoteDetectedRef.current?.(captured)
@@ -345,7 +409,7 @@ export function useNoteCapture(options: UseNoteCaptureOptions = {}): UseNoteCapt
     lastOnsetTimeRef.current = 0
     lastClearPitchRef.current = null
     lockoutUntilRef.current = 0
-    lastStringOnsetTime.current = {}
+    lastStringOnsetInfo.current = {}
     lastOnsetStringRef.current = null
     lockoutReclassifiedRef.current = false
     setNotes([])
