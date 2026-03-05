@@ -45,7 +45,9 @@ export const DEFAULT_CONFIG: NoteCaptureConfig = {
   clarityThreshold: 0.60,    // lowered from 0.65: gives more margin on soft index-finger plucks during fast decay
   minFreq: 130,              // lowest open string is D3=146.83 Hz; 130 Hz blocks sub-D3 body/tap noise
   maxFreq: 1200,
-  onsetRmsThreshold: 0.010,  // low floor so soft index-finger plucks (string 1) aren't gated
+  onsetRmsThreshold: 0.007,  // low floor so soft index-finger plucks (string 1) aren't gated
+                             // 0.007 vs 0.010: debug data shows missing D4s leave zero trace in the log,
+                             // meaning they're plucked below the 0.010 floor; 0.007 catches them.
   minOnsetGapMs: 80,         // secondary guard within detectOnset — lockout is the primary double-trigger block
   pitchChangeCents: 80,      // decay drift on a ringing string can reach ~60c — stay above it
   rmsOnsetRatio: 1.25,       // secondary: less ratio needed — thumb strokes aren't much louder than index
@@ -79,9 +81,9 @@ export function getClosestString(
   note: string,
   octave: number,
   cents: number,
-  threshold = 0.12  // 144 cents — catches B3/G4 attacks 60-130¢ off during the transient.
-                    // Safe: minimum gap between any two open strings is D4↔B3 ≈ 300¢.
-                    // Stops at 144¢ to avoid matching 431 Hz (168¢ from G4, actually G3).
+  threshold = 0.12  // 144 cents — lockout reclassification handles transient mismaps (G5/D4 onsets at 435-444 Hz → null → reclassified during lockout).
+                    // 0.18 (216¢) caused false G5 onsets from D4's 3/2 partial (~441 Hz) and G3 transients.
+                    // Safe: minimum gap between any two open strings is D4↔B3 ≈ 300¢ (half = 150¢).
 ): BanjoString | null {
   const freq = freqFromNoteOctave(note, octave, cents)
 
