@@ -12,43 +12,68 @@ export interface RollPattern {
 }
 
 export const ROLL_PATTERNS: RollPattern[] = [
+  // ── Forward Rolls ─────────────────────────────────────────────────────────
   {
     id: 'forward_roll',
     name: 'Forward Roll',
-    strings: [3, 2, 1, 5, 3, 1, 5, 1],
-    fingers: ['T', 'I', 'M', 'T', 'I', 'M', 'T', 'M'],
-    description: 'Classic Scruggs T-I-M roll: 3-2-1-5 cycling pattern',
+    strings: [3, 2, 1, 5, 3, 2, 1, 5],
+    fingers: ['T', 'I', 'M', 'T', 'T', 'I', 'M', 'T'],
+    description: 'Classic Scruggs forward roll: T-I-M repeating with thumb on 3 and 5',
   },
   {
     id: 'forward_roll_alt',
-    name: 'Forward Roll 2',
-    strings: [3, 1, 5, 3, 1, 5, 3, 1],
-    fingers: ['T', 'M', 'T', 'I', 'M', 'T', 'I', 'M'],
-    description: 'Forward Roll variation: T-M-T-I-M cycling with drone string',
+    name: 'Forward Roll (5th string lead)',
+    strings: [5, 2, 1, 5, 2, 1, 5, 2],
+    fingers: ['T', 'I', 'M', 'T', 'I', 'M', 'T', 'I'],
+    description: 'Forward roll variation: thumb leads on 5th string (Scruggs Exercise II)',
   },
-  {
-    id: 'alternating_thumb',
-    name: 'Alternating Thumb Roll',
-    strings: [3, 1, 3, 1, 3, 1, 3, 1],
-    description: 'Third string (thumb) alternating with first string — T I T M pattern',
-  },
+  // ── Backward Roll ─────────────────────────────────────────────────────────
   {
     id: 'backward_roll',
     name: 'Backward Roll',
-    strings: [1, 2, 3, 1, 2, 3, 1, 2],
-    description: 'I M T cycling: 1st-2nd-3rd string repeating',
+    strings: [1, 2, 5, 1, 2, 5, 1, 2],
+    fingers: ['M', 'I', 'T', 'M', 'I', 'T', 'M', 'I'],
+    description: 'M-I-T repeating: 1st-2nd-5th string cycling (Scruggs Ch. 7)',
   },
+  // ── Reverse Roll ──────────────────────────────────────────────────────────
+  {
+    id: 'reverse_roll',
+    name: 'Reverse Roll',
+    strings: [3, 2, 1, 5, 1, 2, 3, 5],
+    fingers: ['T', 'I', 'M', 'T', 'M', 'I', 'T', 'M'],
+    description: 'Forward into backward: T-I-M-T then M-I-T-M (Scruggs Ch. 7)',
+  },
+  // ── Alternating Thumb ─────────────────────────────────────────────────────
+  {
+    id: 'alternating_thumb',
+    name: 'Alternating Thumb Roll',
+    strings: [3, 2, 5, 1, 4, 2, 5, 1],
+    fingers: ['T', 'I', 'T', 'M', 'T', 'I', 'T', 'M'],
+    description: 'T-I-T-M: thumb alternates between 3/5/4/5 strings (Scruggs Ch. 7)',
+  },
+  // ── Foggy Mountain Roll ───────────────────────────────────────────────────
   {
     id: 'mixed_roll',
     name: 'Foggy Mountain Roll',
-    strings: [5, 5, 1, 2, 5, 1, 2, 1],
-    description: 'T-T-I-M-T-I-M-I — signature Foggy Mountain Breakdown roll, double thumb at start',
+    strings: [2, 1, 5, 2, 1, 5, 2, 1],
+    fingers: ['T', 'M', 'T', 'I', 'M', 'T', 'I', 'M'],
+    description: 'T-M-T-I-M-T-I-M: signature Foggy Mountain Breakdown roll (Scruggs Ch. 7)',
   },
+  // ── Forward-Reverse Roll (Janet Davis) ────────────────────────────────────
+  {
+    id: 'forward_reverse',
+    name: 'Forward-Reverse Roll',
+    strings: [3, 2, 1, 5, 1, 2, 5, 1],
+    fingers: ['T', 'I', 'M', 'T', 'M', 'I', 'T', 'M'],
+    description: 'T-I-M-T-M-I-T-M: forward then reverse direction (Davis, Splitting the Licks)',
+  },
+  // ── Square Roll ───────────────────────────────────────────────────────────
   {
     id: 'square_roll',
     name: 'Square Roll',
     strings: [5, 1, 2, 1, 5, 1, 2, 1],
-    description: 'Square roll — thumb alternates with a two-finger pattern',
+    fingers: ['T', 'M', 'I', 'M', 'T', 'M', 'I', 'M'],
+    description: 'Square roll: thumb on 5th string alternates with index-middle pattern',
   },
 ]
 

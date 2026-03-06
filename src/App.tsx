@@ -1,28 +1,89 @@
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 import { useStore, type Page } from './store/useStore'
+import { Splash } from './components/Splash/Splash'
 import { Dashboard } from './components/Dashboard/Dashboard'
 import { PracticeSession } from './components/Practice/PracticeSession'
 import { SkillTree } from './components/SkillTree/SkillTree'
 import { Metronome } from './components/Metronome/Metronome'
 import { Tuner } from './components/Tuner/Tuner'
+import { Pathway } from './components/Pathway/Pathway'
 
-const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
+type ToolModal = 'metronome' | 'tuner'
+
+const NAV_ITEMS: { id: Page | ToolModal; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Home', icon: '⌂' },
+  { id: 'pathway', label: 'Pathway', icon: '⟠' },
   { id: 'skill-tree', label: 'Skills', icon: '◈' },
   { id: 'metronome', label: 'Metronome', icon: '♩' },
   { id: 'tuner', label: 'Tuner', icon: '◎' },
 ]
 
+const MODAL_IDS = new Set<string>(['metronome', 'tuner'])
+const SPLIT_PAGES = new Set<Page>(['skill-tree', 'pathway'])
+
 function PageContent({ page }: { page: Page }) {
   switch (page) {
     case 'dashboard':    return <Dashboard />
     case 'practice':     return <PracticeSession />
-    case 'skill-tree':   return <SkillTree />
-    case 'metronome':    return <Metronome />
-    case 'tuner':        return <Tuner />
     default:             return <Dashboard />
   }
+}
+
+function BanjoWatermark() {
+  return (
+    <div className="skill-tree-empty">
+      <svg className="skill-tree-watermark" viewBox="0 0 200 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Banjo head (drum) */}
+        <circle cx="100" cy="100" r="85" stroke="currentColor" strokeWidth="2.5" />
+        <circle cx="100" cy="100" r="78" stroke="currentColor" strokeWidth="1" />
+        <circle cx="100" cy="100" r="72" stroke="currentColor" strokeWidth="0.5" strokeDasharray="4 3" />
+        {/* Tension hooks around rim */}
+        {[...Array(16)].map((_, i) => {
+          const a = (i / 16) * Math.PI * 2 - Math.PI / 2
+          const x1 = 100 + Math.cos(a) * 78
+          const y1 = 100 + Math.sin(a) * 78
+          const x2 = 100 + Math.cos(a) * 85
+          const y2 = 100 + Math.sin(a) * 85
+          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="currentColor" strokeWidth="1.5" />
+        })}
+        {/* Bridge */}
+        <rect x="75" y="120" width="50" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+        {/* Tailpiece */}
+        <path d="M85 178 L100 190 L115 178" stroke="currentColor" strokeWidth="1.5" fill="none" />
+        <line x1="100" y1="185" x2="100" y2="195" stroke="currentColor" strokeWidth="1" />
+        {/* Strings on head */}
+        <line x1="88" y1="30" x2="88" y2="178" stroke="currentColor" strokeWidth="0.5" />
+        <line x1="94" y1="22" x2="94" y2="178" stroke="currentColor" strokeWidth="0.5" />
+        <line x1="100" y1="18" x2="100" y2="178" stroke="currentColor" strokeWidth="0.5" />
+        <line x1="106" y1="22" x2="106" y2="178" stroke="currentColor" strokeWidth="0.5" />
+        <line x1="112" y1="30" x2="112" y2="178" stroke="currentColor" strokeWidth="0.5" />
+        {/* Neck */}
+        <rect x="88" y="185" width="24" height="260" rx="3" stroke="currentColor" strokeWidth="2" />
+        {/* Frets */}
+        {[0, 38, 70, 98, 122, 143, 161, 177].map((y, i) => (
+          <line key={i} x1="88" y1={195 + y} x2="112" y2={195 + y} stroke="currentColor" strokeWidth="1" />
+        ))}
+        {/* Fret dots */}
+        <circle cx="100" cy="252" r="2.5" fill="currentColor" opacity="0.5" />
+        <circle cx="100" cy="308" r="2.5" fill="currentColor" opacity="0.5" />
+        <circle cx="100" cy="355" r="2.5" fill="currentColor" opacity="0.5" />
+        {/* 5th string peg (short string - Gibson style) */}
+        <circle cx="83" cy="250" r="4" stroke="currentColor" strokeWidth="1.2" />
+        <line x1="87" y1="250" x2="88" y2="250" stroke="currentColor" strokeWidth="0.8" />
+        {/* Peghead */}
+        <path d="M86 445 L86 490 Q86 505 100 505 Q114 505 114 490 L114 445" stroke="currentColor" strokeWidth="2" fill="none" />
+        {/* Tuning pegs */}
+        <circle cx="80" cy="460" r="4" stroke="currentColor" strokeWidth="1" />
+        <circle cx="80" cy="478" r="4" stroke="currentColor" strokeWidth="1" />
+        <circle cx="120" cy="460" r="4" stroke="currentColor" strokeWidth="1" />
+        <circle cx="120" cy="478" r="4" stroke="currentColor" strokeWidth="1" />
+        {/* Decorative scroll text */}
+        <text x="100" y="498" textAnchor="middle" fontSize="7" fontFamily="Georgia, serif" fill="currentColor" opacity="0.7">BANJO BUDDY</text>
+      </svg>
+      <p className="skill-tree-empty-text">Select a skill to start practicing</p>
+    </div>
+  )
 }
 
 export default function App() {
@@ -30,6 +91,11 @@ export default function App() {
   const setPage = useStore((s) => s.setPage)
   const loadUser = useStore((s) => s.loadUser)
   const isLoading = useStore((s) => s.isLoading)
+  const selectedSkillId = useStore((s) => s.selectedSkillId)
+  const [openModal, setOpenModal] = useState<ToolModal | null>(null)
+  const [splashDismissed, setSplashDismissed] = useState(
+    () => sessionStorage.getItem('banjo-splash-seen') === 'true'
+  )
 
   useEffect(() => {
     loadUser()
@@ -44,18 +110,65 @@ export default function App() {
     )
   }
 
+  if (!splashDismissed) {
+    return (
+      <Splash
+        onEnter={() => {
+          sessionStorage.setItem('banjo-splash-seen', 'true')
+          setSplashDismissed(true)
+        }}
+      />
+    )
+  }
+
+  const isSplitPage = SPLIT_PAGES.has(page)
+
   return (
     <div className="app">
-      <main className="app-content">
-        <PageContent page={page} />
-      </main>
+      {isSplitPage ? (
+        <main className="app-content-split">
+          {page === 'skill-tree' ? <SkillTree /> : <Pathway />}
+          <div className="skill-tree-main">
+            {selectedSkillId ? <PracticeSession /> : <BanjoWatermark />}
+          </div>
+        </main>
+      ) : (
+        <main className="app-content">
+          <PageContent page={page} />
+        </main>
+      )}
+
+      {/* Tool modals (Metronome / Tuner) */}
+      {openModal && (
+        <div className="tool-modal-backdrop" onClick={() => setOpenModal(null)}>
+          <div className="tool-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="tool-modal-header">
+              <button className="tool-modal-close" onClick={() => setOpenModal(null)}>✕</button>
+            </div>
+            <div className="tool-modal-body">
+              {openModal === 'metronome' ? <Metronome /> : <Tuner />}
+            </div>
+          </div>
+        </div>
+      )}
 
       <nav className="bottom-nav">
         {NAV_ITEMS.map((item) => (
           <button
             key={item.id}
-            className={`nav-btn ${page === item.id ? 'nav-btn-active' : ''}`}
-            onClick={() => setPage(item.id)}
+            className={`nav-btn ${
+              MODAL_IDS.has(item.id)
+                ? openModal === item.id ? 'nav-btn-active' : ''
+                : page === item.id ? 'nav-btn-active' : ''
+            }`}
+            onClick={() => {
+              if (MODAL_IDS.has(item.id)) {
+                setOpenModal(openModal === item.id ? null : item.id as ToolModal)
+              } else {
+                setOpenModal(null)
+                setPage(item.id as Page)
+              }
+            }}
           >
             <span className="nav-icon">{item.icon}</span>
             <span className="nav-label">{item.label}</span>

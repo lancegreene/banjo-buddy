@@ -1,6 +1,6 @@
 import { useMemo, useRef, useEffect, useState } from 'react'
 import { useStore } from '../../store/useStore'
-import { SKILLS, type Skill } from '../../data/curriculum'
+import { SKILLS, SKILL_MAP, CATEGORIES, type Skill, type SkillCategory } from '../../data/curriculum'
 import { evaluateSkillStatus } from '../../engine/recommendationEngine'
 import type { SkillStatus } from '../../db/db'
 
@@ -20,7 +20,23 @@ const STATUS_COLORS: Record<SkillStatus, string> = {
   mastered: '#9b59b6',
 }
 
-function SkillCard({ skill, isCurrent }: { skill: Skill; isCurrent: boolean }) {
+const CATEGORY_COLORS: Record<SkillCategory, string> = {
+  setup: '#78909c',
+  theory: '#7e57c2',
+  rolls: '#26a69a',
+  chords: '#ef5350',
+  techniques: '#ff7043',
+  licks: '#66bb6a',
+  songs: '#42a5f5',
+  performance: '#ffa726',
+}
+
+function SkillCard({ skill, isCurrent, compact, isSelected }: {
+  skill: Skill
+  isCurrent: boolean
+  compact?: boolean
+  isSelected?: boolean
+}) {
   const skillRecords = useStore((s) => s.skillRecords)
   const practiceSkill = useStore((s) => s.practiceSkill)
   const ref = useRef<HTMLDivElement>(null)
@@ -34,20 +50,52 @@ function SkillCard({ skill, isCurrent }: { skill: Skill; isCurrent: boolean }) {
     }
   }, [isCurrent])
 
+  const isPlayable = status !== 'locked'
+
+  const lockedTitle = !isPlayable ? (() => {
+    const unmet = skill.prerequisites
+      .filter((id) => {
+        const r = skillRecords.get(id)
+        return !r || (r.status !== 'progressed' && r.status !== 'mastered')
+      })
+      .map((id) => SKILL_MAP.get(id)?.name ?? id)
+    return unmet.length
+      ? `Complete first: ${unmet.join(', ')}`
+      : 'Complete prerequisites to unlock'
+  })() : ''
+
+  if (compact) {
+    return (
+      <div
+        ref={ref}
+        className={`skill-card-compact skill-card-${status} ${isPlayable ? 'skill-card-clickable' : ''} ${isSelected ? 'skill-card-selected' : ''}`}
+        onClick={isPlayable ? () => practiceSkill(skill.id) : undefined}
+        title={isPlayable ? `Practice: ${skill.name}` : lockedTitle}
+      >
+        <span
+          className="skill-status-dot"
+          style={{ background: STATUS_COLORS[status] }}
+        />
+        <span className="skill-card-compact-name">{skill.name}</span>
+        {skill.isMilestone && <span className="skill-milestone-badge">🎯</span>}
+      </div>
+    )
+  }
+
   const bpmDisplay = record?.bestBpm
     ? `${record.bestBpm} BPM`
     : skill.progressBpm
     ? `Goal: ${skill.progressBpm} BPM`
     : null
 
-  const isPlayable = status !== 'locked'
+  const catLabel = CATEGORIES.find((c) => c.id === skill.category)?.label ?? skill.category
 
   return (
     <div
       ref={ref}
       className={`skill-card skill-card-${status} ${isPlayable ? 'skill-card-clickable' : ''} ${isCurrent ? 'skill-card-current' : ''}`}
       onClick={isPlayable ? () => practiceSkill(skill.id) : undefined}
-      title={isPlayable ? `Practice: ${skill.name}` : 'Complete prerequisites to unlock'}
+      title={isPlayable ? `Practice: ${skill.name}` : lockedTitle}
     >
       {isCurrent && <div className="skill-card-here-badge">← Here</div>}
       <div className="skill-card-header">
@@ -59,6 +107,12 @@ function SkillCard({ skill, isCurrent }: { skill: Skill; isCurrent: boolean }) {
         <span className="skill-card-name">{skill.name}</span>
         {skill.isMilestone && <span className="skill-milestone-badge">🎯</span>}
       </div>
+      <span
+        className="skill-category-badge"
+        style={{ background: CATEGORY_COLORS[skill.category] }}
+      >
+        {catLabel}
+      </span>
       {bpmDisplay && (
         <div className="skill-card-bpm">{bpmDisplay}</div>
       )}
@@ -74,6 +128,7 @@ function SkillCard({ skill, isCurrent }: { skill: Skill; isCurrent: boolean }) {
 export function SkillTree() {
   const user = useStore((s) => s.user)
   const skillRecords = useStore((s) => s.skillRecords)
+  const selectedSkillId = useStore((s) => s.selectedSkillId)
 
   // Find most recently practiced skill to highlight
   const currentSkillId = useMemo(() => {
@@ -88,124 +143,119 @@ export function SkillTree() {
     return bestId
   }, [skillRecords])
 
-  const currentMonth = useMemo(() => {
-    if (!currentSkillId) return 1
-    return SKILLS.find((s) => s.id === currentSkillId)?.month ?? 1
+  // Determine which category the current skill belongs to
+  const currentCategory = useMemo(() => {
+    if (!currentSkillId) return CATEGORIES[0].id
+    return SKILLS.find((s) => s.id === currentSkillId)?.category ?? CATEGORIES[0].id
   }, [currentSkillId])
 
-  const months = useMemo(() => {
+  // Also auto-expand category of selected skill
+  const selectedCategory = useMemo(() => {
+    if (!selectedSkillId) return null
+    return SKILLS.find((s) => s.id === selectedSkillId)?.category ?? null
+  }, [selectedSkillId])
+
+  // Group skills by category, filtered by user path
+  const categories = useMemo(() => {
     if (!user) return []
     const pathSkills = SKILLS.filter((s) => s.path === user.path || s.path === 'all')
-    const maxMonth = Math.max(...pathSkills.map((s) => s.month))
-    return Array.from({ length: maxMonth }, (_, i) => ({
-      month: i + 1,
-      skills: pathSkills.filter((s) => s.month === i + 1),
-    }))
+    return CATEGORIES
+      .map(({ id, label }) => ({
+        id,
+        label,
+        skills: pathSkills
+          .filter((s) => s.category === id)
+          .sort((a, b) => a.month - b.month || (a.week ?? 99) - (b.week ?? 99)),
+      }))
+      .filter((cat) => cat.skills.length > 0)
   }, [user, skillRecords])
 
-  // Months start collapsed; current month starts open
-  const [expandedMonths, setExpandedMonths] = useState<Set<number>>(() => new Set([currentMonth]))
-  // Week 1-2 groups start collapsed within each month
-  const [expandedEarlyWeeks, setExpandedEarlyWeeks] = useState<Set<number>>(new Set())
+  // Categories start collapsed; current category starts open
+  const [expandedCategories, setExpandedCategories] = useState<Set<SkillCategory>>(
+    () => new Set([currentCategory])
+  )
 
-  // Auto-expand month when current skill changes
+  // Auto-expand category when current skill changes
   useEffect(() => {
-    setExpandedMonths((prev) => {
-      if (prev.has(currentMonth)) return prev
-      return new Set([...prev, currentMonth])
+    setExpandedCategories((prev) => {
+      if (prev.has(currentCategory)) return prev
+      return new Set([...prev, currentCategory])
     })
-  }, [currentMonth])
+  }, [currentCategory])
 
-  const toggleMonth = (month: number) => {
-    setExpandedMonths((prev) => {
+  // Auto-expand category of selected skill
+  useEffect(() => {
+    if (selectedCategory) {
+      setExpandedCategories((prev) => {
+        if (prev.has(selectedCategory)) return prev
+        return new Set([...prev, selectedCategory])
+      })
+    }
+  }, [selectedCategory])
+
+  const toggleCategory = (catId: SkillCategory) => {
+    setExpandedCategories((prev) => {
       const next = new Set(prev)
-      if (next.has(month)) next.delete(month)
-      else next.add(month)
+      if (next.has(catId)) next.delete(catId)
+      else next.add(catId)
       return next
     })
   }
 
-  const toggleEarlyWeeks = (month: number, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setExpandedEarlyWeeks((prev) => {
-      const next = new Set(prev)
-      if (next.has(month)) next.delete(month)
-      else next.add(month)
-      return next
-    })
-  }
+  const [search, setSearch] = useState('')
+  const searchLower = search.toLowerCase().trim()
 
   if (!user) return null
 
-  const pathLabels: Record<string, string> = {
-    newby: 'Newby Path',
-    beginner: 'Beginner Path',
-    intermediate: 'Intermediate Path',
-  }
-
   return (
-    <div className="skill-tree">
+    <div className="skill-tree-sidebar">
       <div className="skill-tree-header">
-        <h2>{pathLabels[user.path]}</h2>
-        <p className="skill-tree-subtitle">Your skill progression map. Skills unlock as you progress.</p>
+        <h2>Skills</h2>
       </div>
+      <input
+        className="sidebar-search"
+        type="text"
+        placeholder="Search skills…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
 
-      {/* Legend */}
-      <div className="skill-legend">
-        {Object.entries(STATUS_LABELS).map(([status, label]) => (
-          <div key={status} className="skill-legend-item">
-            <span className="skill-legend-dot" style={{ background: STATUS_COLORS[status as SkillStatus] }} />
-            <span>{label}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Month sections */}
-      {months.map(({ month, skills }) => {
-        const isOpen = expandedMonths.has(month)
-        const earlySkills = skills.filter((s) => (s.week ?? 99) <= 2)
-        const laterSkills = skills.filter((s) => (s.week ?? 99) >= 3)
-        const earlyOpen = expandedEarlyWeeks.has(month)
-        const totalCount = skills.length
+      {/* Category sections */}
+      {categories.map(({ id, label, skills: catSkills }) => {
+        const filtered = searchLower
+          ? catSkills.filter((s) => s.name.toLowerCase().includes(searchLower))
+          : catSkills
+        if (filtered.length === 0) return null
+        const isOpen = searchLower ? true : expandedCategories.has(id)
+        const color = CATEGORY_COLORS[id]
 
         return (
-          <div key={month} className={`skill-tree-month ${isOpen ? 'skill-tree-month-open' : ''}`}>
-            <div className="skill-month-header" onClick={() => toggleMonth(month)}>
-              <div className="skill-month-header-left">
-                <span className="skill-month-toggle">{isOpen ? '▾' : '▸'}</span>
-                <span className="skill-month-label">Month {month}</span>
+          <div key={id} className={`skill-tree-category ${isOpen ? 'skill-tree-category-open' : ''}`}>
+            <div
+              className="skill-category-header"
+              style={{ borderLeftColor: color }}
+              onClick={() => toggleCategory(id)}
+            >
+              <div className="skill-category-header-left">
+                <span className="skill-category-toggle">{isOpen ? '▾' : '▸'}</span>
+                <span className="skill-category-label" style={{ color }}>{label}</span>
               </div>
-              <span className="skill-month-count">{totalCount} skills</span>
+              <span className="skill-category-count">{filtered.length}</span>
             </div>
 
             {isOpen && (
-              <div className="skill-month-content">
-                {/* Weeks 1-2 collapsible group */}
-                {earlySkills.length > 0 && (
-                  <div className="skill-week-group">
-                    <div className="skill-week-header" onClick={(e) => toggleEarlyWeeks(month, e)}>
-                      <span className="skill-week-toggle">{earlyOpen ? '▾' : '▸'}</span>
-                      <span className="skill-week-label">Weeks 1–2</span>
-                      <span className="skill-week-count">{earlySkills.length} skills</span>
-                    </div>
-                    {earlyOpen && (
-                      <div className="skill-card-grid skill-card-grid-compact">
-                        {earlySkills.map((skill) => (
-                          <SkillCard key={skill.id} skill={skill} isCurrent={skill.id === currentSkillId} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Weeks 3-4 and beyond — always visible when month is open */}
-                {laterSkills.length > 0 && (
-                  <div className="skill-card-grid">
-                    {laterSkills.map((skill) => (
-                      <SkillCard key={skill.id} skill={skill} isCurrent={skill.id === currentSkillId} />
-                    ))}
-                  </div>
-                )}
+              <div className="skill-category-content">
+                <div className="skill-card-compact-list">
+                  {filtered.map((skill) => (
+                    <SkillCard
+                      key={skill.id}
+                      skill={skill}
+                      isCurrent={skill.id === currentSkillId}
+                      compact
+                      isSelected={skill.id === selectedSkillId}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </div>

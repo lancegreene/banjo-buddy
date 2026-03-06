@@ -23,6 +23,7 @@ function ContinueHero() {
   const skillRecords = useStore((s) => s.skillRecords)
   const sessionPlan = useStore((s) => s.sessionPlan)
   const practiceSkill = useStore((s) => s.practiceSkill)
+  const setPage = useStore((s) => s.setPage)
   const streak = useStore((s) => s.streak)
 
   // Find most recently practiced skill
@@ -81,7 +82,7 @@ function ContinueHero() {
           </div>
           <button
             className="btn btn-primary continue-hero-btn"
-            onClick={() => practiceSkill(skill.id)}
+            onClick={() => { setPage('skill-tree'); practiceSkill(skill.id) }}
           >
             Continue Practice →
           </button>

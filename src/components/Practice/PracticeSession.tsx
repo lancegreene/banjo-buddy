@@ -12,6 +12,7 @@ import { LiveRollFeedback } from '../RollDetector/LiveRollFeedback'
 import { LickDetector } from '../LickDetector/LickDetector'
 import { AudioRecorder } from '../AudioRecorder/AudioRecorder'
 import { useNoteCapture } from '../../hooks/useNoteCapture'
+import { useBanjoSynth } from '../../hooks/useBanjoSynth'
 import { BanjoTabDiagram } from '../BanjoTabDiagram/BanjoTabDiagram'
 import { ROLL_MAP } from '../../data/rollPatterns'
 import { BanjoChordDiagram } from '../BanjoChordDiagram/BanjoChordDiagram'
@@ -19,6 +20,10 @@ import { CHORD_GROUPS } from '../../data/chordDiagrams'
 import { WeakSpotChart } from '../Progress/WeakSpotChart'
 import { CalibrationWizard } from '../Calibration/CalibrationWizard'
 import { loadCalibration } from '../../utils/calibration'
+import { ListenButton } from './ListenButton'
+import { InteractiveStep } from './InteractiveStep'
+import { PlayAlong } from './PlayAlong'
+import { SECTION_MAP } from '../../data/songLibrary'
 
 type PracticeView = 'plan' | 'item' | 'metronome' | 'complete'
 
@@ -73,7 +78,7 @@ function BpmProgressBar({ item }: { item: RecommendedItem }) {
   )
 }
 
-type ActiveTool = 'metronome' | 'tuner' | 'roll' | 'lick' | 'recorder' | 'calibrate' | null
+type ActiveTool = 'metronome' | 'tuner' | 'roll' | 'lick' | 'recorder' | 'calibrate' | 'listen' | 'play_along' | null
 
 function ExerciseView({
   item,
@@ -105,6 +110,11 @@ function ExerciseView({
   const hasLick = skill.scoringTypes.includes('audio_match') && !!skill.lickId
   const hasAnalysis = hasRoll || hasLick
   const hasLiveRoll = hasRoll && !!skill.rollPatternId
+  const hasSong = !!skill.songId
+  const hasInteractiveExercises = skill.exercises.some((ex) => ex.type)
+
+  // Synth for audio demos
+  const synth = useBanjoSynth()
 
   // Shared audio capture for Roll, Lick, and Recorder panels
   const {
@@ -214,11 +224,28 @@ function ExerciseView({
       <div className="exercise-steps">
         <h3 className="steps-title">Exercises</h3>
         {skill.exercises.map((ex, i) => (
-          <div key={i} className="exercise-step">
-            <span className="step-num">{i + 1}</span>
-            <span className="step-instruction">{ex.instruction}</span>
-            {ex.bpm && <span className="step-bpm">@ {ex.bpm} BPM</span>}
-          </div>
+          ex.type ? (
+            <InteractiveStep
+              key={i}
+              exercise={ex}
+              stepNumber={i + 1}
+              synth={synth}
+              notes={notes}
+              isListening={isListening}
+              startListening={startListening}
+              stopListening={stopListening}
+              clearNotes={clearNotes}
+              onPass={() => {}}
+              onFail={() => {}}
+              defaultBpm={item.suggestedBpm}
+            />
+          ) : (
+            <div key={i} className="exercise-step">
+              <span className="step-num">{i + 1}</span>
+              <span className="step-instruction">{ex.instruction}</span>
+              {ex.bpm && <span className="step-bpm">@ {ex.bpm} BPM</span>}
+            </div>
+          )
         ))}
       </div>
 
@@ -236,6 +263,29 @@ function ExerciseView({
 
       {/* Tools row */}
       <div className="exercise-tools">
+        {(skill.rollPatternId || skill.songSectionId || skill.lickId) && (
+          <ListenButton
+            onPlay={() => {
+              if (skill.rollPatternId) {
+                synth.playRoll(skill.rollPatternId, item.suggestedBpm ?? 60, 2)
+              } else if (skill.songSectionId) {
+                const sec = SECTION_MAP.get(skill.songSectionId)
+                if (sec) synth.playSection(sec.measures, item.suggestedBpm ?? 60)
+              }
+            }}
+            onStop={() => synth.stop()}
+            isPlaying={synth.isPlaying}
+            small
+          />
+        )}
+        {hasSong && (
+          <button
+            className={`tool-btn ${activeTool === 'play_along' ? 'tool-btn-active' : ''}`}
+            onClick={() => toggleTool('play_along')}
+          >
+            ▶ Play Along
+          </button>
+        )}
         <button
           className={`tool-btn ${activeTool === 'metronome' ? 'tool-btn-active' : ''}`}
           onClick={() => toggleTool('metronome')}
@@ -385,6 +435,16 @@ function ExerciseView({
           <CalibrationWizard onClose={() => setActiveTool(null)} />
         </div>
       )}
+      {activeTool === 'play_along' && skill.songId && (
+        <div className="inline-tool-panel">
+          <PlayAlong
+            songId={skill.songId}
+            sectionId={skill.songSectionId}
+            bpm={item.suggestedBpm ?? 70}
+            synth={synth}
+          />
+        </div>
+      )}
 
       {/* Pending scores summary */}
       {(pendingRhythm !== null || pendingPitch !== null || pendingTempo !== null) && (
@@ -530,7 +590,6 @@ export function PracticeSession() {
   function handleDone() {
     if (singleSkillItem) {
       clearSelectedSkill()
-      setPage('skill-tree')
     } else {
       setPage('dashboard')
     }
@@ -598,7 +657,7 @@ export function PracticeSession() {
     <div className="practice-session">
       {/* Back button for single-skill mode */}
       {singleSkillItem && (
-        <button className="practice-back-btn" onClick={() => { clearSelectedSkill(); setPage('skill-tree') }}>
+        <button className="practice-back-btn" onClick={() => clearSelectedSkill()}>
           ← Skills
         </button>
       )}
@@ -628,7 +687,7 @@ export function PracticeSession() {
       <ExerciseView item={currentItem} onComplete={handleItemComplete} />
 
       {singleSkillItem ? (
-        <button className="skip-btn" onClick={() => { clearSelectedSkill(); setPage('skill-tree') }}>
+        <button className="skip-btn" onClick={() => clearSelectedSkill()}>
           ← Back to Skills
         </button>
       ) : (

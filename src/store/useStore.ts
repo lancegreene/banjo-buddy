@@ -5,7 +5,7 @@ import { SKILL_MAP, type Path } from '../data/curriculum'
 import { buildSessionPlan, deriveNewStatus, getNewlyUnlockedSkills, type SessionPlan } from '../engine/recommendationEngine'
 import type { NoteEvaluation } from '../engine/streamingRollMatcher'
 
-export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'progress' | 'metronome' | 'tuner'
+export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'pathway' | 'progress'
 
 interface AppState {
   // App shell
@@ -59,7 +59,7 @@ export const useStore = create<AppState>((set, get) => ({
   setPage: (page) => set({ currentPage: page }),
 
   selectedSkillId: null,
-  practiceSkill: (skillId) => set({ selectedSkillId: skillId, currentPage: 'practice' }),
+  practiceSkill: (skillId) => set({ selectedSkillId: skillId }),
   clearSelectedSkill: () => set({ selectedSkillId: null }),
 
   user: null,

@@ -6,15 +6,47 @@
 
 export type Path = 'newby' | 'beginner' | 'intermediate'
 export type ScoringType = 'rhythm' | 'pitch' | 'tempo' | 'self_rate' | 'string_ring' | 'audio_match'
+export type SkillCategory = 'setup' | 'theory' | 'rolls' | 'chords' | 'techniques' | 'licks' | 'songs' | 'performance'
+
+export const CATEGORIES: { id: SkillCategory; label: string }[] = [
+  { id: 'setup',       label: 'Setup & Basics' },
+  { id: 'theory',      label: 'Theory' },
+  { id: 'rolls',       label: 'Rolls' },
+  { id: 'chords',      label: 'Chords' },
+  { id: 'techniques',  label: 'Techniques' },
+  { id: 'licks',       label: 'Licks' },
+  { id: 'songs',       label: 'Songs & Licks' },
+  { id: 'performance', label: 'Performance' },
+]
+
+export type ExerciseType = 'info' | 'listen' | 'try' | 'play_along'
+
+export interface ExerciseDemo {
+  kind: 'string' | 'roll' | 'lick' | 'section'
+  id?: string               // patternId, lickId, or sectionId
+  strings?: number[]         // for single-string demos
+  cycles?: number
+}
+
+export interface ExerciseDetect {
+  kind: 'roll' | 'lick' | 'section'
+  id?: string
+  requiredHits?: number
+}
 
 export interface Exercise {
   instruction: string
   bpm?: number
+  type?: ExerciseType
+  demo?: ExerciseDemo
+  detect?: ExerciseDetect
+  passThreshold?: number     // 0-100 accuracy to pass
 }
 
 export interface Skill {
   id: string
   name: string
+  category: SkillCategory
   path: Path | 'all'
   month: number
   week?: number             // week sub-group within the month (1-4)
@@ -31,6 +63,8 @@ export interface Skill {
   lickId?: string              // references LICK_MAP key — enables LickDetector panel
   rollPatternId?: string       // references ROLL_MAP key — enables BanjoTabDiagram
   chordId?: string             // references CHORD_MAP key — enables BanjoChordDiagram
+  songId?: string              // references SONG_MAP key — enables play-along
+  songSectionId?: string       // references SECTION_MAP key — specific section
 }
 
 export const SKILLS: Skill[] = [
@@ -39,6 +73,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'posture_basic',
+    category: 'setup',
     name: 'Posture & banjo positioning',
     path: 'newby',
     month: 1, week: 1,
@@ -57,6 +92,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'callus_building',
+    category: 'setup',
     name: 'Finger soreness & callus expectations',
     path: 'newby',
     month: 1, week: 1,
@@ -76,6 +112,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'picks_fitting',
+    category: 'setup',
     name: 'Getting picks fitted & comfortable',
     path: 'newby',
     month: 1, week: 1,
@@ -94,6 +131,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'right_hand_position',
+    category: 'setup',
     name: 'Right hand placement',
     path: 'newby',
     month: 1, week: 1,
@@ -112,6 +150,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'open_string_names',
+    category: 'setup',
     name: 'Open string note names (gDGBD)',
     path: 'newby',
     month: 1, week: 1,
@@ -129,7 +168,43 @@ export const SKILLS: Skill[] = [
     assessmentPrompt: 'Name each string when pointed to randomly — 5 out of 5 correct.',
   },
   {
+    id: 'hear_and_play_strings',
+    category: 'songs',
+    name: 'Hear & play strings',
+    path: 'newby',
+    month: 1, week: 1,
+    description: 'The app plays a string — you play it back. Trains your ear to connect sound to string.',
+    progressBpm: null,
+    masteryBpm: null,
+    masteryCriteria: 'Correctly identifies and plays back 10 strings in a row.',
+    prerequisites: ['open_string_names'],
+    exercises: [
+      {
+        instruction: 'Listen to each of the 5 open strings. Notice how they sound different.',
+        type: 'listen',
+        demo: { kind: 'string', strings: [5, 4, 3, 2, 1] },
+      },
+      {
+        instruction: 'The app plays a string — play it back on your banjo.',
+        type: 'try',
+        demo: { kind: 'string', strings: [3] },
+        detect: { kind: 'roll', requiredHits: 5 },
+        passThreshold: 60,
+      },
+      {
+        instruction: 'Now with all 5 strings. Listen, then play back.',
+        type: 'try',
+        demo: { kind: 'string', strings: [5, 4, 3, 2, 1] },
+        detect: { kind: 'roll', requiredHits: 10 },
+        passThreshold: 80,
+      },
+    ],
+    scoringTypes: ['pitch', 'self_rate'],
+    assessmentPrompt: '10 random strings played — identify and play each one back.',
+  },
+  {
     id: 'tuning_basic',
+    category: 'setup',
     name: 'Tuning with a chromatic tuner',
     path: 'newby',
     month: 1, week: 1,
@@ -148,6 +223,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'ear_training_basic',
+    category: 'setup',
     name: 'Hearing in-tune vs out-of-tune',
     path: 'newby',
     month: 1, week: 1,
@@ -166,6 +242,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'picking_mechanics',
+    category: 'setup',
     name: 'Basic T-I-M picking motion',
     path: 'newby',
     month: 1, week: 1,
@@ -175,6 +252,11 @@ export const SKILLS: Skill[] = [
     masteryCriteria: 'Each string rings clearly with no unintended muting, motion feels relaxed.',
     prerequisites: ['right_hand_position'],
     exercises: [
+      {
+        instruction: 'Listen to the T-I-M picking motion: thumb on 4, index on 3, middle on 2.',
+        type: 'listen',
+        demo: { kind: 'string', strings: [4, 3, 2] },
+      },
       { instruction: 'Thumb down on 4th string only — 10 reps. Feel the downstroke motion.' },
       { instruction: 'Index up on 3rd string only — 10 reps. Note the upstroke curl.' },
       { instruction: 'Middle up on 2nd string — 10 reps. Then combine T-I-M slowly.' },
@@ -184,6 +266,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'tab_reading_basic',
+    category: 'theory',
     name: 'Reading basic banjo tab',
     path: 'newby',
     month: 1, week: 1,
@@ -202,6 +285,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'practice_routine',
+    category: 'setup',
     name: 'Building a daily practice habit',
     path: 'newby',
     month: 1, week: 1,
@@ -221,6 +305,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'roll_forward_open',
+    category: 'rolls',
     name: 'Forward roll — open strings',
     path: 'newby',
     month: 1, week: 3,
@@ -230,9 +315,31 @@ export const SKILLS: Skill[] = [
     masteryCriteria: '16 reps in a row, even tone on all strings, no muted notes, timing steady.',
     prerequisites: ['picking_mechanics'],
     exercises: [
-      { instruction: 'T-I-M on open strings, no metronome. 8 reps. Focus on even tone.', bpm: undefined },
-      { instruction: 'With metronome. 16 reps, no stops.', bpm: 60 },
-      { instruction: 'With metronome. 16 reps, no stops.', bpm: 80 },
+      {
+        instruction: 'Listen to the forward roll pattern: 3-2-1-5-3-1-5-1.',
+        type: 'listen',
+        demo: { kind: 'roll', id: 'forward_roll', cycles: 2 },
+      },
+      {
+        instruction: 'Try it slowly — no metronome. 8 reps. Focus on even tone.',
+        type: 'try',
+        detect: { kind: 'roll', id: 'forward_roll' },
+        passThreshold: 60,
+      },
+      {
+        instruction: 'With metronome. 16 reps, no stops.',
+        type: 'try',
+        bpm: 60,
+        detect: { kind: 'roll', id: 'forward_roll' },
+        passThreshold: 70,
+      },
+      {
+        instruction: 'With metronome. 16 reps, no stops.',
+        type: 'try',
+        bpm: 80,
+        detect: { kind: 'roll', id: 'forward_roll' },
+        passThreshold: 80,
+      },
     ],
     scoringTypes: ['rhythm', 'tempo', 'self_rate'],
     rollPatternId: 'forward_roll',
@@ -243,6 +350,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'metronome_use',
+    category: 'rolls',
     name: 'Using a metronome effectively',
     path: 'newby',
     month: 2,
@@ -261,6 +369,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'chord_g',
+    category: 'chords',
     name: 'G chord shape',
     path: 'newby',
     month: 1, week: 4,
@@ -271,6 +380,11 @@ export const SKILLS: Skill[] = [
     masteryCriteria: 'All fretted strings ring clean with no buzzing. Formed in under 3 seconds.',
     prerequisites: ['posture_basic'],
     exercises: [
+      {
+        instruction: 'Listen to a G chord arpeggiated through a forward roll.',
+        type: 'listen',
+        demo: { kind: 'roll', id: 'forward_roll', cycles: 1 },
+      },
       { instruction: 'Fret G chord. Pick each string individually — listen for buzzing.' },
       { instruction: 'Form the chord → release → reform 10 times. Speed up gradually.' },
       { instruction: 'Strum G chord with a slow forward roll.' },
@@ -280,6 +394,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'chord_c',
+    category: 'chords',
     name: 'C chord shape',
     path: 'newby',
     month: 1, week: 4,
@@ -299,6 +414,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'roll_forward_gchord',
+    category: 'rolls',
     name: 'Forward roll — G chord',
     path: 'newby',
     month: 2,
@@ -317,6 +433,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'chord_transition_gc',
+    category: 'chords',
     name: 'G to C chord transition',
     path: 'newby',
     month: 2,
@@ -338,6 +455,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'chord_d7',
+    category: 'chords',
     name: 'D7 chord shape',
     path: 'newby',
     month: 1, week: 4,
@@ -357,6 +475,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'chord_transition_gd7',
+    category: 'chords',
     name: 'G to D7 transition',
     path: 'newby',
     month: 3,
@@ -375,6 +494,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'roll_backward_open',
+    category: 'rolls',
     name: 'Backward roll — open strings',
     path: 'newby',
     month: 1, week: 3,
@@ -384,31 +504,132 @@ export const SKILLS: Skill[] = [
     masteryCriteria: '16 reps in a row, even tone, steady timing.',
     prerequisites: ['roll_forward_open'],
     exercises: [
-      { instruction: 'M-I-T on open strings, no metronome. 8 reps.' },
-      { instruction: 'With metronome, 16 reps.', bpm: 60 },
-      { instruction: 'With metronome, 16 reps.', bpm: 80 },
+      {
+        instruction: 'Listen to the backward roll: 1-2-3-1-2-3-1-2.',
+        type: 'listen',
+        demo: { kind: 'roll', id: 'backward_roll', cycles: 2 },
+      },
+      {
+        instruction: 'Try it slowly — M-I-T on open strings, no metronome. 8 reps.',
+        type: 'try',
+        detect: { kind: 'roll', id: 'backward_roll' },
+        passThreshold: 60,
+      },
+      {
+        instruction: 'With metronome, 16 reps.',
+        type: 'try',
+        bpm: 60,
+        detect: { kind: 'roll', id: 'backward_roll' },
+        passThreshold: 70,
+      },
     ],
     scoringTypes: ['rhythm', 'tempo', 'self_rate'],
     rollPatternId: 'backward_roll',
     assessmentPrompt: 'Record 16-rep backward roll at target BPM.',
   },
   {
+    id: 'cripple_creek_a_part',
+    category: 'songs',
+    name: 'Cripple Creek — A Part',
+    path: 'newby',
+    month: 3,
+    description: 'The A Part of Cripple Creek: forward roll over G chord with melody notes on string 3.',
+    progressBpm: 60,
+    masteryBpm: null,
+    masteryCriteria: 'Plays A part smoothly at 60 BPM, melody notes ring clearly.',
+    prerequisites: ['roll_forward_gchord', 'chord_transition_gc'],
+    exercises: [
+      {
+        instruction: 'Listen to the A Part played slowly. Notice the melody on string 3.',
+        type: 'listen',
+        demo: { kind: 'section', id: 'cripple_creek_a' },
+        bpm: 50,
+      },
+      {
+        instruction: 'Try measure 1 — forward roll with string 3 fret 2 (A note).',
+        type: 'try',
+        demo: { kind: 'section', id: 'cripple_creek_a' },
+        detect: { kind: 'section', id: 'cripple_creek_a' },
+        passThreshold: 60,
+      },
+      {
+        instruction: 'Play the full A Part with metronome.',
+        type: 'try',
+        bpm: 60,
+        detect: { kind: 'section', id: 'cripple_creek_a' },
+        passThreshold: 70,
+      },
+    ],
+    scoringTypes: ['rhythm', 'tempo', 'self_rate'],
+    songId: 'cripple_creek',
+    songSectionId: 'cripple_creek_a',
+    assessmentPrompt: 'Play the A Part at 60 BPM — all 4 measures, no stops.',
+  },
+  {
+    id: 'cripple_creek_b_part',
+    category: 'songs',
+    name: 'Cripple Creek — B Part',
+    path: 'newby',
+    month: 3,
+    description: 'The B Part of Cripple Creek: C chord with hammer-on (open B → C), then resolve to G.',
+    progressBpm: 60,
+    masteryBpm: null,
+    masteryCriteria: 'Plays B part smoothly, hammer-ons ring clearly, chord change to C is clean.',
+    prerequisites: ['cripple_creek_a_part', 'hammer_on_basic'],
+    exercises: [
+      {
+        instruction: 'Listen to the B Part. Notice the hammer-on on string 2 during the C chord.',
+        type: 'listen',
+        demo: { kind: 'section', id: 'cripple_creek_b' },
+        bpm: 50,
+      },
+      {
+        instruction: 'Try the C chord measures — focus on the hammer-on from open B to fret 1 (C).',
+        type: 'try',
+        demo: { kind: 'section', id: 'cripple_creek_b' },
+        detect: { kind: 'section', id: 'cripple_creek_b' },
+        passThreshold: 50,
+      },
+      {
+        instruction: 'Play the full B Part with metronome.',
+        type: 'try',
+        bpm: 60,
+        detect: { kind: 'section', id: 'cripple_creek_b' },
+        passThreshold: 70,
+      },
+    ],
+    scoringTypes: ['rhythm', 'tempo', 'self_rate'],
+    songId: 'cripple_creek',
+    songSectionId: 'cripple_creek_b',
+    assessmentPrompt: 'Play the B Part at 60 BPM — all 4 measures with hammer-ons.',
+  },
+  {
     id: 'cripple_creek_intro',
-    name: 'Cripple Creek — introduction',
+    category: 'songs',
+    name: 'Cripple Creek — full song intro',
     path: 'newby',
     month: 3,
     description: 'First complete song. Two sections (A and B). Uses G, C, D7 and forward/backward rolls.',
     progressBpm: 70,
     masteryBpm: null,
     masteryCriteria: 'Plays through without stopping, all chord changes land, correct structure.',
-    prerequisites: ['roll_forward_gchord', 'roll_backward_open', 'chord_transition_gc', 'chord_transition_gd7', 'metronome_use'],
+    prerequisites: ['cripple_creek_a_part', 'cripple_creek_b_part', 'metronome_use'],
     exercises: [
-      { instruction: 'Learn Section A only, no metronome. Repeat until smooth.' },
-      { instruction: 'Learn Section B only, no metronome.' },
-      { instruction: 'Full song with metronome.', bpm: 60 },
+      {
+        instruction: 'Listen to the full song: A-A-B-B structure.',
+        type: 'listen',
+        demo: { kind: 'section', id: 'cripple_creek_a' },
+      },
+      { instruction: 'Practice A Part into B Part transition — no metronome.' },
+      {
+        instruction: 'Full song with metronome.',
+        type: 'play_along',
+        bpm: 60,
+      },
     ],
     scoringTypes: ['audio_match', 'rhythm', 'self_rate'],
     lickId: 'cripple_creek_intro',
+    songId: 'cripple_creek',
     assessmentPrompt: 'Record full Cripple Creek at 70 BPM — no stopping.',
   },
 
@@ -416,6 +637,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'roll_alternating_thumb',
+    category: 'rolls',
     name: 'Alternating thumb roll',
     path: 'newby',
     month: 1, week: 3,
@@ -425,9 +647,24 @@ export const SKILLS: Skill[] = [
     masteryCriteria: '16 reps, thumb alternates cleanly, even tone.',
     prerequisites: ['roll_forward_open'],
     exercises: [
-      { instruction: 'Isolate the thumb alternation only: 5th-4th-5th-4th, 16 reps.' },
-      { instruction: 'Add index and middle: T-I-T-M slowly.' },
-      { instruction: 'With metronome, 16 reps.', bpm: 70 },
+      {
+        instruction: 'Listen to the alternating thumb roll: 3-1-3-1-3-1-3-1.',
+        type: 'listen',
+        demo: { kind: 'roll', id: 'alternating_thumb', cycles: 2 },
+      },
+      {
+        instruction: 'Isolate the thumb alternation only: 5th-4th-5th-4th, 16 reps.',
+        type: 'try',
+        detect: { kind: 'roll', id: 'alternating_thumb' },
+        passThreshold: 60,
+      },
+      {
+        instruction: 'Full pattern with metronome, 16 reps.',
+        type: 'try',
+        bpm: 70,
+        detect: { kind: 'roll', id: 'alternating_thumb' },
+        passThreshold: 70,
+      },
     ],
     scoringTypes: ['rhythm', 'tempo', 'self_rate'],
     rollPatternId: 'alternating_thumb',
@@ -435,6 +672,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'hammer_on_basic',
+    category: 'techniques',
     name: 'Hammer-on — introduction',
     path: 'newby',
     month: 4,
@@ -453,6 +691,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'tab_reading_intermediate',
+    category: 'theory',
     name: 'Reading tab with H/P/S notation',
     path: 'newby',
     month: 4,
@@ -471,6 +710,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'cripple_creek_70bpm',
+    category: 'performance',
     name: 'Cripple Creek at 70 BPM',
     path: 'newby',
     month: 4,
@@ -480,11 +720,16 @@ export const SKILLS: Skill[] = [
     masteryCriteria: 'Full song, no stops, chord changes clean, roll patterns correct.',
     prerequisites: ['cripple_creek_intro'],
     exercises: [
-      { instruction: 'Full song with metronome.', bpm: 70 },
+      {
+        instruction: 'Full song play-along with metronome.',
+        type: 'play_along',
+        bpm: 70,
+      },
       { instruction: 'Focus on the weak section. Isolate and repeat.' },
       { instruction: 'Record and listen back. Identify one thing to improve.' },
     ],
     scoringTypes: ['rhythm', 'tempo', 'self_rate'],
+    songId: 'cripple_creek',
     assessmentPrompt: 'Record full Cripple Creek at 70 BPM.',
   },
 
@@ -492,6 +737,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'roll_foggy_mountain',
+    category: 'rolls',
     name: 'Foggy Mountain roll',
     path: 'newby',
     month: 5,
@@ -511,6 +757,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'pull_off_basic',
+    category: 'techniques',
     name: 'Pull-off — introduction',
     path: 'newby',
     month: 5,
@@ -529,6 +776,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'roll_forward_reverse',
+    category: 'rolls',
     name: 'Forward-reverse roll',
     path: 'newby',
     month: 5,
@@ -548,6 +796,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'cripple_creek_90bpm',
+    category: 'performance',
     name: 'Cripple Creek at 90 BPM',
     path: 'newby',
     month: 5,
@@ -557,15 +806,17 @@ export const SKILLS: Skill[] = [
     masteryCriteria: 'Full song, minimal hesitation on chord changes, rolls clean.',
     prerequisites: ['cripple_creek_70bpm', 'roll_alternating_thumb'],
     exercises: [
-      { instruction: 'Full song at 80 BPM.', bpm: 80 },
-      { instruction: 'Full song at 85 BPM.', bpm: 85 },
-      { instruction: 'Full song at 90 BPM.', bpm: 90 },
+      { instruction: 'Full song at 80 BPM.', type: 'play_along', bpm: 80 },
+      { instruction: 'Full song at 85 BPM.', type: 'play_along', bpm: 85 },
+      { instruction: 'Full song at 90 BPM.', type: 'play_along', bpm: 90 },
     ],
     scoringTypes: ['rhythm', 'tempo', 'self_rate'],
+    songId: 'cripple_creek',
     assessmentPrompt: 'Record full Cripple Creek at 90 BPM.',
   },
   {
     id: 'chop_chord_intro',
+    category: 'techniques',
     name: 'Chop chord — introduction',
     path: 'newby',
     month: 5,
@@ -587,6 +838,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'cripple_creek_100bpm',
+    category: 'performance',
     name: 'Cripple Creek at 100 BPM',
     path: 'newby',
     month: 6,
@@ -596,16 +848,18 @@ export const SKILLS: Skill[] = [
     masteryCriteria: 'Full song, performance-ready. No stops, clean tone, steady time.',
     prerequisites: ['cripple_creek_90bpm'],
     exercises: [
-      { instruction: 'Full song at 95 BPM.', bpm: 95 },
-      { instruction: 'Full song at 100 BPM.', bpm: 100 },
+      { instruction: 'Full song at 95 BPM.', type: 'play_along', bpm: 95 },
+      { instruction: 'Full song at 100 BPM — graduation tempo!', type: 'play_along', bpm: 100 },
       { instruction: 'Record and listen back — would you play this for someone?' },
     ],
     scoringTypes: ['rhythm', 'tempo', 'self_rate'],
+    songId: 'cripple_creek',
     assessmentPrompt: 'Record full Cripple Creek at 100 BPM — newby graduation assessment.',
     isMilestone: true,
   },
   {
     id: 'self_recording_basic',
+    category: 'performance',
     name: 'Recording yourself and listening back',
     path: 'newby',
     month: 6,
@@ -627,6 +881,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'roll_audit_all5',
+    category: 'rolls',
     name: 'All 5 rolls — technique audit',
     path: 'beginner',
     month: 1,
@@ -645,6 +900,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'rolls_80bpm_all',
+    category: 'rolls',
     name: 'All 5 rolls at 80 BPM — clean',
     path: 'beginner',
     month: 1,
@@ -663,6 +919,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'chord_d_major',
+    category: 'chords',
     name: 'D major chord shape (full)',
     path: 'beginner',
     month: 1,
@@ -681,6 +938,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'metronome_discipline',
+    category: 'rolls',
     name: 'Metronome discipline — no rushing or dragging',
     path: 'beginner',
     month: 1,
@@ -702,6 +960,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'rolls_90bpm',
+    category: 'rolls',
     name: 'All 5 rolls at 90 BPM',
     path: 'beginner',
     month: 2,
@@ -720,6 +979,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'slide_ascending',
+    category: 'techniques',
     name: 'Ascending slide technique',
     path: 'beginner',
     month: 2,
@@ -738,6 +998,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'hammer_on_songs',
+    category: 'techniques',
     name: 'Hammer-ons in song context',
     path: 'beginner',
     month: 2,
@@ -756,6 +1017,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'pull_off_songs',
+    category: 'techniques',
     name: 'Pull-offs in song context',
     path: 'beginner',
     month: 2,
@@ -774,6 +1036,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'lick_g_basic',
+    category: 'songs',
     name: 'Basic lick in G position',
     path: 'beginner',
     month: 2,
@@ -792,6 +1055,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'tab_reading_advanced',
+    category: 'theory',
     name: 'Reading tab with position markers and licks',
     path: 'beginner',
     month: 2,
@@ -813,6 +1077,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'rolls_100bpm',
+    category: 'rolls',
     name: 'All 5 rolls at 100 BPM',
     path: 'beginner',
     month: 3,
@@ -831,6 +1096,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'boil_cabbage_basic',
+    category: 'songs',
     name: 'Boil Them Cabbage Down — intro',
     path: 'beginner',
     month: 3,
@@ -849,6 +1115,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'cripple_creek_polished',
+    category: 'performance',
     name: 'Cripple Creek — polished at 100 BPM',
     path: 'beginner',
     month: 3,
@@ -867,6 +1134,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'boil_cabbage_100bpm',
+    category: 'performance',
     name: 'Boil Them Cabbage Down at 100 BPM',
     path: 'beginner',
     month: 3,
@@ -888,6 +1156,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'neck_position_5th',
+    category: 'theory',
     name: '5th position — moveable shapes',
     path: 'beginner',
     month: 4,
@@ -906,6 +1175,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'barre_chord_f',
+    category: 'chords',
     name: 'F chord / full barre shape',
     path: 'beginner',
     month: 4,
@@ -924,6 +1194,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'moveable_g_shape',
+    category: 'chords',
     name: 'Moveable G chord shape up the neck',
     path: 'beginner',
     month: 4,
@@ -942,6 +1213,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'note_naming_5th',
+    category: 'theory',
     name: 'Note naming in 5th position',
     path: 'beginner',
     month: 4,
@@ -960,6 +1232,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'lick_up_neck_basic',
+    category: 'songs',
     name: 'Basic lick up the neck',
     path: 'beginner',
     month: 4,
@@ -981,6 +1254,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'slide_descending',
+    category: 'techniques',
     name: 'Descending slide',
     path: 'beginner',
     month: 5,
@@ -999,6 +1273,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'choke_basic',
+    category: 'techniques',
     name: 'String choke / bend',
     path: 'beginner',
     month: 5,
@@ -1017,6 +1292,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'chop_chord_basic',
+    category: 'techniques',
     name: 'Chop chord — formed correctly',
     path: 'beginner',
     month: 5,
@@ -1035,6 +1311,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'chop_chord_in_time',
+    category: 'techniques',
     name: 'Chop chord at 100 BPM',
     path: 'beginner',
     month: 5,
@@ -1053,6 +1330,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'waltz_timing',
+    category: 'performance',
     name: '3/4 timing and feel',
     path: 'beginner',
     month: 5,
@@ -1071,6 +1349,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'fmb_beginner_intro',
+    category: 'performance',
     name: 'Foggy Mountain Breakdown — introduction',
     path: 'beginner',
     month: 5,
@@ -1092,6 +1371,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'backup_basic',
+    category: 'performance',
     name: 'Basic backup behind another instrument',
     path: 'beginner',
     month: 6,
@@ -1110,6 +1390,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'fmb_beginner_100bpm',
+    category: 'performance',
     name: 'Foggy Mountain Breakdown at 100 BPM',
     path: 'beginner',
     month: 6,
@@ -1128,6 +1409,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'fmb_beginner_120bpm',
+    category: 'performance',
     name: 'Foggy Mountain Breakdown — beginner graduation',
     path: 'beginner',
     month: 6,
@@ -1150,6 +1432,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'chord_theory_i_iv_v',
+    category: 'theory',
     name: 'I-IV-V chord relationships',
     path: 'intermediate',
     month: 1,
@@ -1168,6 +1451,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'nashville_number',
+    category: 'theory',
     name: 'Nashville Number System',
     path: 'intermediate',
     month: 1,
@@ -1186,6 +1470,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'circle_of_fifths',
+    category: 'theory',
     name: 'Circle of fifths — banjo keys',
     path: 'intermediate',
     month: 1,
@@ -1204,6 +1489,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'key_of_c',
+    category: 'theory',
     name: 'Playing in the key of C',
     path: 'intermediate',
     month: 1,
@@ -1222,6 +1508,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'key_of_d',
+    category: 'theory',
     name: 'Playing in the key of D',
     path: 'intermediate',
     month: 1,
@@ -1240,6 +1527,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'key_of_a',
+    category: 'theory',
     name: 'Playing in the key of A',
     path: 'intermediate',
     month: 1,
@@ -1258,6 +1546,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'rolls_130bpm',
+    category: 'rolls',
     name: 'All 5 rolls at 130 BPM',
     path: 'intermediate',
     month: 1,
@@ -1279,6 +1568,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'neck_positions_all',
+    category: 'theory',
     name: 'All neck positions (5th, 7th, 10th)',
     path: 'intermediate',
     month: 2,
@@ -1297,6 +1587,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'note_naming_full',
+    category: 'theory',
     name: 'Name any note — full neck',
     path: 'intermediate',
     month: 2,
@@ -1315,6 +1606,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'moveable_shapes_all',
+    category: 'chords',
     name: 'All moveable chord shapes',
     path: 'intermediate',
     month: 2,
@@ -1333,6 +1625,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'position_shifts',
+    category: 'techniques',
     name: 'Position shifts mid-song',
     path: 'intermediate',
     month: 2,
@@ -1351,6 +1644,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'reuben_basic',
+    category: 'songs',
     name: 'Reuben (Oh Reuben) — basic',
     path: 'intermediate',
     month: 2,
@@ -1369,6 +1663,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'reuben_120bpm',
+    category: 'performance',
     name: 'Reuben at 120 BPM',
     path: 'intermediate',
     month: 2,
@@ -1390,6 +1685,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'rolls_150bpm',
+    category: 'rolls',
     name: 'All 5 rolls at 150 BPM',
     path: 'intermediate',
     month: 3,
@@ -1408,6 +1704,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'scruggs_licks',
+    category: 'songs',
     name: 'Classic Scruggs-style licks',
     path: 'intermediate',
     month: 3,
@@ -1426,6 +1723,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'foggy_mountain_breakdown',
+    category: 'performance',
     name: 'Foggy Mountain Breakdown — intermediate',
     path: 'intermediate',
     month: 3,
@@ -1445,6 +1743,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'fmb_140bpm',
+    category: 'performance',
     name: 'Foggy Mountain Breakdown at 140 BPM',
     path: 'intermediate',
     month: 3,
@@ -1466,6 +1765,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'melodic_style_intro',
+    category: 'theory',
     name: 'Bill Keith melodic style — introduction',
     path: 'intermediate',
     month: 4,
@@ -1484,6 +1784,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'scale_g_melodic',
+    category: 'theory',
     name: 'G major scale in melodic style',
     path: 'intermediate',
     month: 4,
@@ -1502,6 +1803,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'chromatic_runs',
+    category: 'theory',
     name: 'Chromatic passing notes',
     path: 'intermediate',
     month: 4,
@@ -1520,6 +1822,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'melodic_lick_basic',
+    category: 'songs',
     name: 'First melodic style lick',
     path: 'intermediate',
     month: 4,
@@ -1541,6 +1844,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'turnaround_g',
+    category: 'songs',
     name: 'G turnaround lick',
     path: 'intermediate',
     month: 5,
@@ -1559,6 +1863,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'tag_ending',
+    category: 'songs',
     name: 'Tag ending',
     path: 'intermediate',
     month: 5,
@@ -1577,6 +1882,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'lick_substitution',
+    category: 'songs',
     name: 'Lick substitution over chord changes',
     path: 'intermediate',
     month: 5,
@@ -1595,6 +1901,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'improv_concept',
+    category: 'songs',
     name: 'Improvisation — approach and mindset',
     path: 'intermediate',
     month: 5,
@@ -1613,6 +1920,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'improv_8bars',
+    category: 'songs',
     name: 'Improvise 8 bars over G-C-D',
     path: 'intermediate',
     month: 5,
@@ -1631,6 +1939,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'train_45_intro',
+    category: 'performance',
     name: 'Train 45 — introduction',
     path: 'intermediate',
     month: 5,
@@ -1652,6 +1961,7 @@ export const SKILLS: Skill[] = [
 
   {
     id: 'backup_advanced',
+    category: 'performance',
     name: 'Advanced backup — fills, walk-ups, walk-downs',
     path: 'intermediate',
     month: 6,
@@ -1670,6 +1980,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'train_45_130bpm',
+    category: 'performance',
     name: 'Train 45 at 130 BPM',
     path: 'intermediate',
     month: 6,
@@ -1688,6 +1999,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'train_45_performance',
+    category: 'performance',
     name: 'Train 45 — intermediate graduation',
     path: 'intermediate',
     month: 6,
@@ -1704,6 +2016,220 @@ export const SKILLS: Skill[] = [
     scoringTypes: ['rhythm', 'tempo', 'self_rate'],
     assessmentPrompt: 'Record full Train 45 performance: intro, break, backup, tag ending.',
     isMilestone: true,
+  },
+
+  // ── LICKS — G Licks ────────────────────────────────────────────────────────
+
+  {
+    id: 'g_lick_godfather',
+    category: 'licks',
+    name: 'G-Lick — the "Godfather"',
+    path: 'all',
+    month: 2, week: 1,
+    description: 'The most important lick in Scruggs-style banjo. A universal phrase-ending lick over G chord. Pull-off from A to G on string 3, forward roll to resolve.',
+    progressBpm: 80,
+    masteryBpm: 140,
+    masteryCriteria: 'Lick played cleanly with pull-off in time. Can insert it at the end of any G phrase.',
+    prerequisites: ['chord_g', 'forward_roll_open'],
+    lickId: 'g_lick_basic',
+    exercises: [
+      { instruction: 'Listen to the G-lick. This is the "Godfather" of all banjo licks — used at the end of nearly every phrase.',
+        type: 'listen', demo: { kind: 'lick', id: 'g_lick_basic' } },
+      { instruction: 'Learn the lick slowly in two halves. No metronome — focus on clean pull-off.' },
+      { instruction: 'Play the full lick with metronome at 60 BPM. 8 reps.',
+        bpm: 60, type: 'try' },
+      { instruction: 'Speed up to 80 BPM. The lick should feel automatic.',
+        bpm: 80, type: 'try' },
+    ],
+    scoringTypes: ['rhythm', 'pitch', 'self_rate'],
+    assessmentPrompt: 'Record the G-lick at 80 BPM — clean pull-off, in time.',
+  },
+  {
+    id: 'g_lick_tag',
+    category: 'licks',
+    name: 'G-Lick — Tag Ending',
+    path: 'all',
+    month: 2, week: 2,
+    description: 'The classic tag lick used to end songs. A variation of the Godfather G-lick that signals "the song is over."',
+    progressBpm: 80,
+    masteryBpm: 140,
+    masteryCriteria: 'Tag ending played cleanly and decisively — the ending note rings.',
+    prerequisites: ['g_lick_godfather'],
+    lickId: 'g_lick_tag',
+    exercises: [
+      { instruction: 'Listen to the tag ending. Notice how it signals finality.',
+        type: 'listen', demo: { kind: 'lick', id: 'g_lick_tag' } },
+      { instruction: 'Play the tag slowly. The last two notes should be emphatic.' },
+      { instruction: 'Practice at 70 BPM. 8 reps.', bpm: 70, type: 'try' },
+      { instruction: 'Play at 80 BPM. Use this at the end of Cripple Creek.', bpm: 80, type: 'try' },
+    ],
+    scoringTypes: ['rhythm', 'pitch', 'self_rate'],
+    assessmentPrompt: 'Record a 4-bar phrase ending with the tag lick.',
+  },
+  {
+    id: 'g_lick_forward_roll',
+    category: 'licks',
+    name: 'G-Lick — Forward Roll Variation',
+    path: 'all',
+    month: 2, week: 3,
+    description: 'Splitting the lick: the G-lick melodic contour played over a forward roll instead of the standard picking pattern. Same melody, different roll = new sound.',
+    progressBpm: 80,
+    masteryBpm: 140,
+    masteryCriteria: 'Forward roll G-lick variation played smoothly at tempo.',
+    prerequisites: ['g_lick_godfather'],
+    lickId: 'g_lick_forward_roll',
+    exercises: [
+      { instruction: 'Listen to this variation. Same G-lick melody, but over a forward roll.',
+        type: 'listen', demo: { kind: 'lick', id: 'g_lick_forward_roll' } },
+      { instruction: 'This is "splitting the lick" — taking a lick and changing the roll underneath.' },
+      { instruction: 'Play slowly at 60 BPM. Focus on keeping the forward roll smooth.',
+        bpm: 60, type: 'try' },
+      { instruction: 'Speed up to 80 BPM. Compare to the original G-lick — same melody, different feel.',
+        bpm: 80, type: 'try' },
+    ],
+    scoringTypes: ['rhythm', 'pitch', 'self_rate'],
+    assessmentPrompt: 'Record the forward roll G-lick variation at 80 BPM.',
+  },
+
+  // ── LICKS — C Licks ────────────────────────────────────────────────────────
+
+  {
+    id: 'c_lick_basic',
+    category: 'licks',
+    name: 'C-Lick — Basic',
+    path: 'all',
+    month: 2, week: 3,
+    description: 'A fundamental phrase over C chord. Uses the C chord shape with string 2 fretted at 1 (C note) and string 4 fretted at 2 (E note).',
+    progressBpm: 80,
+    masteryBpm: 140,
+    masteryCriteria: 'C-lick played cleanly with proper C chord fretting.',
+    prerequisites: ['chord_c', 'forward_roll_open'],
+    lickId: 'c_lick_basic',
+    exercises: [
+      { instruction: 'Listen to the basic C-lick. Notice the C and E chord tones.',
+        type: 'listen', demo: { kind: 'lick', id: 'c_lick_basic' } },
+      { instruction: 'Fret the C chord. Play the lick slowly — no metronome.' },
+      { instruction: 'Play with metronome at 60 BPM. 8 reps.', bpm: 60, type: 'try' },
+      { instruction: 'Speed up to 80 BPM.', bpm: 80, type: 'try' },
+    ],
+    scoringTypes: ['rhythm', 'pitch', 'self_rate'],
+    assessmentPrompt: 'Record the C-lick at 80 BPM — clean fretting, in time.',
+  },
+  {
+    id: 'c_lick_hammer',
+    category: 'licks',
+    name: 'C-Lick — Hammer-On Variation',
+    path: 'all',
+    month: 3, week: 1,
+    description: 'C chord lick featuring the classic hammer-on from open B to C on string 2. This is the signature C chord sound in Scruggs-style banjo.',
+    progressBpm: 80,
+    masteryBpm: 140,
+    masteryCriteria: 'Hammer-on from B to C is clean and in time within the lick.',
+    prerequisites: ['c_lick_basic', 'hammer_on_songs'],
+    lickId: 'c_lick_hammer',
+    exercises: [
+      { instruction: 'Listen to this variation. The hammer-on from B to C is the key move.',
+        type: 'listen', demo: { kind: 'lick', id: 'c_lick_hammer' } },
+      { instruction: 'Practice just the hammer-on: pick open string 2, hammer to 1st fret. 16 reps.' },
+      { instruction: 'Play the full lick at 60 BPM.', bpm: 60, type: 'try' },
+      { instruction: 'Speed up to 80 BPM. The hammer-on should sound like part of the roll.',
+        bpm: 80, type: 'try' },
+    ],
+    scoringTypes: ['rhythm', 'pitch', 'self_rate'],
+    assessmentPrompt: 'Record the hammer-on C-lick at 80 BPM.',
+  },
+  {
+    id: 'c_lick_fill',
+    category: 'licks',
+    name: 'C-Lick — Fill-In',
+    path: 'all',
+    month: 3, week: 2,
+    description: 'A transitional C chord lick for filling gaps between vocal lines or smoothing chord changes. Essential for playing backup.',
+    progressBpm: 80,
+    masteryBpm: 140,
+    masteryCriteria: 'Fill-in lick deployed smoothly during a chord change.',
+    prerequisites: ['c_lick_basic'],
+    lickId: 'c_lick_fill',
+    exercises: [
+      { instruction: 'Listen to the fill-in lick. This is what you play during gaps in the singing.',
+        type: 'listen', demo: { kind: 'lick', id: 'c_lick_fill' } },
+      { instruction: 'Play slowly. Focus on smooth transitions between the chord tones.' },
+      { instruction: 'Play at 70 BPM. 8 reps.', bpm: 70, type: 'try' },
+      { instruction: 'Practice transitioning: play a G-lick, then switch to this C fill-in. Smooth the join.',
+        bpm: 80, type: 'try' },
+    ],
+    scoringTypes: ['rhythm', 'pitch', 'self_rate'],
+    assessmentPrompt: 'Record a G→C transition using the fill-in lick.',
+  },
+
+  // ── LICKS — D Licks ────────────────────────────────────────────────────────
+
+  {
+    id: 'd_lick_basic',
+    category: 'licks',
+    name: 'D-Lick — Basic',
+    path: 'all',
+    month: 3, week: 2,
+    description: 'Basic phrase over D/D7 chord. Uses D chord shape and resolves back toward G. Essential for I-IV-V progressions.',
+    progressBpm: 80,
+    masteryBpm: 140,
+    masteryCriteria: 'D-lick played cleanly with proper D chord fretting.',
+    prerequisites: ['chord_d7', 'forward_roll_open'],
+    lickId: 'd_lick_basic',
+    exercises: [
+      { instruction: 'Listen to the basic D-lick. Notice how it wants to resolve back to G.',
+        type: 'listen', demo: { kind: 'lick', id: 'd_lick_basic' } },
+      { instruction: 'Fret the D chord. Play the lick slowly.' },
+      { instruction: 'Play at 60 BPM. 8 reps.', bpm: 60, type: 'try' },
+      { instruction: 'Speed up to 80 BPM.', bpm: 80, type: 'try' },
+    ],
+    scoringTypes: ['rhythm', 'pitch', 'self_rate'],
+    assessmentPrompt: 'Record the D-lick at 80 BPM.',
+  },
+  {
+    id: 'd_lick_pull_off',
+    category: 'licks',
+    name: 'D-Lick — Pull-Off Variation',
+    path: 'all',
+    month: 3, week: 3,
+    description: 'D chord lick featuring a pull-off from A to G on string 3. Adds expression and smoothness.',
+    progressBpm: 80,
+    masteryBpm: 140,
+    masteryCriteria: 'Pull-off within the D-lick is clean and rhythmically accurate.',
+    prerequisites: ['d_lick_basic', 'pull_off_songs'],
+    lickId: 'd_lick_pull_off',
+    exercises: [
+      { instruction: 'Listen to this variation. The pull-off from A to G adds a slur.',
+        type: 'listen', demo: { kind: 'lick', id: 'd_lick_pull_off' } },
+      { instruction: 'Practice the pull-off in isolation: fret 2nd fret string 3, pull to open. 16 reps.' },
+      { instruction: 'Play the full lick at 60 BPM.', bpm: 60, type: 'try' },
+      { instruction: 'Speed up to 80 BPM.', bpm: 80, type: 'try' },
+    ],
+    scoringTypes: ['rhythm', 'pitch', 'self_rate'],
+    assessmentPrompt: 'Record the pull-off D-lick at 80 BPM.',
+  },
+  {
+    id: 'd_lick_transition',
+    category: 'licks',
+    name: 'D-Lick — Transition to G',
+    path: 'all',
+    month: 3, week: 4,
+    description: 'A D7 lick that smoothly resolves back to G. The D→G transition is the most common chord change in bluegrass — this lick makes it musical.',
+    progressBpm: 80,
+    masteryBpm: 140,
+    masteryCriteria: 'D→G transition is smooth and in time. Resolve note rings clearly.',
+    prerequisites: ['d_lick_basic', 'g_lick_godfather'],
+    lickId: 'd_lick_transition',
+    exercises: [
+      { instruction: 'Listen to the D→G transition lick. The C passing tone creates tension that resolves to B and then G.',
+        type: 'listen', demo: { kind: 'lick', id: 'd_lick_transition' } },
+      { instruction: 'Play slowly. Feel the tension and resolution.' },
+      { instruction: 'Play at 60 BPM. 8 reps.', bpm: 60, type: 'try' },
+      { instruction: 'Chain it: D-lick → this transition → G-lick. The holy trinity of bluegrass banjo.',
+        bpm: 80, type: 'try' },
+    ],
+    scoringTypes: ['rhythm', 'pitch', 'self_rate'],
+    assessmentPrompt: 'Record a D→G transition ending with the G-lick.',
   },
 ]
 
