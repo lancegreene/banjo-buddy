@@ -1,20 +1,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Banjo Buddy — Banjo Synth Engine
-// Physically-informed banjo synthesis: Karplus-Strong (PluckSynth) through a
-// formant chain modeled on the banjo's drum-head membrane resonances.
+// Real Karplus-Strong via AudioWorklet + banjo resonance filters.
 //
-// Key acoustic insights (Woodhouse et al., Acta Acustica 2021):
-//   - Banjo has 3 formant peaks at ~700 Hz, ~3 kHz, ~5 kHz from the membrane
-//   - Membrane is 10x lighter than guitar top → 20-30 dB higher bridge
-//     admittance → louder attack, faster decay (100-200 ms vs 300-400 ms)
-//   - Each note onset excites a brief pitch-independent body transient (the
-//     drum-head "thump") lasting 50-400 ms
-//   - String 5 is 3/4 length, terminates at 5th fret peg → less body coupling
+// Architecture:
+//   AudioWorklet (karplus-strong) → per-string
+//     ├→ head1 bandpass 2500 Hz ─┐
+//     ├→ head2 bandpass 3200 Hz ─┼→ mix → body resonance 220 Hz → destination
+//     └→ head3 bandpass 4100 Hz ─┘
+//   + pick noise burst (20 ms filtered white noise) per pluck
 //
 // Pure engine — no React. Wrap with useBanjoSynth hook for React use.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import * as Tone from 'tone'
 import { BANJO_STRINGS } from './noteCapture'
 import { ROLL_MAP } from '../data/rollPatterns'
 
@@ -47,173 +44,139 @@ function stringFretToFreq(stringNum: number, fret: number): number {
   return s.freq * Math.pow(2, fret / 12)
 }
 
-// ── Per-String Karplus-Strong Voicing ─────────────────────────────────────────
-//
-// attackNoise  — length/amplitude of initial noise burst (pick transient)
-// dampening    — lowpass cutoff in feedback loop (higher = brighter)
-// resonance    — feedback gain (lower = faster decay, more banjo-like)
-// release      — envelope release time
-// bodyGain     — how much drum-head body impulse to mix in (0-1)
+// ── Per-String Parameters ───────────────────────────────────────────────────
 
-const STRING_PARAMS: Record<number, {
-  attackNoise: number
-  dampening: number
-  resonance: number
-  release: number
-  bodyGain: number
-}> = {
-  // String 5 (G4 drone): 3/4 length, bright "ping" with longer ring
-  5: { attackNoise: 16, dampening: 7000, resonance: 0.92, release: 0.6,  bodyGain: 0.10 },
-  // String 4 (D3): lowest, warm with sustain
-  4: { attackNoise: 6,  dampening: 2200, resonance: 0.95, release: 0.9,  bodyGain: 0.22 },
-  // String 3 (G3): main thumb melody string, full sustain
-  3: { attackNoise: 8,  dampening: 3200, resonance: 0.94, release: 0.8,  bodyGain: 0.20 },
-  // String 2 (B3): index finger, bright with ring
-  2: { attackNoise: 10, dampening: 4500, resonance: 0.93, release: 0.7,  bodyGain: 0.16 },
-  // String 1 (D4): thinnest, bright with sustain
-  1: { attackNoise: 14, dampening: 6000, resonance: 0.92, release: 0.6,  bodyGain: 0.14 },
+interface StringParams {
+  decay: number        // Karplus-Strong feedback decay (0-1)
+  noiseGain: number    // pick noise level
 }
 
-// ── Body Impulse (Drum-Head Thump) ────────────────────────────────────────────
-//
-// Short burst of filtered pink noise simulating the membrane's transient
-// response at each note onset. This is what gives banjo its percussive punch
-// that guitars lack entirely.
-
-class BodyImpulse {
-  private noise: Tone.NoiseSynth
-  private bodyFilter: Tone.Filter
-  private gainNode: Tone.Gain
-
-  constructor(output: Tone.InputNode) {
-    this.noise = new Tone.NoiseSynth({
-      noise: { type: 'white' },   // white noise → sharper transient than pink
-      envelope: {
-        attack: 0.001,     // instant — the membrane responds immediately
-        decay: 0.045,      // ~45 ms body ring — tight, percussive thump
-        sustain: 0,
-        release: 0.025,
-      },
-    })
-
-    // Bandpass at membrane fundamental region — slightly wider for more "boing"
-    this.bodyFilter = new Tone.Filter({
-      type: 'bandpass',
-      frequency: 480,      // higher center → more metallic membrane ring
-      Q: 2.2,
-    })
-
-    this.gainNode = new Tone.Gain(0.18)   // louder body impulse
-    this.noise.chain(this.bodyFilter, this.gainNode, output)
-  }
-
-  trigger(time: number, gain: number = 0.12) {
-    this.gainNode.gain.setValueAtTime(gain, time)
-    this.noise.triggerAttackRelease('32n', time)
-  }
-
-  dispose() {
-    this.noise.dispose()
-    this.bodyFilter.dispose()
-    this.gainNode.dispose()
-  }
+const STRING_PARAMS: Record<number, StringParams> = {
+  5: { decay: 0.982, noiseGain: 0.15 },  // G4 drone: bright, slightly shorter
+  4: { decay: 0.990, noiseGain: 0.10 },  // D3: lowest, longer ring
+  3: { decay: 0.987, noiseGain: 0.12 },  // G3: thumb melody
+  2: { decay: 0.985, noiseGain: 0.13 },  // B3: index
+  1: { decay: 0.983, noiseGain: 0.15 },  // D4: thinnest, bright
 }
 
 // ── BanjoSynth Class ─────────────────────────────────────────────────────────
 
 export class BanjoSynth {
-  private synths: Map<number, Tone.PluckSynth> = new Map()
-  private bodyImpulse: BodyImpulse | null = null
-  private fxNodes: Tone.ToneAudioNode[] = []
+  private ctx: AudioContext | null = null
+  private stringNodes: Map<number, AudioWorkletNode> = new Map()
+  private mixNode: GainNode | null = null
+  private ready = false
+  private initPromise: Promise<void> | null = null
   private isDisposed = false
   private currentPlayback: Playback | null = null
 
   constructor() {
-    // ── Formant chain ──
-    // Resonant peaking filters at the three banjo formant frequencies.
-    // These are the #1 perceptual cue for "banjo-ness" (Woodhouse 2021).
+    // Kick off async init immediately
+    this.initPromise = this.init()
+  }
 
-    // Primary formant: the core nasal twang (membrane + bridge interaction)
-    const formant1 = new Tone.Filter({
-      type: 'peaking' as BiquadFilterType,
-      frequency: 800,       // slightly higher center for more "honk"
-      Q: 3,                 // narrower peak = more focused twang
-      gain: 10,             // boosted — this is the #1 banjo cue
-    })
+  private async init(): Promise<void> {
+    const ctx = new AudioContext()
+    this.ctx = ctx
 
-    // Bridge hill 1: metallic brightness — the "boing" ring
-    const formant2 = new Tone.Filter({
-      type: 'peaking' as BiquadFilterType,
-      frequency: 2800,
-      Q: 3.5,
-      gain: 7,              // stronger metallic character
-    })
+    // Load the Karplus-Strong AudioWorklet processor
+    await ctx.audioWorklet.addModule(
+      new URL('/karplusStrongProcessor.js', import.meta.url).href
+    )
 
-    // Bridge hill 2: pick attack "tink" and shimmer
-    const formant3 = new Tone.Filter({
-      type: 'peaking' as BiquadFilterType,
-      frequency: 5500,
-      Q: 2.5,
-      gain: 4,
-    })
+    // ── Banjo head resonators (3 bandpass filters) ──
+    const head1 = ctx.createBiquadFilter()
+    head1.type = 'bandpass'
+    head1.frequency.value = 2500
+    head1.Q.value = 1.5
 
-    // High-pass: membrane doesn't resonate below ~180 Hz — tighter than guitar
-    const hipass = new Tone.Filter({
-      type: 'highpass',
-      frequency: 180,
-      Q: 0.8,
-    })
+    const head2 = ctx.createBiquadFilter()
+    head2.type = 'bandpass'
+    head2.frequency.value = 3200
+    head2.Q.value = 1.5
 
-    // Low shelf: aggressively thin out the low end (drum head, not bass guitar)
-    const lowShelf = new Tone.Filter({
-      type: 'lowshelf' as BiquadFilterType,
-      frequency: 220,
-      gain: -10,
-    })
+    const head3 = ctx.createBiquadFilter()
+    head3.type = 'bandpass'
+    head3.frequency.value = 4100
+    head3.Q.value = 1.5
 
-    // Compressor: fast attack catches pick transient, quick release preserves ring
-    const comp = new Tone.Compressor({
-      threshold: -18,
-      ratio: 4,
-      attack: 0.002,
-      release: 0.08,
-    })
+    // ── Body resonance ──
+    const body = ctx.createBiquadFilter()
+    body.type = 'bandpass'
+    body.frequency.value = 220
+    body.Q.value = 1
 
-    // Chain: formants → hipass → low shelf → compressor → speakers
-    formant1.chain(formant2, formant3, hipass, lowShelf, comp, Tone.getDestination())
-    this.fxNodes = [formant1, formant2, formant3, hipass, lowShelf, comp]
+    // ── Mix node ──
+    const mix = ctx.createGain()
+    mix.gain.value = 1.0
+    this.mixNode = mix
 
-    // Body impulse feeds into the same formant chain (before formant1)
-    this.bodyImpulse = new BodyImpulse(formant1)
+    // Routing: head filters → mix → body → destination
+    head1.connect(mix)
+    head2.connect(mix)
+    head3.connect(mix)
+    mix.connect(body)
+    body.connect(ctx.destination)
 
-    // One PluckSynth per string with research-informed parameters
+    // One AudioWorkletNode per string, each connected to all 3 head filters
     for (const s of BANJO_STRINGS) {
-      const params = STRING_PARAMS[s.string]
-      const synth = new Tone.PluckSynth({
-        attackNoise: params.attackNoise,
-        dampening: params.dampening,
-        resonance: params.resonance,
-        release: params.release,
-      }).connect(formant1)
-      this.synths.set(s.string, synth)
+      const node = new AudioWorkletNode(ctx, 'karplus-strong')
+      node.connect(head1)
+      node.connect(head2)
+      node.connect(head3)
+      this.stringNodes.set(s.string, node)
     }
+
+    this.ready = true
+  }
+
+  /** Fire a pick noise burst (20 ms filtered white noise) */
+  private pickNoise(time: number, gain: number): void {
+    if (!this.ctx || !this.mixNode) return
+
+    const ctx = this.ctx
+    const bufferSize = Math.floor(ctx.sampleRate * 0.02) // 20 ms
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1
+    }
+
+    const src = ctx.createBufferSource()
+    src.buffer = buffer
+
+    const bandpass = ctx.createBiquadFilter()
+    bandpass.type = 'bandpass'
+    bandpass.frequency.value = 4000
+
+    const gainNode = ctx.createGain()
+    gainNode.gain.value = gain
+
+    src.connect(bandpass)
+    bandpass.connect(gainNode)
+    gainNode.connect(this.mixNode)
+
+    src.start(time)
   }
 
   /** Play a single note on a given string/fret */
   playNote(stringNum: number, fret: number = 0): void {
-    if (this.isDisposed) return
-    const synth = this.synths.get(stringNum)
-    if (!synth) return
+    if (this.isDisposed || !this.ready || !this.ctx) return
+    const node = this.stringNodes.get(stringNum)
+    if (!node) return
 
-    Tone.start()
+    if (this.ctx.state === 'suspended') this.ctx.resume()
 
     const freq = stringFretToFreq(stringNum, fret)
-    const now = Tone.now()
-    synth.triggerAttack(freq, now)
+    const params = STRING_PARAMS[stringNum]
 
-    // Fire drum-head body impulse with per-string gain
-    const bodyGain = STRING_PARAMS[stringNum]?.bodyGain ?? 0.12
-    this.bodyImpulse?.trigger(now, bodyGain)
+    node.port.postMessage({
+      type: 'pluck',
+      frequency: freq,
+      decay: params?.decay ?? 0.985,
+    })
+
+    this.pickNoise(this.ctx.currentTime, params?.noiseGain ?? 0.12)
   }
 
   /** Play an arbitrary sequence of TabNotes at a given BPM */
@@ -225,32 +188,49 @@ export class BanjoSynth {
     const eighthNoteDuration = 60 / (bpm * 2) // seconds per eighth note
 
     const promise = new Promise<void>((resolve) => {
-      Tone.start().then(() => {
-        if (cancelled) { resolve(); return }
+      const doPlay = () => {
+        if (cancelled || this.isDisposed || !this.ready || !this.ctx) {
+          resolve()
+          return
+        }
 
-        const now = Tone.now() + 0.05 // small lookahead
+        if (this.ctx.state === 'suspended') this.ctx.resume()
+
+        const now = this.ctx.currentTime + 0.05 // small lookahead
 
         for (let i = 0; i < notes.length; i++) {
           const note = notes[i]
           const time = now + note.beat * eighthNoteDuration
           const freq = stringFretToFreq(note.string, note.fret)
-          const synth = this.synths.get(note.string)
+          const node = this.stringNodes.get(note.string)
+          const params = STRING_PARAMS[note.string]
 
-          if (synth && !this.isDisposed) {
-            synth.triggerAttack(freq, time)
+          if (node && !this.isDisposed) {
+            // Schedule the pluck via setTimeout to hit the worklet at the right time
+            const delayMs = (time - this.ctx!.currentTime) * 1000
+            const pluckTimer = setTimeout(() => {
+              if (!cancelled && !this.isDisposed) {
+                node.port.postMessage({
+                  type: 'pluck',
+                  frequency: freq,
+                  decay: params?.decay ?? 0.985,
+                })
+              }
+            }, Math.max(0, delayMs))
+            timers.push(pluckTimer)
 
-            // Body impulse per note (with per-string gain)
-            const bodyGain = STRING_PARAMS[note.string]?.bodyGain ?? 0.12
-            // Hammer-ons get less body thump (finger lands on fretboard, not plucked)
-            const impulseGain = note.technique === 'hammer' ? bodyGain * 0.3 : bodyGain
-            this.bodyImpulse?.trigger(time, impulseGain)
+            // Pick noise scheduled at audio time
+            const noiseGain = note.technique === 'hammer'
+              ? (params?.noiseGain ?? 0.12) * 0.3
+              : (params?.noiseGain ?? 0.12)
+            this.pickNoise(time, noiseGain)
           }
 
           if (onBeat) {
-            const delayMs = (note.beat * eighthNoteDuration) * 1000
+            const beatDelayMs = (note.beat * eighthNoteDuration) * 1000
             const tid = setTimeout(() => {
               if (!cancelled) onBeat(note.beat)
-            }, delayMs)
+            }, beatDelayMs)
             timers.push(tid)
           }
         }
@@ -264,7 +244,14 @@ export class BanjoSynth {
           if (!cancelled) resolve()
         }, totalDuration * 1000)
         timers.push(endTimer)
-      })
+      }
+
+      // Wait for init if needed
+      if (this.ready) {
+        doPlay()
+      } else {
+        this.initPromise?.then(doPlay)
+      }
     })
 
     const playback: Playback = {
@@ -324,19 +311,18 @@ export class BanjoSynth {
     }
   }
 
-  /** Clean up all synths, body impulse, and FX */
+  /** Clean up all nodes */
   dispose(): void {
     this.stopCurrent()
     this.isDisposed = true
-    for (const synth of this.synths.values()) {
-      synth.dispose()
+    for (const node of this.stringNodes.values()) {
+      node.disconnect()
     }
-    this.synths.clear()
-    this.bodyImpulse?.dispose()
-    this.bodyImpulse = null
-    for (const node of this.fxNodes) {
-      node.dispose()
+    this.stringNodes.clear()
+    if (this.ctx && this.ctx.state !== 'closed') {
+      this.ctx.close()
     }
-    this.fxNodes = []
+    this.ctx = null
+    this.mixNode = null
   }
 }
