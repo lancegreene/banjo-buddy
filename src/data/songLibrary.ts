@@ -30,7 +30,7 @@ export interface Song {
 
 // ── Cripple Creek — Standard Scruggs Beginner Arrangement ─────────────────
 // Source: Earl Scruggs and the 5-String Banjo, Ch. 9 (Tracks 12, 18, 27)
-// Uses alternating thumb pattern (T-I-T-M) with slides and hammer-ons.
+// Uses alternating thumb pattern (T-I-M-T) with slides and hammer-ons.
 // The signature sound is the slide on string 3 from fret 2 to fret 4.
 
 // A Part (Chorus): 4 measures of G with slide melody + D turnaround + G ending
@@ -46,12 +46,12 @@ const CRIPPLE_CREEK_A: SongSection = {
       notes: [
         { string: 3, fret: 2, beat: 0, finger: 'T', technique: 'slide', slideToFret: 4 },  // slide 2→4
         { string: 2, fret: 0, beat: 1, finger: 'I' },   // B open
-        { string: 1, fret: 0, beat: 2, finger: 'T' },   // D open (thumb crosses)
-        { string: 4, fret: 0, beat: 3, finger: 'M' },   // D3 open
+        { string: 1, fret: 0, beat: 2, finger: 'M' },   // D open
+        { string: 4, fret: 0, beat: 3, finger: 'T' },   // D3 open
         { string: 3, fret: 2, beat: 4, finger: 'T', technique: 'slide', slideToFret: 4 },  // slide 2→4
         { string: 2, fret: 0, beat: 5, finger: 'I' },   // B open
-        { string: 1, fret: 0, beat: 6, finger: 'T' },   // D open
-        { string: 4, fret: 0, beat: 7, finger: 'M' },   // D3 open
+        { string: 1, fret: 0, beat: 6, finger: 'M' },   // D open
+        { string: 4, fret: 0, beat: 7, finger: 'T' },   // D3 open
       ],
     },
     // Measure 2: G — same slide pattern
@@ -60,12 +60,12 @@ const CRIPPLE_CREEK_A: SongSection = {
       notes: [
         { string: 3, fret: 2, beat: 0, finger: 'T', technique: 'slide', slideToFret: 4 },
         { string: 2, fret: 0, beat: 1, finger: 'I' },
-        { string: 1, fret: 0, beat: 2, finger: 'T' },
-        { string: 4, fret: 0, beat: 3, finger: 'M' },
+        { string: 1, fret: 0, beat: 2, finger: 'M' },
+        { string: 4, fret: 0, beat: 3, finger: 'T' },
         { string: 3, fret: 2, beat: 4, finger: 'T', technique: 'slide', slideToFret: 4 },
         { string: 2, fret: 0, beat: 5, finger: 'I' },
-        { string: 1, fret: 0, beat: 6, finger: 'T' },
-        { string: 4, fret: 0, beat: 7, finger: 'M' },
+        { string: 1, fret: 0, beat: 6, finger: 'M' },
+        { string: 4, fret: 0, beat: 7, finger: 'T' },
       ],
     },
     // Measure 3: G — same slide, with string 5 drone on beat 4
@@ -74,23 +74,23 @@ const CRIPPLE_CREEK_A: SongSection = {
       notes: [
         { string: 3, fret: 2, beat: 0, finger: 'T', technique: 'slide', slideToFret: 4 },
         { string: 2, fret: 0, beat: 1, finger: 'I' },
-        { string: 1, fret: 0, beat: 2, finger: 'T' },
-        { string: 4, fret: 0, beat: 3, finger: 'M' },
+        { string: 1, fret: 0, beat: 2, finger: 'M' },
+        { string: 4, fret: 0, beat: 3, finger: 'T' },
         { string: 5, fret: 0, beat: 4, finger: 'T' },   // G drone
         { string: 2, fret: 0, beat: 5, finger: 'I' },
-        { string: 1, fret: 0, beat: 6, finger: 'T' },
-        { string: 4, fret: 0, beat: 7, finger: 'M' },
+        { string: 1, fret: 0, beat: 6, finger: 'M' },
+        { string: 4, fret: 0, beat: 7, finger: 'T' },
       ],
     },
     // Measure 4: D turnaround → G resolution
     {
       chord: 'D',
       notes: [
-        { string: 1, fret: 0, beat: 0, finger: 'T' },   // D4
+        { string: 1, fret: 0, beat: 0, finger: 'M' },   // D4
         { string: 2, fret: 0, beat: 1, finger: 'I' },   // B
-        { string: 1, fret: 0, beat: 2, finger: 'T' },   // D4
-        { string: 4, fret: 0, beat: 3, finger: 'M' },   // D3
-        { string: 1, fret: 0, beat: 4, finger: 'T' },   // D4
+        { string: 1, fret: 0, beat: 2, finger: 'M' },   // D4
+        { string: 4, fret: 0, beat: 3, finger: 'T' },   // D3
+        { string: 1, fret: 0, beat: 4, finger: 'M' },   // D4
         { string: 2, fret: 0, beat: 5, finger: 'I' },   // B
         { string: 4, fret: 2, beat: 6, finger: 'T' },   // E (D chord tone)
         { string: 1, fret: 0, beat: 7, finger: 'M' },   // D4
@@ -112,12 +112,12 @@ const CRIPPLE_CREEK_B: SongSection = {
       notes: [
         { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer' },  // G→A (hammer 0→2)
         { string: 2, fret: 0, beat: 1, finger: 'I' },   // B
-        { string: 1, fret: 0, beat: 2, finger: 'T' },   // D
-        { string: 4, fret: 0, beat: 3, finger: 'M' },   // D3
+        { string: 1, fret: 0, beat: 2, finger: 'M' },   // D
+        { string: 4, fret: 0, beat: 3, finger: 'T' },   // D3
         { string: 5, fret: 0, beat: 4, finger: 'T' },   // G drone
         { string: 2, fret: 0, beat: 5, finger: 'I' },   // B
-        { string: 1, fret: 0, beat: 6, finger: 'T' },   // D
-        { string: 4, fret: 0, beat: 7, finger: 'M' },   // D3
+        { string: 1, fret: 0, beat: 6, finger: 'M' },   // D
+        { string: 4, fret: 0, beat: 7, finger: 'T' },   // D3
       ],
     },
     // Measure 2: C — hammer-on on string 2 (0→1) for C chord
@@ -140,26 +140,165 @@ const CRIPPLE_CREEK_B: SongSection = {
       notes: [
         { string: 3, fret: 2, beat: 0, finger: 'T', technique: 'slide', slideToFret: 4 },
         { string: 2, fret: 0, beat: 1, finger: 'I' },
-        { string: 1, fret: 0, beat: 2, finger: 'T' },
-        { string: 4, fret: 0, beat: 3, finger: 'M' },
+        { string: 1, fret: 0, beat: 2, finger: 'M' },
+        { string: 4, fret: 0, beat: 3, finger: 'T' },
         { string: 5, fret: 0, beat: 4, finger: 'T' },   // G drone
         { string: 2, fret: 0, beat: 5, finger: 'I' },
-        { string: 1, fret: 0, beat: 6, finger: 'T' },
-        { string: 4, fret: 0, beat: 7, finger: 'M' },
+        { string: 1, fret: 0, beat: 6, finger: 'M' },
+        { string: 4, fret: 0, beat: 7, finger: 'T' },
       ],
     },
     // Measure 4: D turnaround → G
     {
       chord: 'D',
       notes: [
-        { string: 1, fret: 0, beat: 0, finger: 'T' },   // D4
+        { string: 1, fret: 0, beat: 0, finger: 'M' },   // D4
         { string: 2, fret: 0, beat: 1, finger: 'I' },   // B
-        { string: 1, fret: 0, beat: 2, finger: 'T' },   // D4
-        { string: 4, fret: 0, beat: 3, finger: 'M' },   // D3
-        { string: 1, fret: 0, beat: 4, finger: 'T' },   // D4
+        { string: 1, fret: 0, beat: 2, finger: 'M' },   // D4
+        { string: 4, fret: 0, beat: 3, finger: 'T' },   // D3
+        { string: 1, fret: 0, beat: 4, finger: 'M' },   // D4
         { string: 2, fret: 0, beat: 5, finger: 'I' },   // B
         { string: 4, fret: 2, beat: 6, finger: 'T' },   // E (D chord tone)
         { string: 1, fret: 0, beat: 7, finger: 'M' },   // D4
+      ],
+    },
+  ],
+}
+
+// ── Cripple Creek (Earl Scruggs) — Foggy Mountain Banjo / Scruggs Book ──────
+// The definitive Scruggs arrangement: hammer-on 0→2 on string 3, alternating
+// thumb pattern (T-I-T-M), B part melody on string 1 fret 2.
+// Chord changes: A part = G-G-G-D, B part = G-C-G-D. Structure: AABB.
+// Target tempo ~120 BPM (Scruggs plays it faster, but 120 is a solid goal).
+
+// A Part: The signature instrumental break. Hammer-on 0→2 on string 3 drives
+// the melody while thumb alternates between bass strings 3/4/5.
+
+const CRIPPLE_CREEK_SCRUGGS_A: SongSection = {
+  id: 'cripple_creek_scruggs_a',
+  name: 'A Part',
+  measures: [
+    // Measure 1: G — signature hammer-on lick, alternating thumb
+    {
+      chord: 'G',
+      notes: [
+        { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer' },  // h0→2 (G→A)
+        { string: 2, fret: 0, beat: 1, finger: 'I' },   // B open
+        { string: 5, fret: 0, beat: 2, finger: 'T' },   // G4 drone
+        { string: 1, fret: 0, beat: 3, finger: 'M' },   // D4 open
+        { string: 3, fret: 0, beat: 4, finger: 'T', technique: 'hammer' },  // h0→2
+        { string: 2, fret: 0, beat: 5, finger: 'I' },   // B
+        { string: 5, fret: 0, beat: 6, finger: 'T' },   // G4 drone
+        { string: 1, fret: 0, beat: 7, finger: 'M' },   // D4
+      ],
+    },
+    // Measure 2: G — same signature lick
+    {
+      chord: 'G',
+      notes: [
+        { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer' },
+        { string: 2, fret: 0, beat: 1, finger: 'I' },
+        { string: 5, fret: 0, beat: 2, finger: 'T' },
+        { string: 1, fret: 0, beat: 3, finger: 'M' },
+        { string: 3, fret: 0, beat: 4, finger: 'T', technique: 'hammer' },
+        { string: 2, fret: 0, beat: 5, finger: 'I' },
+        { string: 5, fret: 0, beat: 6, finger: 'T' },
+        { string: 1, fret: 0, beat: 7, finger: 'M' },
+      ],
+    },
+    // Measure 3: G — hammer first half, open second half (setup turnaround)
+    {
+      chord: 'G',
+      notes: [
+        { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer' },
+        { string: 2, fret: 0, beat: 1, finger: 'I' },
+        { string: 5, fret: 0, beat: 2, finger: 'T' },
+        { string: 1, fret: 0, beat: 3, finger: 'M' },
+        { string: 5, fret: 0, beat: 4, finger: 'T' },   // drone leads into turnaround
+        { string: 2, fret: 0, beat: 5, finger: 'I' },
+        { string: 1, fret: 0, beat: 6, finger: 'M' },
+        { string: 5, fret: 0, beat: 7, finger: 'T' },
+      ],
+    },
+    // Measure 4: D → G turnaround
+    {
+      chord: 'D',
+      notes: [
+        { string: 4, fret: 0, beat: 0, finger: 'T' },   // D3 bass
+        { string: 2, fret: 0, beat: 1, finger: 'I' },   // B
+        { string: 1, fret: 0, beat: 2, finger: 'M' },   // D4
+        { string: 5, fret: 0, beat: 3, finger: 'T' },   // G drone
+        { string: 3, fret: 0, beat: 4, finger: 'T', technique: 'hammer' },  // resolve to G: h0→2
+        { string: 2, fret: 0, beat: 5, finger: 'I' },
+        { string: 5, fret: 0, beat: 6, finger: 'T' },
+        { string: 1, fret: 0, beat: 7, finger: 'M' },
+      ],
+    },
+  ],
+}
+
+// B Part: Verse melody ("Going up Cripple Creek, going on the run").
+// Melody carried on string 1 fret 2 (E note) over forward roll patterns.
+// C chord in measure 2 with fretted bass (string 4 fret 2) and string 2 fret 1.
+
+const CRIPPLE_CREEK_SCRUGGS_B: SongSection = {
+  id: 'cripple_creek_scruggs_b',
+  name: 'B Part',
+  measures: [
+    // Measure 1: G — "Going up" — melody E on string 1 fret 2
+    {
+      chord: 'G',
+      notes: [
+        { string: 3, fret: 0, beat: 0, finger: 'T' },   // G
+        { string: 2, fret: 0, beat: 1, finger: 'I' },   // B
+        { string: 1, fret: 2, beat: 2, finger: 'M' },   // E (melody)
+        { string: 5, fret: 0, beat: 3, finger: 'T' },   // G drone
+        { string: 3, fret: 0, beat: 4, finger: 'T' },   // G
+        { string: 2, fret: 0, beat: 5, finger: 'I' },   // B
+        { string: 1, fret: 0, beat: 6, finger: 'M' },   // D
+        { string: 5, fret: 0, beat: 7, finger: 'T' },   // G drone
+      ],
+    },
+    // Measure 2: C — "Cripple Creek" — C chord shape
+    {
+      chord: 'C',
+      notes: [
+        { string: 4, fret: 2, beat: 0, finger: 'T' },   // E (C bass)
+        { string: 2, fret: 1, beat: 1, finger: 'I' },   // C
+        { string: 1, fret: 0, beat: 2, finger: 'M' },   // D
+        { string: 5, fret: 0, beat: 3, finger: 'T' },   // G drone
+        { string: 4, fret: 2, beat: 4, finger: 'T' },   // E
+        { string: 2, fret: 1, beat: 5, finger: 'I' },   // C
+        { string: 1, fret: 0, beat: 6, finger: 'M' },   // D
+        { string: 5, fret: 0, beat: 7, finger: 'T' },   // G drone
+      ],
+    },
+    // Measure 3: G — "going on the" — back to signature hammer lick
+    {
+      chord: 'G',
+      notes: [
+        { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer' },  // h0→2
+        { string: 2, fret: 0, beat: 1, finger: 'I' },
+        { string: 5, fret: 0, beat: 2, finger: 'T' },
+        { string: 1, fret: 0, beat: 3, finger: 'M' },
+        { string: 3, fret: 0, beat: 4, finger: 'T' },   // open G
+        { string: 2, fret: 0, beat: 5, finger: 'I' },
+        { string: 5, fret: 0, beat: 6, finger: 'T' },
+        { string: 1, fret: 0, beat: 7, finger: 'M' },
+      ],
+    },
+    // Measure 4: D → G — "run" — turnaround
+    {
+      chord: 'D',
+      notes: [
+        { string: 4, fret: 0, beat: 0, finger: 'T' },   // D3 bass
+        { string: 2, fret: 0, beat: 1, finger: 'I' },   // B
+        { string: 1, fret: 0, beat: 2, finger: 'M' },   // D4
+        { string: 5, fret: 0, beat: 3, finger: 'T' },   // G drone
+        { string: 3, fret: 0, beat: 4, finger: 'T', technique: 'hammer' },  // resolve to G
+        { string: 2, fret: 0, beat: 5, finger: 'I' },
+        { string: 5, fret: 0, beat: 6, finger: 'T' },
+        { string: 1, fret: 0, beat: 7, finger: 'M' },
       ],
     },
   ],
@@ -861,6 +1000,15 @@ export const SONGS: Song[] = [
     performanceBpm: 100,
     sections: [CRIPPLE_CREEK_A, CRIPPLE_CREEK_B],
     structure: ['cripple_creek_a', 'cripple_creek_a', 'cripple_creek_b', 'cripple_creek_b'],
+  },
+  {
+    id: 'cripple_creek_scruggs',
+    name: 'Cripple Creek (Earl Scruggs)',
+    key: 'G',
+    defaultBpm: 80,
+    performanceBpm: 120,
+    sections: [CRIPPLE_CREEK_SCRUGGS_A, CRIPPLE_CREEK_SCRUGGS_B],
+    structure: ['cripple_creek_scruggs_a', 'cripple_creek_scruggs_a', 'cripple_creek_scruggs_b', 'cripple_creek_scruggs_b'],
   },
   {
     id: 'worried_man_blues',

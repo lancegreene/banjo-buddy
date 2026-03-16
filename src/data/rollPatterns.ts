@@ -16,9 +16,9 @@ export const ROLL_PATTERNS: RollPattern[] = [
   {
     id: 'forward_roll',
     name: 'Forward Roll',
-    strings: [3, 2, 1, 5, 3, 2, 1, 5],
-    fingers: ['T', 'I', 'M', 'T', 'T', 'I', 'M', 'T'],
-    description: 'Classic Scruggs forward roll: T-I-M repeating with thumb on 3 and 5',
+    strings: [5, 2, 1, 5, 2, 1, 5, 2, 1, 5, 2, 1, 5, 2, 1, 5],
+    fingers: ['T', 'I', 'M', 'T', 'I', 'M', 'T', 'I', 'M', 'T', 'I', 'M', 'T', 'I', 'M', 'T'],
+    description: 'Classic Scruggs forward roll: T-I-M repeating, two measures (Scruggs Ch. 7)',
   },
   {
     id: 'forward_roll_alt',
@@ -40,8 +40,8 @@ export const ROLL_PATTERNS: RollPattern[] = [
     id: 'reverse_roll',
     name: 'Reverse Roll',
     strings: [3, 2, 1, 5, 1, 2, 3, 5],
-    fingers: ['T', 'I', 'M', 'T', 'M', 'I', 'T', 'M'],
-    description: 'Forward into backward: T-I-M-T then M-I-T-M (Scruggs Ch. 7)',
+    fingers: ['T', 'I', 'M', 'T', 'M', 'I', 'T', 'T'],
+    description: 'Forward into backward: T-I-M-T then M-I-T-T (Scruggs Ch. 7)',
   },
   // ── Alternating Thumb ─────────────────────────────────────────────────────
   {
@@ -55,9 +55,9 @@ export const ROLL_PATTERNS: RollPattern[] = [
   {
     id: 'mixed_roll',
     name: 'Foggy Mountain Roll',
-    strings: [2, 1, 5, 2, 1, 5, 2, 1],
-    fingers: ['T', 'M', 'T', 'I', 'M', 'T', 'I', 'M'],
-    description: 'T-M-T-I-M-T-I-M: signature Foggy Mountain Breakdown roll (Scruggs Ch. 7)',
+    strings: [2, 1, 2, 1, 5, 2, 1, 5],
+    fingers: ['I', 'M', 'T', 'M', 'T', 'I', 'M', 'T'],
+    description: 'I-M-T-M-T-I-M-T: signature Foggy Mountain Breakdown roll (Scruggs Ch. 7)',
   },
   // ── Forward-Reverse Roll (Janet Davis) ────────────────────────────────────
   {

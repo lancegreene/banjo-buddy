@@ -27,6 +27,7 @@ export interface StreamingRollState {
 }
 
 const ROLLING_WINDOW = 16
+const MAX_EVALUATIONS = 64  // cap stored evaluations (~8 rolls) to prevent unbounded growth
 
 export function createRollMatcherState(patternId: string): StreamingRollState {
   return {
@@ -74,7 +75,7 @@ export function advanceRollMatcher(
     timingErrorMs,
   }
 
-  const newEvaluations = [...state.evaluations, evaluation]
+  const newEvaluations = [...state.evaluations, evaluation].slice(-MAX_EVALUATIONS)
   const newCursor = state.cursor + 1
 
   // Cycle tracking

@@ -1,13 +1,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Banjo Buddy — Banjo Synth Engine
-// Real Karplus-Strong via AudioWorklet + banjo resonance filters.
+// Real Karplus-Strong via AudioWorklet + studio-grade resonance chain.
 //
 // Architecture:
-//   AudioWorklet (karplus-strong) → per-string
-//     ├→ head1 bandpass 2500 Hz ─┐
-//     ├→ head2 bandpass 3200 Hz ─┼→ mix → body resonance 220 Hz → destination
-//     └→ head3 bandpass 4100 Hz ─┘
-//   + pick noise burst (20 ms filtered white noise) per pluck
+//   AudioWorklet (karplus-strong) → per-string gain
+//     → rawMix → head resonator bank (4 bandpass) ──┐
+//                body resonance 220 Hz ──────────────┤
+//                                              resonatorBus
+//                                         ┌──── dry path ────┐
+//                                         ├─ convolver (IR) ─┤→ master → tone shaping → destination
+//                                         └─ early reflections┘
+//   + pick noise burst (18 ms shaped noise) per pluck
 //
 // Pure engine — no React. Wrap with useBanjoSynth hook for React use.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -47,16 +50,56 @@ function stringFretToFreq(stringNum: number, fret: number): number {
 // ── Per-String Parameters ───────────────────────────────────────────────────
 
 interface StringParams {
-  decay: number        // Karplus-Strong feedback decay (0-1)
-  noiseGain: number    // pick noise level
+  decay: number           // Karplus-Strong feedback decay (0-1)
+  noiseGain: number       // pick noise level
+  pluckPos: number        // pluck position (0=bridge, 0.5=middle) — controls comb filter
+  brightness: number      // pick noise bandpass center frequency (Hz)
+  bridgeFb: number        // bridge/head feedback coupling
+  brightnessTilt: number  // excitation noise mix (0=warm/pink, 1=bright/white)
+  stringGain: number      // per-string output gain
 }
 
 const STRING_PARAMS: Record<number, StringParams> = {
-  5: { decay: 0.982, noiseGain: 0.15 },  // G4 drone: bright, slightly shorter
-  4: { decay: 0.990, noiseGain: 0.10 },  // D3: lowest, longer ring
-  3: { decay: 0.987, noiseGain: 0.12 },  // G3: thumb melody
-  2: { decay: 0.985, noiseGain: 0.13 },  // B3: index
-  1: { decay: 0.983, noiseGain: 0.15 },  // D4: thinnest, bright
+  5: { decay: 0.982, noiseGain: 0.15, pluckPos: 0.15, brightness: 4500, bridgeFb: 0.10, brightnessTilt: 0.45, stringGain: 0.78 },
+  4: { decay: 0.990, noiseGain: 0.10, pluckPos: 0.22, brightness: 3800, bridgeFb: 0.14, brightnessTilt: 0.30, stringGain: 0.88 },
+  3: { decay: 0.987, noiseGain: 0.12, pluckPos: 0.18, brightness: 4200, bridgeFb: 0.12, brightnessTilt: 0.36, stringGain: 0.88 },
+  2: { decay: 0.985, noiseGain: 0.13, pluckPos: 0.18, brightness: 4200, bridgeFb: 0.12, brightnessTilt: 0.38, stringGain: 0.88 },
+  1: { decay: 0.983, noiseGain: 0.15, pluckPos: 0.15, brightness: 4500, bridgeFb: 0.10, brightnessTilt: 0.42, stringGain: 0.88 },
+}
+
+// ── Synthetic Impulse Response ──────────────────────────────────────────────
+
+/** Generate a synthetic stereo IR simulating banjo body + mic coloration */
+function makeIRBuffer(ctx: AudioContext, seconds: number = 0.18): AudioBuffer {
+  const length = Math.floor(ctx.sampleRate * seconds)
+  const buffer = ctx.createBuffer(2, length, ctx.sampleRate)
+
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buffer.getChannelData(ch)
+    for (let i = 0; i < length; i++) {
+      const t = i / ctx.sampleRate
+
+      const decay = Math.exp(-t * 18)
+      const early = i < 180 ? 1 - (i / 180) : 0
+      const noise = Math.random() * 2 - 1
+
+      // Resonant body ridges at key banjo frequencies
+      const r1 = Math.sin(2 * Math.PI * 210 * t) * Math.exp(-t * 14)
+      const r2 = Math.sin(2 * Math.PI * 720 * t) * Math.exp(-t * 20)
+      const r3 = Math.sin(2 * Math.PI * 2850 * t) * Math.exp(-t * 28)
+
+      const stereoOffset = ch === 0 ? 1.0 : 0.96
+
+      data[i] = stereoOffset * (
+        0.38 * noise * decay +
+        0.22 * early +
+        0.18 * r1 +
+        0.10 * r2 +
+        0.05 * r3
+      )
+    }
+  }
+  return buffer
 }
 
 // ── BanjoSynth Class ─────────────────────────────────────────────────────────
@@ -64,14 +107,13 @@ const STRING_PARAMS: Record<number, StringParams> = {
 export class BanjoSynth {
   private ctx: AudioContext | null = null
   private stringNodes: Map<number, AudioWorkletNode> = new Map()
-  private mixNode: GainNode | null = null
+  private rawMixNode: GainNode | null = null
   private ready = false
   private initPromise: Promise<void> | null = null
   private isDisposed = false
   private currentPlayback: Playback | null = null
 
   constructor() {
-    // Kick off async init immediately
     this.initPromise = this.init()
   }
 
@@ -79,67 +121,137 @@ export class BanjoSynth {
     const ctx = new AudioContext()
     this.ctx = ctx
 
-    // Load the Karplus-Strong AudioWorklet processor
     await ctx.audioWorklet.addModule(
       new URL('/karplusStrongProcessor.js', import.meta.url).href
     )
 
-    // ── Banjo head resonators (3 bandpass filters) ──
-    const head1 = ctx.createBiquadFilter()
-    head1.type = 'bandpass'
-    head1.frequency.value = 2500
-    head1.Q.value = 1.5
+    // ── Raw mix: all strings feed into here ──
+    const rawMix = ctx.createGain()
+    rawMix.gain.value = 0.95
+    this.rawMixNode = rawMix
 
-    const head2 = ctx.createBiquadFilter()
-    head2.type = 'bandpass'
-    head2.frequency.value = 3200
-    head2.Q.value = 1.5
+    // ── Resonator bus: head + body filters feed into here ──
+    const resonatorBus = ctx.createGain()
 
-    const head3 = ctx.createBiquadFilter()
-    head3.type = 'bandpass'
-    head3.frequency.value = 4100
-    head3.Q.value = 1.5
+    // ── Head resonator bank (4 bandpass filters) ──
+    const headConfig = [
+      { freq: 2300, Q: 1.35, gain: 0.32 },
+      { freq: 3050, Q: 1.55, gain: 0.38 },
+      { freq: 3950, Q: 1.65, gain: 0.30 },
+      { freq: 4850, Q: 1.45, gain: 0.18 },
+    ]
+    for (const h of headConfig) {
+      const bp = ctx.createBiquadFilter()
+      bp.type = 'bandpass'
+      bp.frequency.value = h.freq
+      bp.Q.value = h.Q
+
+      const g = ctx.createGain()
+      g.gain.value = h.gain
+
+      rawMix.connect(bp)
+      bp.connect(g)
+      g.connect(resonatorBus)
+    }
 
     // ── Body resonance ──
     const body = ctx.createBiquadFilter()
     body.type = 'bandpass'
     body.frequency.value = 220
-    body.Q.value = 1
+    body.Q.value = 0.95
 
-    // ── Mix node ──
-    const mix = ctx.createGain()
-    mix.gain.value = 1.0
-    this.mixNode = mix
+    const bodyGain = ctx.createGain()
+    bodyGain.gain.value = 0.42
 
-    // Routing: head filters → mix → body → destination
-    head1.connect(mix)
-    head2.connect(mix)
-    head3.connect(mix)
-    mix.connect(body)
-    body.connect(ctx.destination)
+    rawMix.connect(body)
+    body.connect(bodyGain)
+    bodyGain.connect(resonatorBus)
 
-    // One AudioWorkletNode per string, each connected to all 3 head filters
+    // ── Dry path ──
+    const dryOut = ctx.createGain()
+    dryOut.gain.value = 0.92
+    resonatorBus.connect(dryOut)
+
+    // ── Wet path: synthetic IR convolver for body/mic coloration ──
+    const convolver = ctx.createConvolver()
+    convolver.normalize = true
+    convolver.buffer = makeIRBuffer(ctx, 0.18)
+
+    const wetOut = ctx.createGain()
+    wetOut.gain.value = 0.17
+
+    resonatorBus.connect(convolver)
+    convolver.connect(wetOut)
+
+    // ── Master output ──
+    const master = ctx.createGain()
+    master.gain.value = 0.9
+
+    dryOut.connect(master)
+    wetOut.connect(master)
+
+    // ── Early reflections (4-tap banjo head ring) ──
+    const reflectionTaps = [
+      { time: 0.0028, gain: 0.12 },
+      { time: 0.0059, gain: 0.10 },
+      { time: 0.0093, gain: 0.08 },
+      { time: 0.0137, gain: 0.06 },
+    ]
+    for (const tap of reflectionTaps) {
+      const d = ctx.createDelay()
+      d.delayTime.value = tap.time
+      const g = ctx.createGain()
+      g.gain.value = tap.gain
+      resonatorBus.connect(d)
+      d.connect(g)
+      g.connect(master)
+    }
+
+    // ── Output tone shaping ──
+    const toneLP = ctx.createBiquadFilter()
+    toneLP.type = 'lowpass'
+    toneLP.frequency.value = 7200
+
+    const toneHP = ctx.createBiquadFilter()
+    toneHP.type = 'highpass'
+    toneHP.frequency.value = 70
+
+    master.connect(toneLP)
+    toneLP.connect(toneHP)
+    toneHP.connect(ctx.destination)
+
+    // ── One AudioWorkletNode per string ──
     for (const s of BANJO_STRINGS) {
       const node = new AudioWorkletNode(ctx, 'karplus-strong')
-      node.connect(head1)
-      node.connect(head2)
-      node.connect(head3)
+      const params = STRING_PARAMS[s.string]
+
+      const g = ctx.createGain()
+      g.gain.value = params?.stringGain ?? 0.88
+
+      node.connect(g)
+      g.connect(rawMix)
       this.stringNodes.set(s.string, node)
     }
 
     this.ready = true
   }
 
-  /** Fire a pick noise burst (20 ms filtered white noise) */
-  private pickNoise(time: number, gain: number): void {
-    if (!this.ctx || !this.mixNode) return
+  /** Fire a shaped pick noise burst (18 ms) */
+  private pickNoise(time: number, gain: number, brightness: number = 4000): void {
+    if (!this.ctx || !this.rawMixNode) return
 
     const ctx = this.ctx
-    const bufferSize = Math.floor(ctx.sampleRate * 0.02) // 20 ms
+    const bufferSize = Math.floor(ctx.sampleRate * 0.018) // 18 ms
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
     const data = buffer.getChannelData(0)
+
+    // Shaped noise: mix white + pinkish with exponential envelope
+    let s = 0
     for (let i = 0; i < bufferSize; i++) {
-      data[i] = Math.random() * 2 - 1
+      const white = Math.random() * 2 - 1
+      s = 0.72 * s + 0.28 * white
+      const env = Math.exp(-i / (bufferSize / 4.2))
+      data[i] = (0.55 * white + 0.45 * s) * env
     }
 
     const src = ctx.createBufferSource()
@@ -147,14 +259,20 @@ export class BanjoSynth {
 
     const bandpass = ctx.createBiquadFilter()
     bandpass.type = 'bandpass'
-    bandpass.frequency.value = 4000
+    bandpass.frequency.value = brightness
+    bandpass.Q.value = 1.3
+
+    const highpass = ctx.createBiquadFilter()
+    highpass.type = 'highpass'
+    highpass.frequency.value = 1600
 
     const gainNode = ctx.createGain()
     gainNode.gain.value = gain
 
     src.connect(bandpass)
-    bandpass.connect(gainNode)
-    gainNode.connect(this.mixNode)
+    bandpass.connect(highpass)
+    highpass.connect(gainNode)
+    gainNode.connect(this.rawMixNode)
 
     src.start(time)
   }
@@ -173,10 +291,13 @@ export class BanjoSynth {
     node.port.postMessage({
       type: 'pluck',
       frequency: freq,
-      decay: params?.decay ?? 0.985,
+      decay: params?.decay ?? 0.987,
+      pluckPos: params?.pluckPos ?? 0.18,
+      bridgeFb: params?.bridgeFb ?? 0.12,
+      brightnessTilt: params?.brightnessTilt ?? 0.38,
     })
 
-    this.pickNoise(this.ctx.currentTime, params?.noiseGain ?? 0.12)
+    this.pickNoise(this.ctx.currentTime, params?.noiseGain ?? 0.12, params?.brightness ?? 4000)
   }
 
   /** Play an arbitrary sequence of TabNotes at a given BPM */
@@ -213,7 +334,10 @@ export class BanjoSynth {
                 node.port.postMessage({
                   type: 'pluck',
                   frequency: freq,
-                  decay: params?.decay ?? 0.985,
+                  decay: params?.decay ?? 0.987,
+                  pluckPos: params?.pluckPos ?? 0.18,
+                  bridgeFb: params?.bridgeFb ?? 0.12,
+                  brightnessTilt: params?.brightnessTilt ?? 0.38,
                 })
               }
             }, Math.max(0, delayMs))
@@ -223,7 +347,7 @@ export class BanjoSynth {
             const noiseGain = note.technique === 'hammer'
               ? (params?.noiseGain ?? 0.12) * 0.3
               : (params?.noiseGain ?? 0.12)
-            this.pickNoise(time, noiseGain)
+            this.pickNoise(time, noiseGain, params?.brightness ?? 4000)
           }
 
           if (onBeat) {
@@ -323,6 +447,6 @@ export class BanjoSynth {
       this.ctx.close()
     }
     this.ctx = null
-    this.mixNode = null
+    this.rawMixNode = null
   }
 }

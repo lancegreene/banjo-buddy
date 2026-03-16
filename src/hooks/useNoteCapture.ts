@@ -166,7 +166,8 @@ export function useNoteCapture(options: UseNoteCaptureOptions = {}): UseNoteCapt
         const [pitch, clarity] = detectorRef.current.findPitch(inputRef.current, audioContext.sampleRate)
         const rms = computeRms(inputRef.current)
 
-        setCurrentClarity(clarity)
+        // Only update React state when values change meaningfully (avoid 60Hz re-renders)
+        setCurrentClarity((prev) => Math.abs(prev - clarity) > 0.01 ? clarity : prev)
 
         // Smooth RMS with faster decay (0.70) so the baseline recovers quickly
         // between notes — critical for detecting soft index-finger plucks (string 1)
@@ -178,7 +179,7 @@ export function useNoteCapture(options: UseNoteCaptureOptions = {}): UseNoteCapt
         const isLocked = now < lockoutUntilRef.current
 
         if (clarity > config.clarityThreshold && pitch > config.minFreq && pitch < config.maxFreq) {
-          setCurrentFreq(pitch)
+          setCurrentFreq((prev) => prev !== null && Math.abs(prev - pitch) < 1 ? prev : pitch)
 
           // Stability check: require this pitch to agree with the previous clear frame
           // within 30 cents. Filters transient octave errors (G4→G5 for one frame)
@@ -389,7 +390,7 @@ export function useNoteCapture(options: UseNoteCaptureOptions = {}): UseNoteCapt
           }
         } else {
           lastClearPitchRef.current = null
-          setCurrentFreq(null)
+          setCurrentFreq((prev) => prev === null ? prev : null)
         }
 
         animFrameRef.current = requestAnimationFrame(detect)
