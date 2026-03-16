@@ -2,6 +2,8 @@ import { useStore } from '../../store/useStore'
 import { PATHS, SKILL_MAP } from '../../data/curriculum'
 import { getPathProgress } from '../../engine/recommendationEngine'
 import type { SkillStatus } from '../../db/db'
+import { PracticeHeatmap } from '../Progress/PracticeHeatmap'
+import { WarmUpCard } from './WarmUpCard'
 
 const STATUS_COLORS: Record<SkillStatus, string> = {
   locked: '#ccc',
@@ -97,6 +99,12 @@ function ContinueHero() {
   )
 }
 
+const PATH_ICONS: Record<string, string> = {
+  newby: '\u{1F331}',
+  beginner: '\u{1FA95}',
+  intermediate: '\u{1F3B5}',
+}
+
 function PathSelector() {
   const user = useStore((s) => s.user)
   const setUserPath = useStore((s) => s.setUserPath)
@@ -111,8 +119,11 @@ function PathSelector() {
             className={`path-card ${user?.path === path.id ? 'path-card-active' : ''}`}
             onClick={() => setUserPath(path.id)}
           >
-            <span className="path-card-label">{path.label}</span>
-            <span className="path-card-desc">{path.description}</span>
+            <span className="path-card-icon">{PATH_ICONS[path.id] ?? '\u{1F3B6}'}</span>
+            <div className="path-card-text">
+              <span className="path-card-label">{path.label}</span>
+              <span className="path-card-desc">{path.description}</span>
+            </div>
           </button>
         ))}
       </div>
@@ -190,6 +201,7 @@ function TodaysPlan() {
 export function Dashboard() {
   const user = useStore((s) => s.user)
   const skillRecords = useStore((s) => s.skillRecords)
+  const setPage = useStore((s) => s.setPage)
 
   const progress = user ? getPathProgress(user.path, skillRecords) : null
 
@@ -221,6 +233,15 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Mini 4-week heatmap */}
+      <div className="dashboard-heatmap-section">
+        <PracticeHeatmap weeks={4} mini />
+        <button className="btn-text" onClick={() => setPage('progress')}>
+          View full progress →
+        </button>
+      </div>
+
+      <WarmUpCard />
       <TodaysPlan />
       <PathSelector />
     </div>

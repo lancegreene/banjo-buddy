@@ -32,6 +32,8 @@ export interface SkillRecord {
   unlockedAt: string | null      // ISO
   progressedAt: string | null    // ISO — when progressBpm first hit
   masteredAt: string | null      // ISO — when masteryBpm first hit
+  srInterval: number | null      // days until next review (1, 3, or 7)
+  srNextReview: string | null    // ISO date of next scheduled review
   createdAt: string
   updatedAt: string
 }
@@ -126,6 +128,34 @@ class BanjoBuddyDB extends Dexie {
       recordings:         'id, sessionItemId, skillId, createdAt',
       streakRecords:      'id, userId, date, [userId+date]',
       noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
+    })
+
+    // v3: Add compound index for analytics queries
+    this.version(3).stores({
+      userProfiles:       'id, path',
+      skillRecords:       'id, userId, skillId, status, lastPracticed, [userId+skillId]',
+      practiceSessions:   'id, userId, date, startedAt',
+      sessionItems:       'id, sessionId, skillId, completedAt, [skillId+completedAt]',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, date, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
+    })
+
+    // v4: Add spaced repetition fields to skillRecords
+    this.version(4).stores({
+      userProfiles:       'id, path',
+      skillRecords:       'id, userId, skillId, status, lastPracticed, [userId+skillId], srNextReview',
+      practiceSessions:   'id, userId, date, startedAt',
+      sessionItems:       'id, sessionId, skillId, completedAt, [skillId+completedAt]',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, date, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
+    }).upgrade((tx) => {
+      // Backfill SR fields as null on existing records
+      return tx.table('skillRecords').toCollection().modify((record: SkillRecord) => {
+        if (record.srInterval === undefined) record.srInterval = null
+        if (record.srNextReview === undefined) record.srNextReview = null
+      })
     })
   }
 }

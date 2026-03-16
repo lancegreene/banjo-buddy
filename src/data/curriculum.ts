@@ -19,7 +19,7 @@ export const CATEGORIES: { id: SkillCategory; label: string }[] = [
   { id: 'performance', label: 'Performance' },
 ]
 
-export type ExerciseType = 'info' | 'listen' | 'try' | 'play_along'
+export type ExerciseType = 'info' | 'listen' | 'try' | 'play_along' | 'ear_train' | 'quiz'
 
 export interface ExerciseDemo {
   kind: 'string' | 'roll' | 'lick' | 'section'
@@ -41,6 +41,27 @@ export interface Exercise {
   demo?: ExerciseDemo
   detect?: ExerciseDetect
   passThreshold?: number     // 0-100 accuracy to pass
+  quiz?: QuizQuestion        // for quiz-type exercises
+}
+
+export interface SkillImage {
+  src: string                  // path relative to public/
+  alt: string                  // accessibility description
+  caption?: string             // optional caption below image
+}
+
+export interface SkillVideo {
+  src: string                  // path relative to public/media/techniques/
+  poster?: string              // thumbnail image path
+  loop?: boolean               // loop for technique demos
+  alt: string
+}
+
+export interface QuizQuestion {
+  prompt: string
+  options: string[]
+  correctIndex: number
+  explanation: string
 }
 
 export interface Skill {
@@ -65,6 +86,9 @@ export interface Skill {
   chordId?: string             // references CHORD_MAP key — enables BanjoChordDiagram
   songId?: string              // references SONG_MAP key — enables play-along
   songSectionId?: string       // references SECTION_MAP key — specific section
+  image?: SkillImage           // optional reference photo
+  video?: SkillVideo           // optional technique video/animation
+  quiz?: QuizQuestion[]        // optional theory quiz questions
 }
 
 export const SKILLS: Skill[] = [
@@ -114,6 +138,7 @@ export const SKILLS: Skill[] = [
     id: 'picks_fitting',
     category: 'setup',
     name: 'Getting picks fitted & comfortable',
+    image: { src: 'images/training/rhythm_notation.jpg', alt: 'Tab and rhythm notation with T, I, M finger labels', caption: 'From Splitting the Licks — finger notation basics' },
     path: 'newby',
     month: 1, week: 1,
     description: 'Thumb pick seated at the knuckle joint; finger picks on the fingertip, not the nail.',
@@ -136,6 +161,7 @@ export const SKILLS: Skill[] = [
     path: 'newby',
     month: 1, week: 1,
     description: 'Ring finger anchored on head, thumb clears 5th string, index and middle curve naturally.',
+    image: { src: 'images/training/right_hand_rolls.jpg', alt: 'Earl Scruggs book: right hand finger assignments', caption: 'From Earl Scruggs and the 5-String Banjo, Ch. 7' },
     progressBpm: null,
     masteryBpm: null,
     masteryCriteria: 'Ring finger anchor consistent, thumb clears 5th string cleanly, no tension in wrist.',
@@ -155,6 +181,7 @@ export const SKILLS: Skill[] = [
     path: 'newby',
     month: 1, week: 1,
     description: 'Memorize the five open string pitches of standard banjo tuning: 5th=g, 4th=D, 3rd=G, 2nd=B, 1st=D.',
+    image: { src: 'images/training/string_notes_neck.jpg', alt: 'Banjo neck diagram showing all notes in open G tuning', caption: 'Open G tuning: all notes on the fingerboard' },
     progressBpm: null,
     masteryBpm: null,
     masteryCriteria: 'Names all 5 strings from memory without looking, in any order asked.',
@@ -247,6 +274,7 @@ export const SKILLS: Skill[] = [
     path: 'newby',
     month: 1, week: 1,
     description: 'Thumb picks down, index and middle pick up. The core motion all rolls are built on.',
+    image: { src: 'images/training/right_hand_rolls.jpg', alt: 'Earl Scruggs book: T-I-M picking mechanics', caption: 'From Earl Scruggs and the 5-String Banjo, Ch. 7' },
     progressBpm: null,
     masteryBpm: null,
     masteryCriteria: 'Each string rings clearly with no unintended muting, motion feels relaxed.',
@@ -268,6 +296,7 @@ export const SKILLS: Skill[] = [
     id: 'tab_reading_basic',
     category: 'theory',
     name: 'Reading basic banjo tab',
+    image: { src: 'images/training/tab_notation.jpg', alt: 'Tab notation explanation with hammer-ons, slides, and pulls', caption: 'From Earl Scruggs and the 5-String Banjo — tab notation guide' },
     path: 'newby',
     month: 1, week: 1,
     description: 'Understanding 5-string banjo tablature: lines = strings, numbers = frets.',
@@ -310,6 +339,7 @@ export const SKILLS: Skill[] = [
     path: 'newby',
     month: 1, week: 3,
     description: 'T-I-M pattern on open strings. The foundational roll everything else is built on.',
+    image: { src: 'images/training/roll_patterns.jpg', alt: 'Five basic roll patterns from Scruggs book', caption: 'Forward, Backward, Reverse, Alternating Thumb, and Foggy Mountain rolls' },
     progressBpm: 80,
     masteryBpm: 160,
     masteryCriteria: '16 reps in a row, even tone on all strings, no muted notes, timing steady.',
@@ -741,14 +771,14 @@ export const SKILLS: Skill[] = [
     name: 'Foggy Mountain roll',
     path: 'newby',
     month: 5,
-    description: 'T-T-I-M-T-I-M-I pattern — the signature roll of Foggy Mountain Breakdown.',
+    description: 'I-M-T-M-T-I-M-T pattern — the signature roll of Foggy Mountain Breakdown.',
     progressBpm: 80,
     masteryBpm: 150,
-    masteryCriteria: '16 reps in a row, correct T-T-I-M-T-I-M-I pattern, even tone.',
+    masteryCriteria: '16 reps in a row, correct I-M-T-M-T-I-M-T pattern, even tone.',
     prerequisites: ['roll_alternating_thumb'],
     exercises: [
-      { instruction: 'Learn first 4 notes (T-T-I-M) only. 16 reps.' },
-      { instruction: 'Learn second 4 notes (T-I-M-I) only. 16 reps.' },
+      { instruction: 'Learn first 4 notes (I-M-T-M) only. 16 reps.' },
+      { instruction: 'Learn second 4 notes (T-I-M-T) only. 16 reps.' },
       { instruction: 'Full 8-note pattern with metronome, 16 reps.', bpm: 70 },
     ],
     scoringTypes: ['rhythm', 'tempo', 'self_rate'],

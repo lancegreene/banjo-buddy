@@ -4,6 +4,8 @@ import type { UserProfile, SkillRecord, PracticeSession, SessionItem, SelfRating
 import { SKILL_MAP, type Path } from '../data/curriculum'
 import { buildSessionPlan, deriveNewStatus, getNewlyUnlockedSkills, type SessionPlan } from '../engine/recommendationEngine'
 import type { NoteEvaluation } from '../engine/streamingRollMatcher'
+import { computeSrSchedule } from '../engine/spacedRepetition'
+import { saveRecording } from '../engine/recordingService'
 
 export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'pathway' | 'progress'
 
@@ -42,7 +44,8 @@ interface AppState {
     achievedBpm: number | null,
     selfRating: SelfRating,
     scores: { rhythm?: number; pitch?: number; tempo?: number },
-    noteEvaluations?: NoteEvaluation[]
+    noteEvaluations?: NoteEvaluation[],
+    audioBlob?: Blob
   ) => Promise<{ newlyUnlocked: string[] }>
 
   // Newly unlocked skill IDs (for celebration UI)
@@ -173,7 +176,7 @@ export const useStore = create<AppState>((set, get) => ({
     set({ activeSession: null })
   },
 
-  logSessionItem: async (skillId, achievedBpm, selfRating, scores, noteEvaluations) => {
+  logSessionItem: async (skillId, achievedBpm, selfRating, scores, noteEvaluations, audioBlob) => {
     const { user, activeSession, skillRecords } = get()
     if (!user || !activeSession) return { newlyUnlocked: [] }
 
@@ -209,6 +212,12 @@ export const useStore = create<AppState>((set, get) => ({
     }
     await db.sessionItems.add(item)
 
+    // Save recording if provided
+    if (audioBlob) {
+      const durationSec = audioBlob.size > 0 ? Math.round(audioBlob.size / 16000) : 0
+      await saveRecording(itemId, skillId, audioBlob, durationSec, achievedBpm)
+    }
+
     // Persist per-note accuracy records if provided
     if (noteEvaluations && noteEvaluations.length > 0 && skill.rollPatternId) {
       const now = nowISO()
@@ -236,6 +245,15 @@ export const useStore = create<AppState>((set, get) => ({
     const newBestBpm = Math.max(currentRecord?.bestBpm ?? 0, achievedBpm ?? 0)
     const newStatus = deriveNewStatus(skill, currentRecord, { skillId, achievedBpm, selfRating, compositeScore: composite }, skillRecords)
 
+    // Compute spaced repetition schedule for progressed/mastered skills
+    const srFields: { srInterval: number | null; srNextReview: string | null } =
+      (newStatus === 'progressed' || newStatus === 'mastered')
+        ? (() => {
+            const sr = computeSrSchedule(selfRating, composite, currentRecord?.srInterval ?? null)
+            return { srInterval: sr.interval, srNextReview: sr.nextReview }
+          })()
+        : { srInterval: currentRecord?.srInterval ?? null, srNextReview: currentRecord?.srNextReview ?? null }
+
     await upsertSkillRecord({
       userId: user.id,
       skillId,
@@ -247,6 +265,7 @@ export const useStore = create<AppState>((set, get) => ({
       unlockedAt: currentRecord?.unlockedAt ?? nowISO(),
       progressedAt: newStatus === 'progressed' && !currentRecord?.progressedAt ? nowISO() : (currentRecord?.progressedAt ?? null),
       masteredAt: newStatus === 'mastered' && !currentRecord?.masteredAt ? nowISO() : (currentRecord?.masteredAt ?? null),
+      ...srFields,
     })
 
     // Check newly unlocked using the pre-update snapshot so wasLocked is accurate

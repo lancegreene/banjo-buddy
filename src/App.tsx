@@ -8,6 +8,7 @@ import { SkillTree } from './components/SkillTree/SkillTree'
 import { Metronome } from './components/Metronome/Metronome'
 import { Tuner } from './components/Tuner/Tuner'
 import { Pathway } from './components/Pathway/Pathway'
+import { ProgressPage } from './components/Progress/ProgressPage'
 
 type ToolModal = 'metronome' | 'tuner'
 
@@ -15,6 +16,7 @@ const NAV_ITEMS: { id: Page | ToolModal; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Home', icon: '⌂' },
   { id: 'pathway', label: 'Pathway', icon: '⟠' },
   { id: 'skill-tree', label: 'Skills', icon: '◈' },
+  { id: 'progress', label: 'Progress', icon: '▦' },
   { id: 'metronome', label: 'Metronome', icon: '♩' },
   { id: 'tuner', label: 'Tuner', icon: '◎' },
 ]
@@ -26,6 +28,7 @@ function PageContent({ page }: { page: Page }) {
   switch (page) {
     case 'dashboard':    return <Dashboard />
     case 'practice':     return <PracticeSession />
+    case 'progress':     return <ProgressPage />
     default:             return <Dashboard />
   }
 }

@@ -6,8 +6,7 @@
 
 import { useRef, useEffect, useCallback } from 'react'
 import { useAudioRecorder } from '../../hooks/useAudioRecorder'
-import { db, newId, nowISO } from '../../db/db'
-import type { Recording } from '../../db/db'
+import { saveRecording as saveRecordingToDb } from '../../engine/recordingService'
 
 interface AudioRecorderProps {
   skillId: string
@@ -130,23 +129,14 @@ export function AudioRecorder({
 
   async function handleSave() {
     if (!audioBlob) return
-    const recording: Recording = {
-      id: newId(),
-      sessionItemId: sessionItemId ?? '',
+    const id = await saveRecordingToDb(
+      sessionItemId ?? '',
       skillId,
       audioBlob,
-      durationSeconds: Math.round(durationMs / 1000),
-      bpm: bpm ?? null,
-      createdAt: nowISO(),
-    }
-    await db.recordings.add(recording)
-    if (sessionItemId) {
-      await db.sessionItems.update(sessionItemId, {
-        hasRecording: true,
-        recordingKey: recording.id,
-      })
-    }
-    onSaved?.(recording.id)
+      Math.round(durationMs / 1000),
+      bpm ?? null
+    )
+    onSaved?.(id)
   }
 
   return (

@@ -76,9 +76,16 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   font-family: Georgia, 'Times New Roman', serif;
   font-size: clamp(1.8rem, 6vw, 3rem);
   color: #fff;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.4), 0 0 40px rgba(255, 143, 0, 0.15);
   margin-bottom: 12px;
   font-weight: normal;
+}
+
+.splash-banjo-svg {
+  margin-bottom: 16px;
+  opacity: 0;
+  animation: splash-fade-in 1.5s ease-out 0.6s forwards;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
 }
 
 .splash-subtitle {
@@ -273,20 +280,28 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 
 .path-card {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
   padding: 12px 14px;
   border-radius: 10px;
   border: 2px solid #e8e8e8;
-  background: #fff;
+  border-left: 4px solid #4a9eff;
+  background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
   text-align: left;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s;
   width: 100%;
 }
 
 .path-card:hover { border-color: #4a9eff; }
-.path-card-active { border-color: #4a9eff; background: #f0f7ff; }
+.path-card-active {
+  border-color: #4a9eff;
+  border-left-color: #2ecc71;
+  background: linear-gradient(135deg, #eafaf1 0%, #fff 100%);
+}
 
+.path-card-icon { font-size: 24px; flex-shrink: 0; }
+.path-card-text { display: flex; flex-direction: column; }
 .path-card-label { font-size: 15px; font-weight: 700; }
 .path-card-desc { font-size: 12px; color: #666; margin-top: 2px; }
 
@@ -411,6 +426,8 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .skill-card-clickable { cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; }
 .skill-card-clickable:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.10); }
 .skill-card-clickable:active { transform: translateY(0); }
+.skill-card-locked-clickable { cursor: pointer; }
+.skill-card-locked-clickable:hover { opacity: 0.85; }
 .skill-card-practice-hint { font-size: 11px; color: #4a9eff; margin-top: 4px; font-weight: 600; }
 
 .practice-back-btn {
@@ -798,6 +815,10 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .exercise-target-bpm { font-size: 13px; font-weight: 600; color: #4a9eff; background: #e8f4ff; padding: 3px 10px; border-radius: 20px; }
 
 .exercise-description { font-size: 14px; color: #555; line-height: 1.6; margin-bottom: 16px; }
+
+.exercise-photo { margin: 12px 0 16px; text-align: center; }
+.exercise-photo img { max-width: 100%; max-height: 480px; border-radius: 8px; border: 1px solid #e0e0e0; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.exercise-photo-caption { display: block; margin-top: 6px; font-size: 12px; color: #888; font-style: italic; }
 
 .exercise-steps { margin-bottom: 16px; }
 .steps-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 8px; }
@@ -2094,6 +2115,87 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .skill-card-compact.skill-card-mastered { border-color: #e0d0f0; background: #faf6ff; }
 
 .skill-card-compact.skill-card-clickable:hover { background: #f0f4ff; }
+.skill-card-compact.skill-card-locked-clickable { cursor: pointer; }
+.skill-card-compact.skill-card-locked-clickable:hover { opacity: 0.7; }
+
+.skill-card-compact-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.skill-prereq-toggle {
+  color: #999;
+  font-size: 10px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.skill-prereq-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 8px 8px 24px;
+  background: #f8f8f8;
+  border-left: 2px solid #ddd;
+  margin-left: 12px;
+  border-radius: 0 0 4px 4px;
+}
+
+.skill-prereq-label {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.skill-prereq-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  text-align: left;
+  font-size: 12px;
+  color: #333;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.skill-prereq-link:hover {
+  border-color: #4a9eff;
+  background: #f0f4ff;
+}
+
+.skill-prereq-link-name {
+  flex: 1;
+}
+
+.skill-prereq-link-arrow {
+  color: #4a9eff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Playable prereqs get a stronger call-to-action */
+.skill-prereq-link-unlocked,
+.skill-prereq-link-active,
+.skill-prereq-link-progressed {
+  border-color: #c8dff8;
+  background: #f5faff;
+}
+
+.skill-prereq-link-unlocked:hover,
+.skill-prereq-link-active:hover {
+  border-color: #4a9eff;
+  background: #e8f1ff;
+}
+
+/* Locked prereqs are dimmer */
+.skill-prereq-link-locked {
+  opacity: 0.65;
+}
 
 .skill-card-compact-name {
   flex: 1;
@@ -3182,3 +3284,762 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   padding: 12px;
   text-align: center;
 }
+
+/* ─── Progress Page ───────────────────────────────────────────────────────── */
+
+.progress-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 20px 16px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.progress-page-title {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ─── Overall Stats Card ─────────────────────────────────────────────────── */
+
+.overall-stats-card {
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.overall-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.overall-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.overall-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.overall-stat-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ─── Practice Heatmap ───────────────────────────────────────────────────── */
+
+.practice-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.heatmap-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.heatmap-svg {
+  display: block;
+}
+
+.heatmap-cell {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.heatmap-cell:hover {
+  opacity: 0.8;
+  stroke: #fff;
+  stroke-width: 1;
+}
+
+.heatmap-tooltip {
+  background: #333;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.heatmap-legend-label {
+  font-size: 10px;
+  color: #888;
+}
+
+.heatmap-legend-cell {
+  display: inline-block;
+}
+
+/* ─── Skill Picker ───────────────────────────────────────────────────────── */
+
+.skill-picker {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #444;
+  background: #1e1e1e;
+  color: #eee;
+  font-size: 14px;
+}
+
+/* ─── BPM Trend Chart ────────────────────────────────────────────────────── */
+
+.bpm-trend-chart {
+  background: #1e1e1e;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.bpm-trend-chart svg {
+  width: 100%;
+  height: auto;
+}
+
+.bpm-trend-empty {
+  color: #888;
+  font-size: 13px;
+  text-align: center;
+  padding: 24px;
+}
+
+/* ─── Session History ────────────────────────────────────────────────────── */
+
+.session-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.session-history-empty {
+  color: #888;
+  font-size: 13px;
+  text-align: center;
+  padding: 24px;
+}
+
+.session-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.session-history-entry {
+  background: #1e1e1e;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.session-history-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  color: #eee;
+  font-size: 13px;
+}
+
+.session-history-header:hover {
+  background: #252525;
+}
+
+.session-date { flex: 1; font-weight: 600; }
+.session-duration { color: #888; min-width: 56px; }
+.session-item-count { color: #888; min-width: 56px; }
+.session-avg-score { color: #4a9eff; min-width: 40px; text-align: right; }
+.session-expand-icon { color: #666; font-size: 11px; }
+
+.session-history-items {
+  padding: 0 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.session-history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #bbb;
+  background: #252525;
+  border-radius: 4px;
+}
+
+.shi-name { flex: 1; color: #ddd; }
+.shi-bpm { color: #888; }
+.shi-rating { font-size: 14px; }
+.shi-score { color: #4a9eff; }
+.shi-recording { font-size: 12px; }
+
+/* ─── Dashboard Heatmap Section ──────────────────────────────────────────── */
+
+.dashboard-heatmap-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+/* ─── Tempo Ramp (BPM Ladder) ────────────────────────────────────────────── */
+
+.tempo-ramp {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tempo-ramp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tempo-ramp-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.tempo-ramp-target {
+  font-size: 12px;
+  color: #888;
+}
+
+.tempo-ramp-ladder {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 3px;
+}
+
+.tempo-ramp-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 22px;
+  position: relative;
+}
+
+.tempo-ramp-step-active {
+  background: rgba(74, 158, 255, 0.08);
+  border-radius: 4px;
+}
+
+.tempo-ramp-bar {
+  height: 100%;
+  border-radius: 3px;
+  min-width: 4px;
+  transition: width 0.3s, background-color 0.3s;
+}
+
+.tempo-ramp-bpm {
+  font-size: 11px;
+  color: #ccc;
+  min-width: 40px;
+}
+
+.tempo-ramp-status {
+  font-size: 12px;
+  min-width: 16px;
+}
+
+.tempo-ramp-acc {
+  font-size: 10px;
+  color: #888;
+}
+
+.tempo-ramp-complete {
+  text-align: center;
+  font-weight: 600;
+  color: #27ae60;
+  padding: 8px;
+}
+
+/* ─── Practice Plan Actions ──────────────────────────────────────────────── */
+
+.practice-plan-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn-secondary {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #4a9eff;
+  color: #4a9eff;
+  background: transparent;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.btn-secondary:hover {
+  background: rgba(74, 158, 255, 0.1);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Recording Components ───────────────────────────────────────────────── */
+
+.recording-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.recording-list-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #aaa;
+}
+
+.recording-list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.recording-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #252525;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.recording-list-item-selected {
+  outline: 1px solid #4a9eff;
+}
+
+.recording-select-btn {
+  color: #888;
+  font-size: 14px;
+}
+
+.recording-select-btn-active {
+  color: #4a9eff;
+}
+
+.recording-date { flex: 1; color: #ccc; }
+.recording-duration { color: #888; }
+.recording-bpm { color: #4a9eff; }
+
+.recording-play-btn {
+  color: #4a9eff;
+  font-size: 14px;
+  padding: 2px 6px;
+}
+
+.recording-delete-btn {
+  color: #666;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.recording-delete-btn:hover { color: #e74c3c; }
+
+/* ─── Recording Player ───────────────────────────────────────────────────── */
+
+.recording-player {
+  background: #1e1e1e;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.recording-player-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.recording-player-date { flex: 1; font-size: 13px; color: #ccc; }
+.recording-player-bpm { font-size: 13px; color: #4a9eff; }
+
+.recording-player-close {
+  color: #888;
+  font-size: 14px;
+}
+
+.recording-player-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.recording-player-play {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #4a9eff;
+  color: #fff;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recording-player-progress {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recording-player-track {
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.recording-player-fill {
+  height: 100%;
+  background: #4a9eff;
+  transition: width 0.1s linear;
+}
+
+.recording-player-time {
+  font-size: 10px;
+  color: #888;
+}
+
+/* ─── Recording Compare ──────────────────────────────────────────────────── */
+
+.recording-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recording-compare-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.recording-compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.recording-compare-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recording-compare-side h4 {
+  font-size: 13px;
+  color: #ccc;
+}
+
+.recording-compare-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #888;
+}
+
+.recording-compare-diff {
+  text-align: center;
+  font-weight: 600;
+  color: #27ae60;
+  padding: 8px;
+}
+
+/* ─── Waveform ───────────────────────────────────────────────────────────── */
+
+.waveform-canvas {
+  width: 100%;
+  height: 60px;
+  border-radius: 6px;
+  display: block;
+}
+
+/* ─── Export Buttons ──────────────────────────────────────────────────────── */
+
+.export-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* ─── Media Viewer (Technique Guides) ────────────────────────────────────── */
+
+.media-viewer {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.media-viewer-video, .media-viewer-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+}
+
+.media-viewer-expand-hint {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.media-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.media-lightbox-content {
+  max-width: 90vw;
+  max-height: 90vh;
+  position: relative;
+}
+
+.media-lightbox-close {
+  position: absolute;
+  top: -30px;
+  right: 0;
+  color: #fff;
+  font-size: 20px;
+  z-index: 1;
+}
+
+.media-lightbox-video, .media-lightbox-image {
+  max-width: 90vw;
+  max-height: 85vh;
+  border-radius: 8px;
+}
+
+.media-lightbox-caption {
+  text-align: center;
+  color: #ccc;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/* ─── Quiz Exercise ──────────────────────────────────────────────────────── */
+
+.quiz-exercise {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quiz-progress {
+  font-size: 12px;
+  color: #888;
+}
+
+.quiz-prompt {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quiz-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #252525;
+  border-radius: 8px;
+  text-align: left;
+  color: #eee;
+  border: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.quiz-option:hover { border-color: #4a9eff; }
+.quiz-option-correct { border-color: #27ae60 !important; background: rgba(39, 174, 96, 0.12); }
+.quiz-option-wrong { border-color: #e74c3c !important; background: rgba(231, 76, 60, 0.12); }
+
+.quiz-option-letter {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.quiz-option-text { font-size: 14px; }
+
+.quiz-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: #1e1e1e;
+  border-radius: 8px;
+}
+
+.quiz-feedback-correct { color: #27ae60; font-weight: 600; }
+.quiz-feedback-wrong { color: #e74c3c; font-weight: 600; }
+.quiz-explanation { font-size: 13px; color: #bbb; line-height: 1.5; }
+
+.quiz-complete {
+  text-align: center;
+  padding: 24px;
+}
+
+.quiz-complete-score {
+  font-size: 36px;
+  font-weight: 700;
+  color: #4a9eff;
+}
+
+.quiz-complete-text { color: #888; margin-top: 4px; }
+
+/* ─── Ear Training ───────────────────────────────────────────────────────── */
+
+.ear-training {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ear-training-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #888;
+}
+
+.ear-training-replay {
+  align-self: center;
+}
+
+.ear-training-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ear-training-option {
+  padding: 10px 14px;
+  background: #252525;
+  border-radius: 8px;
+  text-align: left;
+  color: #eee;
+  font-size: 14px;
+  border: 1px solid transparent;
+}
+
+.ear-training-option:hover { border-color: #4a9eff; }
+.ear-training-option-correct { border-color: #27ae60 !important; background: rgba(39, 174, 96, 0.12); }
+.ear-training-option-wrong { border-color: #e74c3c !important; background: rgba(231, 76, 60, 0.12); }
+
+.ear-training-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.feedback-correct { color: #27ae60; font-weight: 600; }
+.feedback-wrong { color: #e74c3c; font-weight: 600; }
+
+.ear-training-complete {
+  text-align: center;
+  padding: 24px;
+}
+
+.ear-training-score {
+  font-size: 36px;
+  font-weight: 700;
+  color: #4a9eff;
+}
+
+/* ─── Warm-Up Card ───────────────────────────────────────────────────────── */
+
+.warmup-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.warmup-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.warmup-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.warmup-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #1e1e1e;
+  border-radius: 6px;
+  text-align: left;
+  color: #eee;
+  font-size: 13px;
+}
+
+.warmup-item:hover { background: #252525; }
+.warmup-item-name { flex: 1; }
+.warmup-item-bpm { color: #4a9eff; font-size: 12px; }
+.warmup-item-duration { color: #888; font-size: 12px; }
+.warmup-empty { color: #888; font-size: 13px; text-align: center; padding: 16px; }

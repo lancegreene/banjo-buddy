@@ -11,6 +11,7 @@
 import { SKILLS, type Skill, type Path } from '../data/curriculum'
 import type { SkillRecord, SessionItem } from '../db/db'
 import type { SkillStatus } from '../db/db'
+import { isDueForReview, daysTilReview } from './spacedRepetition'
 
 export interface RecommendedItem {
   skill: Skill
@@ -108,6 +109,16 @@ function accuracyScore(recentItems: SessionItem[]): number {
   return Math.min(50, Math.round((90 - avg) * (50 / 90)))
 }
 
+function srMaintenanceScore(record: SkillRecord | null): number {
+  if (!record) return 0
+  // If SR is scheduled and due, boost priority significantly
+  if (isDueForReview(record.srNextReview ?? null)) return 40
+  // If overdue by days, even higher
+  const days = daysTilReview(record.srNextReview ?? null)
+  if (days !== null && days < 0) return Math.min(50, 40 + Math.abs(days) * 2)
+  return 0
+}
+
 function computePriority(
   skill: Skill,
   record: SkillRecord | null,
@@ -115,6 +126,12 @@ function computePriority(
   recentItems: SessionItem[] = []
 ): number {
   if (status === 'locked' || status === 'mastered') return 0
+
+  // For maintenance (progressed) skills, use SR scoring instead of flat recency
+  if (status === 'progressed' && record?.srNextReview) {
+    return srMaintenanceScore(record) + accuracyScore(recentItems)
+  }
+
   return bpmGapScore(skill, record) + recencyScore(record) + practiceCountScore(record) + accuracyScore(recentItems)
 }
 
@@ -223,12 +240,17 @@ export function buildSessionPlan(
     .filter((e) => (e.status === 'progressed') && e.priority > 0)
     .sort((a, b) => b.priority - a.priority)
 
+  // Cross-session adaptation: adjust allocation based on multi-session patterns
+  const insights = crossSessionAnalysis(recentItemsBySkill)
+  const hasAcceleration = insights.some((i) => i.type === 'acceleration')
+  const newSkillPct = hasAcceleration ? 0.35 : 0.25
+
   // Approximate item counts based on target time
   // Roughly: new item ~8 min, active drill ~5 min, maintenance ~3 min
   const totalSlots = Math.max(3, Math.floor(targetMinutes / 5))
-  const newCount = Math.max(1, Math.round(totalSlots * 0.25))
+  const newCount = Math.max(1, Math.round(totalSlots * newSkillPct))
   const activeCount = Math.max(1, Math.round(totalSlots * 0.5))
-  const maintCount = Math.max(1, Math.round(totalSlots * 0.25))
+  const maintCount = Math.max(1, totalSlots - newCount - activeCount)
 
   return {
     newSkills: newSkillCandidates.slice(0, newCount).map(({ skill, record, reason, suggestedBpm, priority }) => ({
@@ -331,6 +353,62 @@ export function getNewlyUnlockedSkills(
     const nowUnlocked = evaluateSkillStatus(s, currentRecord ?? null, tempRecords) === 'unlocked'
     return wasLocked && nowUnlocked
   })
+}
+
+// ── Cross-session analysis ───────────────────────────────────────────────────
+
+export interface CrossSessionInsight {
+  type: 'plateau' | 'acceleration'
+  skillId: string
+  detail: string
+}
+
+export function crossSessionAnalysis(
+  recentItemsBySkill: Map<string, SessionItem[]>
+): CrossSessionInsight[] {
+  const insights: CrossSessionInsight[] = []
+
+  for (const [skillId, items] of recentItemsBySkill) {
+    if (items.length < 5) continue
+
+    // Sort by date
+    const sorted = [...items]
+      .filter((i) => i.achievedBpm !== null)
+      .sort((a, b) => a.completedAt.localeCompare(b.completedAt))
+
+    if (sorted.length < 5) continue
+
+    // Check last 5 sessions for BPM trends
+    const last5 = sorted.slice(-5)
+    const bpms = last5.map((i) => i.achievedBpm!)
+
+    // Plateau: no BPM increase across 5+ items
+    const maxBpm = Math.max(...bpms)
+    const minBpm = Math.min(...bpms)
+    if (maxBpm - minBpm <= 2) {
+      insights.push({
+        type: 'plateau',
+        skillId,
+        detail: `BPM stuck at ~${Math.round((maxBpm + minBpm) / 2)} for ${last5.length} sessions`,
+      })
+      continue
+    }
+
+    // Acceleration: BPM increasing every session
+    let increasing = true
+    for (let i = 1; i < bpms.length; i++) {
+      if (bpms[i] <= bpms[i - 1]) { increasing = false; break }
+    }
+    if (increasing) {
+      insights.push({
+        type: 'acceleration',
+        skillId,
+        detail: `BPM rising consistently: ${bpms[0]} → ${bpms[bpms.length - 1]}`,
+      })
+    }
+  }
+
+  return insights
 }
 
 // ── Summary stats for dashboard ───────────────────────────────────────────────

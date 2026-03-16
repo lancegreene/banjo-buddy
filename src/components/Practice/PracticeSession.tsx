@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../../store/useStore'
 import { SKILL_MAP, type ScoringType } from '../../data/curriculum'
-import type { RecommendedItem } from '../../engine/recommendationEngine'
+import type { RecommendedItem, SessionPlan } from '../../engine/recommendationEngine'
 import type { SelfRating } from '../../db/db'
 import type { NoteEvaluation } from '../../engine/streamingRollMatcher'
 import { createAdaptiveTempoState, evaluateTempoAdjustment, type AdaptiveTempoState } from '../../engine/adaptiveTempo'
+import { createTempoRamp, evaluateRampCycle, getCurrentRampBpm, type TempoRampState } from '../../engine/tempoRamp'
+import { generateFocusDrill, focusDrillToSessionPlan, type FocusDrillItem } from '../../engine/focusMode'
+import { TempoRampView } from './TempoRampView'
 import { Metronome } from '../Metronome/Metronome'
 import { Tuner } from '../Tuner/Tuner'
 import { RollDetector } from '../RollDetector/RollDetector'
@@ -186,6 +189,16 @@ function ExerciseView({
       </div>
 
       <div className="exercise-description">{skill.description}</div>
+
+      {/* Reference photo */}
+      {skill.image && (
+        <div className="exercise-photo">
+          <img src={`${import.meta.env.BASE_URL}${skill.image.src}`} alt={skill.image.alt} />
+          {skill.image.caption && (
+            <span className="exercise-photo-caption">{skill.image.caption}</span>
+          )}
+        </div>
+      )}
 
       {/* Roll pattern diagram — shown when roll tool is NOT active (LiveRollFeedback handles its own) */}
       {skill.rollPatternId && activeTool !== 'roll' && (() => {
@@ -522,6 +535,17 @@ export function PracticeSession() {
   const [view, setView] = useState<PracticeView>('plan')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [completedIds, setCompletedIds] = useState<string[]>([])
+  const [focusPlan, setFocusPlan] = useState<SessionPlan | null>(null)
+  const [loadingFocus, setLoadingFocus] = useState(false)
+
+  async function handleFocusMode() {
+    setLoadingFocus(true)
+    const drillItems = await generateFocusDrill(skillRecords)
+    if (drillItems.length > 0) {
+      setFocusPlan(focusDrillToSessionPlan(drillItems))
+    }
+    setLoadingFocus(false)
+  }
 
   // Single-skill mode: when user taps a skill from the SkillTree
   const selectedSkill = selectedSkillId ? SKILL_MAP.get(selectedSkillId) ?? null : null
@@ -535,15 +559,19 @@ export function PracticeSession() {
       }
     : null
 
+  const activePlan = focusPlan ?? sessionPlan
   const allItems = singleSkillItem
     ? [singleSkillItem]
-    : sessionPlan
-    ? [...(sessionPlan.newSkills), ...(sessionPlan.activeWork), ...(sessionPlan.maintenance)]
+    : activePlan
+    ? [...(activePlan.newSkills), ...(activePlan.activeWork), ...(activePlan.maintenance)]
     : []
 
   // Auto-start into exercise view for single-skill mode
   useEffect(() => {
-    if (singleSkillItem && view === 'plan') {
+    if (singleSkillItem && (view === 'plan' || view === 'complete')) {
+      setCurrentIndex(0)
+      setCompletedIds([])
+      clearNewlyUnlocked()
       startSession().then(() => setView('item'))
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -608,7 +636,7 @@ export function PracticeSession() {
   if (view === 'plan') {
     return (
       <div className="practice-plan-view">
-        <h2>Today's Session</h2>
+        <h2>{focusPlan ? 'Focus Mode' : "Today's Session"}</h2>
         <p className="practice-plan-desc">{allItems.length} items planned</p>
 
         <div className="practice-plan-list">
@@ -621,9 +649,28 @@ export function PracticeSession() {
           ))}
         </div>
 
-        <button className="btn btn-primary" onClick={handleStart}>
-          Begin Session
-        </button>
+        <div className="practice-plan-actions">
+          <button className="btn btn-primary" onClick={handleStart}>
+            Begin Session
+          </button>
+          {!focusPlan && (
+            <button
+              className="btn btn-secondary"
+              onClick={handleFocusMode}
+              disabled={loadingFocus}
+            >
+              {loadingFocus ? 'Analyzing...' : 'Focus Mode'}
+            </button>
+          )}
+          {focusPlan && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => setFocusPlan(null)}
+            >
+              Back to Normal Plan
+            </button>
+          )}
+        </div>
       </div>
     )
   }

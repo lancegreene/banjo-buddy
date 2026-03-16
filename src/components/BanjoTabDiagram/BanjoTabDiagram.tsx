@@ -15,6 +15,7 @@ interface BanjoTabDiagramProps {
   playedStrings?: number[]    // live played string per beat — enables hit/miss coloring
   evaluations?: NoteEvaluation[]  // richer hit/miss data per beat (streaming mode)
   cursorPosition?: number         // highlights next expected beat with pulse animation
+  highlightPosition?: number      // highlights a specific position during recording playback
 }
 
 // Colors per string — match roll detector
@@ -39,7 +40,7 @@ function deriveFingers(strings: (number | null)[]): Finger[] {
   })
 }
 
-export function BanjoTabDiagram({ strings, fingers, label, playedStrings, evaluations, cursorPosition }: BanjoTabDiagramProps) {
+export function BanjoTabDiagram({ strings, fingers, label, playedStrings, evaluations, cursorPosition, highlightPosition }: BanjoTabDiagramProps) {
   const resolvedFingers = fingers ?? deriveFingers(strings)
   const beats = strings.length
 
@@ -76,7 +77,8 @@ export function BanjoTabDiagram({ strings, fingers, label, playedStrings, evalua
                 isMiss = isPlayed && s === stringNum && expected !== null && played !== stringNum
               }
 
-              const isCurrent = isCursorHere && s === stringNum
+              const isHighlighted = highlightPosition !== undefined && beatIdx === highlightPosition && s === stringNum
+              const isCurrent = (isCursorHere || isHighlighted) && s === stringNum
               const isLegacyCurrent = !evalItem && !isCursorHere && !isPlayed && playedStrings !== undefined && beatIdx === playedStrings.length
 
               return (
