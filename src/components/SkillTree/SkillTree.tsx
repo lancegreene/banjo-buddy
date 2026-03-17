@@ -3,6 +3,8 @@ import { useStore } from '../../store/useStore'
 import { SKILLS, SKILL_MAP, CATEGORIES, type Skill, type SkillCategory } from '../../data/curriculum'
 import { evaluateSkillStatus } from '../../engine/recommendationEngine'
 import type { SkillStatus } from '../../db/db'
+import { getEffectiveMastery, masteryLevelToLabel, MASTERY_COLORS } from '../../engine/masteryLevels'
+import { isDueForReview as isFsrsDue } from '../../engine/fsrs'
 
 const STATUS_LABELS: Record<SkillStatus, string> = {
   locked: 'Locked',
@@ -92,6 +94,17 @@ function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill }:
             style={{ background: STATUS_COLORS[status] }}
           />
           <span className="skill-card-compact-name">{skill.name}</span>
+          {record?.masteryLevel && (() => {
+            const isOverdue = record.fsrsState ? (() => { try { return isFsrsDue(JSON.parse(record.fsrsState)); } catch { return false; } })() : false
+            const effective = getEffectiveMastery(record.masteryLevel, isOverdue)
+            return (
+              <span
+                className={`mastery-indicator mastery-indicator-${effective} ${isOverdue ? 'mastery-indicator-overdue' : ''}`}
+              >
+                {masteryLevelToLabel(effective)}
+              </span>
+            )
+          })()}
           {skill.isMilestone && <span className="skill-milestone-badge">🎯</span>}
           {!isPlayable && unmetPrereqs.length > 0 && (
             <span className="skill-prereq-toggle">{showPrereqs ? '▾' : '▸'}</span>

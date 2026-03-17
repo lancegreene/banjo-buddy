@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useStore } from '../../store/useStore'
 import { SKILL_MAP, type ScoringType } from '../../data/curriculum'
 import type { RecommendedItem, SessionPlan } from '../../engine/recommendationEngine'
@@ -26,9 +26,18 @@ import { loadCalibration } from '../../utils/calibration'
 import { ListenButton } from './ListenButton'
 import { InteractiveStep } from './InteractiveStep'
 import { PlayAlong } from './PlayAlong'
+import { RealtimeFeedback } from './RealtimeFeedback'
+import { SessionSummary } from './SessionSummary'
+import { SessionTimer } from './SessionTimer'
+import { ChunkDrillPrompt } from './ChunkDrill'
+import { MentalPractice } from './MentalPractice'
+import { NoteHighwayRenderer } from '../NoteHighway/NoteHighwayRenderer'
+import type { HighwayNote } from '../NoteHighway/noteHighwayTypes'
 import { SECTION_MAP } from '../../data/songLibrary'
+import { identifyWeakChunks, type ChunkDrill } from '../../engine/autoChunker'
+import type { PerformanceMetrics } from '../../types/performance'
 
-type PracticeView = 'plan' | 'item' | 'metronome' | 'complete'
+type PracticeView = 'plan' | 'item' | 'summary' | 'metronome' | 'complete'
 
 const PATH_LABELS: Record<string, string> = {
   newby: 'Newby',
@@ -81,6 +90,34 @@ function BpmProgressBar({ item }: { item: RecommendedItem }) {
   )
 }
 
+/** Generate HighwayNote[] from a roll pattern, looping enough cycles to fill `durationSec`. */
+function generateHighwayNotes(
+  patternId: string,
+  bpm: number,
+  durationSec: number = 30
+): HighwayNote[] {
+  const pattern = ROLL_MAP.get(patternId)
+  if (!pattern) return []
+
+  const eighthNoteSec = 60 / (bpm * 2) // 8th note interval
+  const totalNotes = Math.ceil(durationSec / eighthNoteSec)
+  const notes: HighwayNote[] = []
+
+  for (let i = 0; i < totalNotes; i++) {
+    const stringNum = pattern.strings[i % pattern.strings.length]
+    if (stringNum === null) continue // skip wildcards
+    notes.push({
+      id: `hw-${i}`,
+      string: stringNum,
+      fret: 0, // open strings for rolls
+      time: i * eighthNoteSec,
+      duration: eighthNoteSec * 0.8,
+      state: 'upcoming',
+    })
+  }
+  return notes
+}
+
 type ActiveTool = 'metronome' | 'tuner' | 'roll' | 'lick' | 'recorder' | 'calibrate' | 'listen' | 'play_along' | null
 
 function ExerciseView({
@@ -93,6 +130,10 @@ function ExerciseView({
   const [achievedBpm, setAchievedBpm] = useState<string>(String(item.suggestedBpm ?? ''))
   const [rating, setRating] = useState<SelfRating | null>(null)
   const [activeTool, setActiveTool] = useState<ActiveTool>(null)
+  const [highwayPlaying, setHighwayPlaying] = useState(false)
+  const highwayPlayingRef = useRef(false)
+  type RollPanelTab = 'pattern' | 'weakspots' | 'highway'
+  const [rollTab, setRollTab] = useState<RollPanelTab>('pattern')
 
   // Pending scores from analysis tools
   const [pendingRhythm, setPendingRhythm] = useState<number | null>(null)
@@ -107,6 +148,54 @@ function ExerciseView({
   const [adaptiveState, setAdaptiveState] = useState<AdaptiveTempoState | null>(null)
 
   const { skill } = item
+
+  // Highway notes generated from roll pattern (must be after `skill` is destructured)
+  const highwayNotes = useMemo(
+    () => skill.rollPatternId ? generateHighwayNotes(skill.rollPatternId, item.suggestedBpm ?? 80) : [],
+    [skill.rollPatternId, item.suggestedBpm]
+  )
+  const highwayNotesRef = useRef(highwayNotes)
+  highwayNotesRef.current = highwayNotes
+
+  const highwayRendererRef = useRef<NoteHighwayRenderer | null>(null)
+  const highwayCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const highwayStartTimeRef = useRef<number>(0)
+  const [highwayHitCount, setHighwayHitCount] = useState(0)
+
+  const showHighway = rollTab === 'highway' && !!skill.rollPatternId
+
+  // Set up / tear down the renderer when highway tab is active
+  useEffect(() => {
+    highwayRendererRef.current?.destroy()
+    highwayRendererRef.current = null
+
+    if (!showHighway) return
+
+    const timerId = setTimeout(() => {
+      const canvas = highwayCanvasRef.current
+      if (!canvas) return
+
+      const rect = canvas.getBoundingClientRect()
+      const cssW = rect.width || 600
+      const cssH = rect.height || 200
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = cssW * dpr
+      canvas.height = cssH * dpr
+      const ctx = canvas.getContext('2d')!
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+      const renderer = new NoteHighwayRenderer(canvas, {}, cssW, cssH)
+      renderer.setNotes(highwayNotes)
+      highwayRendererRef.current = renderer
+    }, 50)
+
+    return () => {
+      clearTimeout(timerId)
+      highwayRendererRef.current?.destroy()
+      highwayRendererRef.current = null
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showHighway, highwayNotes])
 
   const hasPitch = skill.scoringTypes.includes('pitch') || skill.scoringTypes.includes('string_ring')
   const hasRoll = skill.scoringTypes.includes('rhythm')
@@ -129,7 +218,33 @@ function ExerciseView({
     clearNotes,
     analyserRef,
     streamRef,
-  } = useNoteCapture()
+  } = useNoteCapture({
+    onNoteDetected: (captured) => {
+      const renderer = highwayRendererRef.current
+      if (!renderer || !highwayPlayingRef.current) return
+      const elapsedSec = (captured.timestamp - highwayStartTimeRef.current) / 1000
+      const windowSec = 0.3 // 300ms hit window
+      const notes = highwayNotesRef.current
+      // Find closest upcoming note within timing window
+      let bestMatch: HighwayNote | null = null
+      let bestDelta = windowSec
+      for (const n of notes) {
+        if (n.state !== 'upcoming') continue
+        const delta = Math.abs(n.time - elapsedSec)
+        if (delta > windowSec) continue
+        if (captured.banjoString !== null && n.string !== captured.banjoString) continue
+        if (delta < bestDelta) {
+          bestDelta = delta
+          bestMatch = n
+        }
+      }
+      if (bestMatch) {
+        bestMatch.state = 'hit'
+        renderer.markNote(bestMatch.id, 'hit')
+        setHighwayHitCount(c => c + 1)
+      }
+    },
+  })
 
   function toggleTool(tool: ActiveTool) {
     if (activeTool === tool) {
@@ -144,9 +259,9 @@ function ExerciseView({
     }
   }
 
-  // Stop listening when switching away from analysis tools
+  // Stop listening when switching away from analysis tools (but not if highway is using the mic)
   useEffect(() => {
-    if (activeTool !== 'roll' && activeTool !== 'lick' && isListening) {
+    if (activeTool !== 'roll' && activeTool !== 'lick' && isListening && !highwayPlayingRef.current) {
       stopListening()
     }
   }, [activeTool, isListening, stopListening])
@@ -160,361 +275,189 @@ function ExerciseView({
   return (
     <div className="exercise-view">
 
-      {/* Context */}
-      <div className="exercise-context">
-        <span className="exercise-ctx-chip">{PATH_LABELS[skill.path] ?? skill.path}</span>
-        <span className="exercise-ctx-chip">Month {skill.month}</span>
-        {skill.isMilestone && <span className="exercise-ctx-chip exercise-ctx-milestone">Milestone</span>}
-        <span className="exercise-ctx-reason">{item.reason}</span>
-      </div>
-
-      <div className="exercise-header">
-        <h2 className="exercise-title">{skill.name}</h2>
-        {item.suggestedBpm && (
-          <span className="exercise-target-bpm">Target: {item.suggestedBpm} BPM</span>
-        )}
-      </div>
-
-      {/* Scoring badges */}
-      <div className="scoring-badges">
-        {skill.scoringTypes.map((t) => (
-          <span
-            key={t}
-            className="scoring-badge"
-            style={{ borderColor: SCORING_BADGES[t].color, color: SCORING_BADGES[t].color }}
-          >
-            {SCORING_BADGES[t].label}
-          </span>
-        ))}
-      </div>
-
-      <div className="exercise-description">{skill.description}</div>
-
-      {/* Reference photo */}
-      {skill.image && (
-        <div className="exercise-photo">
-          <img src={`${import.meta.env.BASE_URL}${skill.image.src}`} alt={skill.image.alt} />
-          {skill.image.caption && (
-            <span className="exercise-photo-caption">{skill.image.caption}</span>
-          )}
-        </div>
-      )}
-
-      {/* Roll pattern diagram — shown when roll tool is NOT active (LiveRollFeedback handles its own) */}
-      {skill.rollPatternId && activeTool !== 'roll' && (() => {
-        const pattern = ROLL_MAP.get(skill.rollPatternId!)
-        if (!pattern) return null
-        return (
-          <BanjoTabDiagram
-            strings={pattern.strings}
-            fingers={pattern.fingers}
-            label={pattern.name}
-          />
-        )
-      })()}
-
-      {/* Weak spot chart for roll patterns */}
-      {skill.rollPatternId && activeTool !== 'roll' && (
-        <WeakSpotChart skillId={skill.id} patternId={skill.rollPatternId} />
-      )}
-
-      {/* Chord diagrams — all voicings for this chord */}
-      {skill.chordId && (() => {
-        const shapes = CHORD_GROUPS[skill.chordId!]
-        if (!shapes?.length) return null
-        return (
-          <div className="chord-diagram-row">
-            {shapes.map((chord) => (
-              <BanjoChordDiagram key={chord.id} chord={chord} />
+      {/* ── Compact header row ── */}
+      <div className="ev-header">
+        <div className="ev-header-top">
+          <h2 className="ev-title">{skill.name}</h2>
+          {item.suggestedBpm && <span className="ev-target-bpm">{item.suggestedBpm} BPM</span>}
+          <div className="ev-badges">
+            <span className="ev-chip">{PATH_LABELS[skill.path] ?? skill.path}</span>
+            <span className="ev-chip">Mo. {skill.month}</span>
+            {skill.isMilestone && <span className="ev-chip ev-chip-milestone">Milestone</span>}
+            {skill.scoringTypes.map((t) => (
+              <span key={t} className="ev-chip" style={{ borderColor: SCORING_BADGES[t].color, color: SCORING_BADGES[t].color }}>
+                {SCORING_BADGES[t].label}
+              </span>
             ))}
           </div>
-        )
-      })()}
+        </div>
+        <p className="ev-desc">{skill.description}</p>
+      </div>
 
-      <BpmProgressBar item={item} />
+      {/* ── Two-column grid ── */}
+      <div className="ev-grid">
 
-      {/* Exercises */}
-      <div className="exercise-steps">
-        <h3 className="steps-title">Exercises</h3>
-        {skill.exercises.map((ex, i) => (
-          ex.type ? (
-            <InteractiveStep
-              key={i}
-              exercise={ex}
-              stepNumber={i + 1}
-              synth={synth}
-              notes={notes}
-              isListening={isListening}
-              startListening={startListening}
-              stopListening={stopListening}
-              clearNotes={clearNotes}
-              onPass={() => {}}
-              onFail={() => {}}
-              defaultBpm={item.suggestedBpm}
-            />
-          ) : (
-            <div key={i} className="exercise-step">
-              <span className="step-num">{i + 1}</span>
-              <span className="step-instruction">{ex.instruction}</span>
-              {ex.bpm && <span className="step-bpm">@ {ex.bpm} BPM</span>}
+        {/* ── LEFT: Visual panel + Exercises ── */}
+        <div className="ev-col-main">
+
+          <BpmProgressBar item={item} />
+
+          {/* Unified roll panel (Pattern / Weak Spots / Highway) */}
+          {skill.rollPatternId && (() => {
+            const pattern = ROLL_MAP.get(skill.rollPatternId!)
+            if (!pattern) return null
+            return (
+              <div className="ev-roll-panel">
+                <div className="ev-roll-tabs">
+                  <button className={`ev-roll-tab ${rollTab === 'pattern' ? 'ev-roll-tab-active' : ''}`} onClick={() => setRollTab('pattern')}>Pattern</button>
+                  <button className={`ev-roll-tab ${rollTab === 'highway' ? 'ev-roll-tab-active' : ''}`} onClick={() => setRollTab('highway')}>Play Along</button>
+                  <button className={`ev-roll-tab ${rollTab === 'weakspots' ? 'ev-roll-tab-active' : ''}`} onClick={() => setRollTab('weakspots')}>Weak Spots</button>
+                </div>
+                <div className="ev-roll-body">
+                  {rollTab === 'pattern' && (
+                    <BanjoTabDiagram strings={pattern.strings} fingers={pattern.fingers} label={pattern.name} />
+                  )}
+                  {rollTab === 'weakspots' && (
+                    <WeakSpotChart skillId={skill.id} patternId={skill.rollPatternId!} />
+                  )}
+                  {rollTab === 'highway' && (
+                    <>
+                      <canvas ref={highwayCanvasRef} className="note-highway-canvas" />
+                      <div className="note-highway-controls">
+                        <button
+                          className={`btn btn-sm ${highwayPlaying ? 'btn-secondary' : 'btn-primary'}`}
+                          onClick={() => {
+                            const renderer = highwayRendererRef.current
+                            if (!renderer) return
+                            if (highwayPlaying) {
+                              renderer.stop()
+                              stopListening()
+                              highwayPlayingRef.current = false
+                              setHighwayPlaying(false)
+                            } else {
+                              stopListening()
+                              startListening()
+                              setHighwayHitCount(0)
+                              const fresh = highwayNotes.map(n => ({ ...n, state: 'upcoming' as const }))
+                              renderer.setNotes(fresh)
+                              highwayStartTimeRef.current = performance.now()
+                              renderer.setCurrentTime(0)
+                              renderer.start()
+                              highwayPlayingRef.current = true
+                              setHighwayPlaying(true)
+                            }
+                          }}
+                        >
+                          {highwayPlaying ? '■ Stop' : '▶ Start'}
+                        </button>
+                        {highwayPlaying && (
+                          <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
+                            Hits: {highwayHitCount}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Exercises */}
+          <div className="exercise-steps">
+            <h3 className="steps-title">Exercises</h3>
+            {skill.exercises.map((ex, i) => (
+              ex.type ? (
+                <InteractiveStep key={i} exercise={ex} stepNumber={i + 1} synth={synth} notes={notes} isListening={isListening} startListening={startListening} stopListening={stopListening} clearNotes={clearNotes} onPass={() => {}} onFail={() => {}} defaultBpm={item.suggestedBpm} hideTabDiagram={!!skill.rollPatternId} />
+              ) : (
+                <div key={i} className="exercise-step">
+                  <span className="step-num">{i + 1}</span>
+                  <span className="step-instruction">{ex.instruction}</span>
+                  {ex.bpm && <span className="step-bpm">@ {ex.bpm} BPM</span>}
+                </div>
+              )
+            ))}
+          </div>
+
+          {/* Chord diagrams */}
+          {skill.chordId && (() => {
+            const shapes = CHORD_GROUPS[skill.chordId!]
+            if (!shapes?.length) return null
+            return (
+              <div className="chord-diagram-row">
+                {shapes.map((chord) => <BanjoChordDiagram key={chord.id} chord={chord} />)}
+              </div>
+            )
+          })()}
+
+          {/* Mastery criteria */}
+          <div className="mastery-criteria">
+            <span className="mastery-criteria-label">What success looks like</span>
+            <p className="mastery-criteria-text">{skill.masteryCriteria}</p>
+          </div>
+        </div>
+
+        {/* ── RIGHT: Tools + Log ── */}
+        <div className="ev-col-tools">
+
+          {/* Tools */}
+          <div className="ev-tools">
+            {hasSong && <button className={`tool-btn ${activeTool === 'play_along' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('play_along')}>▶ Along</button>}
+            <button className={`tool-btn ${activeTool === 'metronome' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('metronome')}>♩ Metro</button>
+            {hasPitch && <button className={`tool-btn ${activeTool === 'tuner' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('tuner')}>◎ Tuner</button>}
+            {(hasAnalysis || hasPitch) && <button className={`tool-btn ${activeTool === 'recorder' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('recorder')}>● Rec</button>}
+            <button className={`tool-btn tool-btn-cal ${activeTool === 'calibrate' ? 'tool-btn-active' : ''} ${loadCalibration() ? 'tool-btn-cal-saved' : ''}`} onClick={() => toggleTool('calibrate')} title="Calibrate audio detection">⚙ Cal</button>
+          </div>
+
+          {/* Inline tool panels */}
+          {activeTool === 'metronome' && <div className="inline-tool-panel"><Metronome controlledBpm={autoTempo && adaptiveState ? adaptiveState.currentBpm : undefined} /></div>}
+          {activeTool === 'tuner' && <div className="inline-tool-panel"><Tuner /></div>}
+          {activeTool === 'recorder' && <div className="inline-tool-panel"><AudioRecorder skillId={skill.id} bpm={item.suggestedBpm} analyserRef={analyserRef} streamRef={streamRef} /></div>}
+          {activeTool === 'calibrate' && <div className="inline-tool-panel"><CalibrationWizard onClose={() => setActiveTool(null)} /></div>}
+          {activeTool === 'play_along' && skill.songId && <div className="inline-tool-panel"><PlayAlong songId={skill.songId} sectionId={skill.songSectionId} bpm={item.suggestedBpm ?? 70} synth={synth} /></div>}
+
+          {/* Realtime feedback */}
+          {noteEvalsRef.current.length > 0 && <RealtimeFeedback evaluations={noteEvalsRef.current} />}
+
+          {/* Pending scores */}
+          {(pendingRhythm !== null || pendingPitch !== null || pendingTempo !== null) && (
+            <div className="pending-scores">
+              {pendingRhythm !== null && <span className="pending-score-chip">Rhythm: {pendingRhythm}%</span>}
+              {pendingPitch !== null && <span className="pending-score-chip">Pitch: {pendingPitch}%</span>}
+              {pendingTempo !== null && <span className="pending-score-chip">Tempo: {pendingTempo}%</span>}
             </div>
-          )
-        ))}
-      </div>
+          )}
 
-      {/* Assessment */}
-      <div className="exercise-assessment">
-        <h3 className="steps-title">Assessment</h3>
-        <p className="assessment-prompt">{skill.assessmentPrompt}</p>
-      </div>
-
-      {/* Mastery criteria */}
-      <div className="mastery-criteria">
-        <span className="mastery-criteria-label">What success looks like</span>
-        <p className="mastery-criteria-text">{skill.masteryCriteria}</p>
-      </div>
-
-      {/* Tools row */}
-      <div className="exercise-tools">
-        {(skill.rollPatternId || skill.songSectionId || skill.lickId) && (
-          <ListenButton
-            onPlay={() => {
-              if (skill.rollPatternId) {
-                synth.playRoll(skill.rollPatternId, item.suggestedBpm ?? 60, 2)
-              } else if (skill.songSectionId) {
-                const sec = SECTION_MAP.get(skill.songSectionId)
-                if (sec) synth.playSection(sec.measures, item.suggestedBpm ?? 60)
-              }
-            }}
-            onStop={() => synth.stop()}
-            isPlaying={synth.isPlaying}
-            small
-          />
-        )}
-        {hasSong && (
-          <button
-            className={`tool-btn ${activeTool === 'play_along' ? 'tool-btn-active' : ''}`}
-            onClick={() => toggleTool('play_along')}
-          >
-            ▶ Play Along
-          </button>
-        )}
-        <button
-          className={`tool-btn ${activeTool === 'metronome' ? 'tool-btn-active' : ''}`}
-          onClick={() => toggleTool('metronome')}
-        >
-          ♩ Metro
-        </button>
-        {hasPitch && (
-          <button
-            className={`tool-btn ${activeTool === 'tuner' ? 'tool-btn-active' : ''}`}
-            onClick={() => toggleTool('tuner')}
-          >
-            ◎ Tuner
-          </button>
-        )}
-        {hasRoll && (
-          <button
-            className={`tool-btn ${activeTool === 'roll' ? 'tool-btn-active' : ''}`}
-            onClick={() => toggleTool('roll')}
-          >
-            ~ Roll
-          </button>
-        )}
-        {hasLick && (
-          <button
-            className={`tool-btn ${activeTool === 'lick' ? 'tool-btn-active' : ''}`}
-            onClick={() => toggleTool('lick')}
-          >
-            ♫ Lick
-          </button>
-        )}
-        {(hasAnalysis || hasPitch) && (
-          <button
-            className={`tool-btn ${activeTool === 'recorder' ? 'tool-btn-active' : ''}`}
-            onClick={() => toggleTool('recorder')}
-          >
-            ● Rec
-          </button>
-        )}
-        <button
-          className={`tool-btn tool-btn-cal ${activeTool === 'calibrate' ? 'tool-btn-active' : ''} ${loadCalibration() ? 'tool-btn-cal-saved' : ''}`}
-          onClick={() => toggleTool('calibrate')}
-          title="Calibrate audio detection to your playing style"
-        >
-          ⚙ Cal
-        </button>
-      </div>
-
-      {/* Analysis tool Listen/Stop control (shared) */}
-      {(activeTool === 'roll' || activeTool === 'lick') && (
-        <div className="analysis-controls">
-          {audioError && <div className="tuner-error">{audioError}</div>}
-          <div className="analysis-control-row">
-            <button
-              className={`play-btn play-btn-sm ${isListening ? 'play-btn-stop' : ''}`}
-              onClick={isListening ? stopListening : startListening}
-            >
-              {isListening ? '■ Stop' : '🎤 Listen'}
-            </button>
-            {notes.length > 0 && (
-              <button className="tuner-reset-btn" onClick={clearNotes}>Clear</button>
+          {/* Log result — compact */}
+          <div className="ev-log">
+            <h3 className="steps-title">Log Result</h3>
+            {skill.progressBpm !== null && (
+              <div className="achieved-bpm-row">
+                <label className="achieved-bpm-label">BPM:</label>
+                <input type="number" className="achieved-bpm-input" value={achievedBpm} onChange={(e) => setAchievedBpm(e.target.value)} min={20} max={300} placeholder="e.g. 80" />
+              </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Inline tool panels */}
-      {activeTool === 'metronome' && (
-        <div className="inline-tool-panel">
-          <Metronome controlledBpm={autoTempo && adaptiveState ? adaptiveState.currentBpm : undefined} />
-        </div>
-      )}
-      {activeTool === 'tuner' && (
-        <div className="inline-tool-panel"><Tuner /></div>
-      )}
-      {activeTool === 'roll' && hasLiveRoll && (
-        <div className="inline-tool-panel">
-          <LiveRollFeedback
-            patternId={skill.rollPatternId!}
-            notes={notes}
-            isListening={isListening}
-            targetBpm={autoTempo && adaptiveState ? adaptiveState.currentBpm : (item.suggestedBpm ?? null)}
-            onCycleComplete={(cycleAccuracy, cycleCount) => {
-              if (autoTempo) {
-                setAdaptiveState((prev) => {
-                  if (!prev) return prev
-                  return evaluateTempoAdjustment(prev, cycleAccuracy, cycleCount)
-                })
-              }
-            }}
-            onScore={(r, t) => { setPendingRhythm(r); setPendingTempo(t) }}
-            onEvaluations={(evals) => { noteEvalsRef.current = evals }}
-          />
-          {/* Auto-tempo toggle */}
-          <div className="auto-tempo-toggle">
-            <label className="auto-tempo-label">
-              <input
-                type="checkbox"
-                checked={autoTempo}
-                onChange={(e) => {
-                  setAutoTempo(e.target.checked)
-                  if (e.target.checked && !adaptiveState) {
-                    setAdaptiveState(createAdaptiveTempoState(item.suggestedBpm ?? 80))
-                  }
-                }}
-              />
-              Auto-tempo: {autoTempo ? 'ON' : 'OFF'}
-            </label>
-            {autoTempo && adaptiveState && (
-              <span className="auto-tempo-bpm">{adaptiveState.currentBpm} BPM</span>
-            )}
-          </div>
-        </div>
-      )}
-      {activeTool === 'roll' && !hasLiveRoll && (
-        <div className="inline-tool-panel">
-          <RollDetector
-            notes={notes}
-            isListening={isListening}
-            targetBpm={item.suggestedBpm ?? undefined}
-            onScore={(r, t) => { setPendingRhythm(r); setPendingTempo(t) }}
-            onClear={clearNotes}
-          />
-        </div>
-      )}
-      {activeTool === 'lick' && skill.lickId && (
-        <div className="inline-tool-panel">
-          <LickDetector
-            lickId={skill.lickId}
-            notes={notes}
-            isListening={isListening}
-            onScore={(p, t) => { setPendingPitch(p); setPendingTempo(t) }}
-          />
-        </div>
-      )}
-      {activeTool === 'recorder' && (
-        <div className="inline-tool-panel">
-          <AudioRecorder
-            skillId={skill.id}
-            bpm={item.suggestedBpm}
-            analyserRef={analyserRef}
-            streamRef={streamRef}
-          />
-        </div>
-      )}
-      {activeTool === 'calibrate' && (
-        <div className="inline-tool-panel">
-          <CalibrationWizard onClose={() => setActiveTool(null)} />
-        </div>
-      )}
-      {activeTool === 'play_along' && skill.songId && (
-        <div className="inline-tool-panel">
-          <PlayAlong
-            songId={skill.songId}
-            sectionId={skill.songSectionId}
-            bpm={item.suggestedBpm ?? 70}
-            synth={synth}
-          />
-        </div>
-      )}
-
-      {/* Pending scores summary */}
-      {(pendingRhythm !== null || pendingPitch !== null || pendingTempo !== null) && (
-        <div className="pending-scores">
-          {pendingRhythm !== null && <span className="pending-score-chip">Rhythm: {pendingRhythm}%</span>}
-          {pendingPitch !== null && <span className="pending-score-chip">Pitch: {pendingPitch}%</span>}
-          {pendingTempo !== null && <span className="pending-score-chip">Tempo: {pendingTempo}%</span>}
-        </div>
-      )}
-
-      {/* Log result */}
-      <div className="log-result">
-        <h3 className="steps-title">Log your result</h3>
-
-        {skill.progressBpm !== null && (
-          <div className="achieved-bpm-row">
-            <label className="achieved-bpm-label">BPM achieved:</label>
-            <input
-              type="number"
-              className="achieved-bpm-input"
-              value={achievedBpm}
-              onChange={(e) => setAchievedBpm(e.target.value)}
-              min={20}
-              max={300}
-              placeholder="e.g. 80"
-            />
-          </div>
-        )}
-
-        <div className="rating-row">
-          {ratings.map((r) => (
-            <button
-              key={r.value}
-              className={`rating-btn ${rating === r.value ? 'rating-btn-selected' : ''}`}
-              onClick={() => setRating(r.value)}
-            >
-              <span className="rating-emoji">{r.emoji}</span>
-              <span>{r.label}</span>
+            <div className="rating-row">
+              {ratings.map((r) => (
+                <button key={r.value} className={`rating-btn ${rating === r.value ? 'rating-btn-selected' : ''}`} onClick={() => setRating(r.value)}>
+                  <span className="rating-emoji">{r.emoji}</span>
+                  <span>{r.label}</span>
+                </button>
+              ))}
+            </div>
+            <button className="btn btn-primary" disabled={!rating} onClick={() => {
+              const bpm = achievedBpm ? parseInt(achievedBpm) : null
+              const scores: Record<string, number> = {}
+              if (pendingRhythm !== null) scores.rhythm = pendingRhythm
+              if (pendingPitch !== null) scores.pitch = pendingPitch
+              if (pendingTempo !== null) scores.tempo = pendingTempo
+              const evals = noteEvalsRef.current.length > 0 ? noteEvalsRef.current : undefined
+              onComplete(bpm && !isNaN(bpm) ? bpm : null, rating!, scores, evals)
+            }}>
+              Mark Complete
             </button>
-          ))}
+          </div>
         </div>
-
-        <button
-          className="btn btn-primary"
-          disabled={!rating}
-          onClick={() => {
-            const bpm = achievedBpm ? parseInt(achievedBpm) : null
-            const scores: Record<string, number> = {}
-            if (pendingRhythm !== null) scores.rhythm = pendingRhythm
-            if (pendingPitch !== null) scores.pitch = pendingPitch
-            if (pendingTempo !== null) scores.tempo = pendingTempo
-            const evals = noteEvalsRef.current.length > 0 ? noteEvalsRef.current : undefined
-            onComplete(bpm && !isNaN(bpm) ? bpm : null, rating!, scores, evals)
-          }}
-        >
-          Mark Complete
-        </button>
       </div>
     </div>
   )
@@ -537,6 +480,9 @@ export function PracticeSession() {
   const [completedIds, setCompletedIds] = useState<string[]>([])
   const [focusPlan, setFocusPlan] = useState<SessionPlan | null>(null)
   const [loadingFocus, setLoadingFocus] = useState(false)
+  const [lastItemMetrics, setLastItemMetrics] = useState<PerformanceMetrics | null>(null)
+  const [lastItemChunks, setLastItemChunks] = useState<ChunkDrill[]>([])
+  const [lastItemNextReview, setLastItemNextReview] = useState<string | null>(null)
 
   async function handleFocusMode() {
     setLoadingFocus(true)
@@ -598,8 +544,40 @@ export function PracticeSession() {
     await logSessionItem(item.skill.id, achievedBpm, rating, scores, noteEvaluations)
     setCompletedIds((prev) => [...prev, item.skill.id])
 
+    // Get metrics from store for summary
+    const metrics = useStore.getState().lastMetrics
+    setLastItemMetrics(metrics)
+
+    // Check for weak chunks if we have note evaluations and a roll pattern
+    if (noteEvaluations && noteEvaluations.length > 0 && item.skill.rollPatternId) {
+      const chunks = identifyWeakChunks(noteEvaluations, item.skill.rollPatternId, achievedBpm ?? 80)
+      setLastItemChunks(chunks)
+    } else {
+      setLastItemChunks([])
+    }
+
+    // Get next review date from updated skill record
+    const updatedRecord = useStore.getState().skillRecords.get(item.skill.id)
+    setLastItemNextReview(updatedRecord?.fsrsNextReview ?? updatedRecord?.srNextReview ?? null)
+
+    // Show summary if we have metrics, otherwise advance directly
+    if (metrics) {
+      setView('summary')
+    } else if (currentIndex < allItems.length - 1) {
+      setCurrentIndex(currentIndex + 1)
+    } else {
+      await endSession()
+      setView('complete')
+    }
+  }
+
+  async function handleSummaryContinue() {
+    setLastItemMetrics(null)
+    setLastItemChunks([])
+    setLastItemNextReview(null)
     if (currentIndex < allItems.length - 1) {
       setCurrentIndex(currentIndex + 1)
+      setView('item')
     } else {
       await endSession()
       setView('complete')
@@ -675,6 +653,28 @@ export function PracticeSession() {
     )
   }
 
+  if (view === 'summary' && lastItemMetrics) {
+    const currentItem = allItems[currentIndex]
+    return (
+      <div className="practice-session">
+        <SessionSummary
+          metrics={lastItemMetrics}
+          nextReviewDate={lastItemNextReview}
+          skillName={currentItem?.skill.name ?? 'Practice'}
+          onContinue={handleSummaryContinue}
+        />
+        {lastItemChunks.length > 0 && currentItem?.skill.rollPatternId && (
+          <ChunkDrillPrompt
+            chunks={lastItemChunks}
+            patternName={currentItem.skill.name}
+            onDismiss={handleSummaryContinue}
+            onDrill={() => handleSummaryContinue()}
+          />
+        )}
+      </div>
+    )
+  }
+
   if (view === 'complete') {
     return (
       <div className="practice-complete">
@@ -723,6 +723,8 @@ export function PracticeSession() {
           </div>
         </>
       )}
+
+      <SessionTimer totalMinutes={30} onTimeUp={() => {}} />
 
       {/* Unlock notification */}
       {newlyUnlocked.length > 0 && (

@@ -65,3 +65,54 @@ export function evaluateTempoAdjustment(
     ],
   }
 }
+
+// ── Interleaved tempo mode ────────────────────────────────────────────────
+// Randomizes BPM within [target-15, target+10] for contextual interference
+
+export interface InterleavedTempoState {
+  targetBpm: number
+  currentBpm: number
+  minBpm: number
+  maxBpm: number
+  history: { bpm: number; success: boolean }[]
+}
+
+export function createInterleavedTempoState(targetBpm: number): InterleavedTempoState {
+  return {
+    targetBpm,
+    currentBpm: targetBpm,
+    minBpm: Math.max(BPM_FLOOR, targetBpm - 15),
+    maxBpm: Math.min(BPM_CEILING, targetBpm + 10),
+    history: [],
+  }
+}
+
+export function nextInterleavedBpm(state: InterleavedTempoState, cycleAccuracy: number): InterleavedTempoState {
+  const success = cycleAccuracy >= 75
+  const newHistory = [...state.history, { bpm: state.currentBpm, success }]
+
+  // Narrow range based on performance: if consistently good at edges, tighten
+  let { minBpm, maxBpm } = state
+  const recentAtMin = newHistory.filter(h => h.bpm <= minBpm + 5)
+  const recentAtMax = newHistory.filter(h => h.bpm >= maxBpm - 5)
+
+  if (recentAtMin.length >= 3 && recentAtMin.every(h => h.success)) {
+    minBpm = Math.max(BPM_FLOOR, minBpm - 5)
+  }
+  if (recentAtMax.length >= 3 && recentAtMax.every(h => h.success)) {
+    maxBpm = Math.min(BPM_CEILING, maxBpm + 5)
+  }
+
+  // Random BPM in range, rounded to nearest 5
+  const range = maxBpm - minBpm
+  const randomBpm = minBpm + Math.random() * range
+  const currentBpm = Math.round(randomBpm / 5) * 5
+
+  return {
+    ...state,
+    currentBpm: Math.max(minBpm, Math.min(maxBpm, currentBpm)),
+    minBpm,
+    maxBpm,
+    history: newHistory.slice(-20), // keep last 20
+  }
+}

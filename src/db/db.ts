@@ -20,6 +20,8 @@ export interface UserProfile {
   updatedAt: string
 }
 
+export type MasteryLevel = 'introduced' | 'developing' | 'competent' | 'mastered' | 'fluent'
+
 export interface SkillRecord {
   id: string           // UUID
   userId: string
@@ -32,8 +34,11 @@ export interface SkillRecord {
   unlockedAt: string | null      // ISO
   progressedAt: string | null    // ISO — when progressBpm first hit
   masteredAt: string | null      // ISO — when masteryBpm first hit
-  srInterval: number | null      // days until next review (1, 3, or 7)
-  srNextReview: string | null    // ISO date of next scheduled review
+  srInterval: number | null      // days until next review (1, 3, or 7) — legacy, kept for compat
+  srNextReview: string | null    // ISO date — legacy, kept for compat
+  fsrsState: string | null       // JSON-serialized FSRS card state
+  fsrsNextReview: string | null  // ISO date from FSRS scheduler
+  masteryLevel: MasteryLevel | null // 5-level mastery
   createdAt: string
   updatedAt: string
 }
@@ -97,6 +102,14 @@ export interface NoteAccuracyRecord {
   createdAt: string
 }
 
+export interface Achievement {
+  id: string
+  achievementId: string      // references achievement definition key
+  userId: string
+  earnedAt: string           // ISO
+  createdAt: string
+}
+
 // ── Database class ────────────────────────────────────────────────────────────
 
 class BanjoBuddyDB extends Dexie {
@@ -107,6 +120,7 @@ class BanjoBuddyDB extends Dexie {
   recordings!: Table<Recording>
   streakRecords!: Table<StreakRecord>
   noteAccuracyRecords!: Table<NoteAccuracyRecord>
+  achievements!: Table<Achievement>
 
   constructor() {
     super('BanjoBuddyDB')
@@ -155,6 +169,24 @@ class BanjoBuddyDB extends Dexie {
       return tx.table('skillRecords').toCollection().modify((record: SkillRecord) => {
         if (record.srInterval === undefined) record.srInterval = null
         if (record.srNextReview === undefined) record.srNextReview = null
+      })
+    })
+
+    // v5: Add FSRS fields, mastery level, achievements table
+    this.version(5).stores({
+      userProfiles:       'id, path',
+      skillRecords:       'id, userId, skillId, status, lastPracticed, [userId+skillId], srNextReview, [userId+fsrsNextReview]',
+      practiceSessions:   'id, userId, date, startedAt',
+      sessionItems:       'id, sessionId, skillId, completedAt, [skillId+completedAt]',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, date, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
+      achievements:       '++id, achievementId, userId, earnedAt',
+    }).upgrade((tx) => {
+      return tx.table('skillRecords').toCollection().modify((record: SkillRecord) => {
+        if (record.fsrsState === undefined) record.fsrsState = null
+        if (record.fsrsNextReview === undefined) record.fsrsNextReview = null
+        if (record.masteryLevel === undefined) record.masteryLevel = null
       })
     })
   }

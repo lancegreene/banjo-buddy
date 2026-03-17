@@ -26,6 +26,7 @@ export interface CapturedNote {
   timestamp: number      // performance.now() at onset
   duration: number       // ms — filled when next note is detected
   clarity: number
+  rmsAmplitude: number        // RMS amplitude at onset (for dynamics metric)
   banjoString: number | null  // 1-5 if matched to open string, null if fretted/unknown
 }
 

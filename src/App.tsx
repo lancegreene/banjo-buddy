@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
+import './styles/tokens.css'
 import './App.css'
 import { useStore, type Page } from './store/useStore'
+import { useTheme } from './hooks/useTheme'
 import { Splash } from './components/Splash/Splash'
 import { Dashboard } from './components/Dashboard/Dashboard'
 import { PracticeSession } from './components/Practice/PracticeSession'
@@ -9,6 +11,12 @@ import { Metronome } from './components/Metronome/Metronome'
 import { Tuner } from './components/Tuner/Tuner'
 import { Pathway } from './components/Pathway/Pathway'
 import { ProgressPage } from './components/Progress/ProgressPage'
+import { AchievementList } from './components/Achievements/AchievementList'
+import { AchievementToast } from './components/Achievements/AchievementToast'
+import { OnboardingFlow } from './components/Onboarding/OnboardingFlow'
+import { PageTransition } from './components/Motion/PageTransition'
+import { ConfettiEffect } from './components/Celebrations/ConfettiEffect'
+import { useCelebration } from './hooks/useCelebration'
 
 type ToolModal = 'metronome' | 'tuner'
 
@@ -17,7 +25,8 @@ const NAV_ITEMS: { id: Page | ToolModal; label: string; icon: string }[] = [
   { id: 'pathway', label: 'Pathway', icon: '⟠' },
   { id: 'skill-tree', label: 'Skills', icon: '◈' },
   { id: 'progress', label: 'Progress', icon: '▦' },
-  { id: 'metronome', label: 'Metronome', icon: '♩' },
+  { id: 'achievements', label: 'Awards', icon: '★' },
+  { id: 'metronome', label: 'Metro', icon: '♩' },
   { id: 'tuner', label: 'Tuner', icon: '◎' },
 ]
 
@@ -26,10 +35,11 @@ const SPLIT_PAGES = new Set<Page>(['skill-tree', 'pathway'])
 
 function PageContent({ page }: { page: Page }) {
   switch (page) {
-    case 'dashboard':    return <Dashboard />
-    case 'practice':     return <PracticeSession />
-    case 'progress':     return <ProgressPage />
-    default:             return <Dashboard />
+    case 'dashboard':     return <Dashboard />
+    case 'practice':      return <PracticeSession />
+    case 'progress':      return <ProgressPage />
+    case 'achievements':  return <AchievementList />
+    default:              return <Dashboard />
   }
 }
 
@@ -94,10 +104,20 @@ export default function App() {
   const setPage = useStore((s) => s.setPage)
   const loadUser = useStore((s) => s.loadUser)
   const isLoading = useStore((s) => s.isLoading)
+  const user = useStore((s) => s.user)
   const selectedSkillId = useStore((s) => s.selectedSkillId)
+  const newAchievements = useStore((s) => s.newAchievements)
+  const clearNewAchievements = useStore((s) => s.clearNewAchievements)
+  const newlyUnlocked = useStore((s) => s.newlyUnlocked)
+
+  const { theme, toggleTheme } = useTheme()
+  const { celebration, dismiss: dismissCelebration } = useCelebration()
   const [openModal, setOpenModal] = useState<ToolModal | null>(null)
   const [splashDismissed, setSplashDismissed] = useState(
     () => sessionStorage.getItem('banjo-splash-seen') === 'true'
+  )
+  const [onboardingDone, setOnboardingDone] = useState(
+    () => localStorage.getItem('banjo-buddy-onboarded') === 'true'
   )
 
   useEffect(() => {
@@ -124,10 +144,31 @@ export default function App() {
     )
   }
 
+  // Onboarding gate: show if user has never completed it
+  if (!onboardingDone) {
+    return (
+      <OnboardingFlow
+        onComplete={() => {
+          localStorage.setItem('banjo-buddy-onboarded', 'true')
+          setOnboardingDone(true)
+        }}
+      />
+    )
+  }
+
   const isSplitPage = SPLIT_PAGES.has(page)
 
   return (
     <div className="app">
+      {/* Confetti overlay for celebrations */}
+      <ConfettiEffect trigger={newlyUnlocked.length > 0 || celebration?.type === 'confetti'} />
+
+      {/* Achievement toast */}
+      <AchievementToast
+        achievement={newAchievements.length > 0 ? newAchievements[0] : null}
+        onDismiss={clearNewAchievements}
+      />
+
       {isSplitPage ? (
         <main className="app-content-split">
           {page === 'skill-tree' ? <SkillTree /> : <Pathway />}
@@ -137,9 +178,20 @@ export default function App() {
         </main>
       ) : (
         <main className="app-content">
-          <PageContent page={page} />
+          <PageTransition pageKey={page}>
+            <PageContent page={page} />
+          </PageTransition>
         </main>
       )}
+
+      {/* Theme toggle (floating) */}
+      <button
+        className="theme-toggle"
+        onClick={toggleTheme}
+        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      >
+        {theme === 'dark' ? '☀' : '☾'}
+      </button>
 
       {/* Tool modals (Metronome / Tuner) */}
       {openModal && (

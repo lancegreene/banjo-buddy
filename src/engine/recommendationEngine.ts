@@ -12,6 +12,7 @@ import { SKILLS, type Skill, type Path } from '../data/curriculum'
 import type { SkillRecord, SessionItem } from '../db/db'
 import type { SkillStatus } from '../db/db'
 import { isDueForReview, daysTilReview } from './spacedRepetition'
+import { isDueForReview as isFsrsDue, getOverdueDays } from './fsrs'
 
 export interface RecommendedItem {
   skill: Skill
@@ -111,9 +112,20 @@ function accuracyScore(recentItems: SessionItem[]): number {
 
 function srMaintenanceScore(record: SkillRecord | null): number {
   if (!record) return 0
-  // If SR is scheduled and due, boost priority significantly
+
+  // Prefer FSRS scheduling if available
+  if (record.fsrsState && record.fsrsNextReview) {
+    try {
+      const fsrsState = JSON.parse(record.fsrsState)
+      if (isFsrsDue(fsrsState)) {
+        const overdueDays = getOverdueDays(fsrsState)
+        return Math.min(60, 40 + overdueDays * 3) // FSRS overdue-ness drives priority
+      }
+    } catch { /* fall through to legacy */ }
+  }
+
+  // Legacy 3-bucket fallback
   if (isDueForReview(record.srNextReview ?? null)) return 40
-  // If overdue by days, even higher
   const days = daysTilReview(record.srNextReview ?? null)
   if (days !== null && days < 0) return Math.min(50, 40 + Math.abs(days) * 2)
   return 0

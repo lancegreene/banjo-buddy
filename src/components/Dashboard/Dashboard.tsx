@@ -4,6 +4,8 @@ import { getPathProgress } from '../../engine/recommendationEngine'
 import type { SkillStatus } from '../../db/db'
 import { PracticeHeatmap } from '../Progress/PracticeHeatmap'
 import { WarmUpCard } from './WarmUpCard'
+import { PlateauAlert } from '../Dashboard/PlateauAlert'
+import { ChallengeCard } from '../Social/ChallengeCard'
 
 const STATUS_COLORS: Record<SkillStatus, string> = {
   locked: '#ccc',
@@ -243,6 +245,8 @@ export function Dashboard() {
 
       <WarmUpCard />
       <TodaysPlan />
+      <PlateauAlert />
+      <ChallengeCard />
       <PathSelector />
     </div>
   )

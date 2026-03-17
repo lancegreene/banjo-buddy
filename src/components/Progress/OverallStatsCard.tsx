@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import { getOverallStats, type OverallStats } from '../../engine/analyticsQueries'
+import { AnimatedCounter } from '../Motion/AnimatedCounter'
 
 export function OverallStatsCard() {
   const user = useStore((s) => s.user)
@@ -36,7 +37,9 @@ export function OverallStatsCard() {
       <div className="overall-stats-grid">
         {statItems.map((item) => (
           <div key={item.label} className="overall-stat">
-            <span className="overall-stat-value" style={{ color: item.color }}>{item.value}</span>
+            <span className="overall-stat-value" style={{ color: item.color }}>
+              {/^\d+$/.test(item.value) ? <AnimatedCounter value={parseInt(item.value)} /> : item.value}
+            </span>
             <span className="overall-stat-label">{item.label}</span>
           </div>
         ))}

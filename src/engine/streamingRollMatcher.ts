@@ -24,6 +24,8 @@ export interface StreamingRollState {
   cycleCount: number
   rollingAccuracy: number       // hit% over last 16 notes
   rollingTimingScore: number    // 0-100 timing regularity over last 16 notes
+  rollingTimingDeviation: number // mean absolute timing error in ms
+  rollingEvenness: number       // 0-100 inter-onset interval evenness
 }
 
 const ROLLING_WINDOW = 16
@@ -38,6 +40,8 @@ export function createRollMatcherState(patternId: string): StreamingRollState {
     cycleCount: 0,
     rollingAccuracy: 0,
     rollingTimingScore: 0,
+    rollingTimingDeviation: 0,
+    rollingEvenness: 0,
   }
 }
 
@@ -95,6 +99,8 @@ export function advanceRollMatcher(
 
   // Rolling timing score: coefficient of variation of intervals
   let rollingTimingScore = 0
+  let rollingTimingDeviation = 0
+  let rollingEvenness = 0
   if (recentEvals.length >= 3) {
     const intervals: number[] = []
     for (let i = 1; i < recentEvals.length; i++) {
@@ -105,6 +111,15 @@ export function advanceRollMatcher(
       const variance = intervals.reduce((a, b) => a + (b - mean) ** 2, 0) / intervals.length
       const cv = Math.sqrt(variance) / mean
       rollingTimingScore = Math.max(0, Math.round((1 - cv / 0.45) * 100))
+      rollingEvenness = rollingTimingScore // evenness is the CV-based score
+    }
+
+    // Mean absolute timing deviation from expected intervals
+    const timingErrors = recentEvals
+      .filter((e) => e.timingErrorMs !== null)
+      .map((e) => Math.abs(e.timingErrorMs!))
+    if (timingErrors.length > 0) {
+      rollingTimingDeviation = Math.round(timingErrors.reduce((a, b) => a + b, 0) / timingErrors.length)
     }
   }
 
@@ -116,5 +131,7 @@ export function advanceRollMatcher(
     cycleCount,
     rollingAccuracy,
     rollingTimingScore,
+    rollingTimingDeviation,
+    rollingEvenness,
   }
 }

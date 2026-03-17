@@ -28,6 +28,7 @@ interface InteractiveStepProps {
   onPass: () => void
   onFail: () => void
   defaultBpm?: number | null
+  hideTabDiagram?: boolean
 }
 
 export function InteractiveStep({
@@ -42,6 +43,7 @@ export function InteractiveStep({
   onPass,
   onFail,
   defaultBpm,
+  hideTabDiagram,
 }: InteractiveStepProps) {
   const [phase, setPhase] = useState<StepPhase>('read')
   const [accuracy, setAccuracy] = useState<number | null>(null)
@@ -151,8 +153,8 @@ export function InteractiveStep({
           />
         )}
 
-        {/* Roll pattern diagram */}
-        {rollPattern && phase !== 'trying' && (
+        {/* Roll pattern diagram — hidden when parent shows unified roll panel */}
+        {rollPattern && phase !== 'trying' && !hideTabDiagram && (
           <BanjoTabDiagram
             strings={rollPattern.strings}
             fingers={rollPattern.fingers}
@@ -185,8 +187,8 @@ export function InteractiveStep({
               Listening... ({notes.length} notes)
             </div>
 
-            {/* Show live roll pattern matching */}
-            {rollPattern && (
+            {/* Show live roll pattern matching — hidden when parent shows unified roll panel */}
+            {rollPattern && !hideTabDiagram && (
               <BanjoTabDiagram
                 strings={rollPattern.strings}
                 fingers={rollPattern.fingers}

@@ -122,6 +122,19 @@ export function useNoteCapture(options: UseNoteCaptureOptions = {}): UseNoteCapt
   }, [])
 
   const startListening = useCallback(async () => {
+    // Close any previous audio context before starting fresh
+    if (audioContextRef.current) {
+      try { audioContextRef.current.close() } catch {}
+      audioContextRef.current = null
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+      streamRef.current = null
+    }
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current)
+      animFrameRef.current = null
+    }
     setError(null)
     try {
       // Disable browser audio processing — echoCancellation/noiseSuppression/AGC
@@ -376,6 +389,7 @@ export function useNoteCapture(options: UseNoteCaptureOptions = {}): UseNoteCapt
               timestamp: now,
               duration: 0,
               clarity,
+              rmsAmplitude: rms,
               banjoString: banjoStr?.string ?? null,
             }
 

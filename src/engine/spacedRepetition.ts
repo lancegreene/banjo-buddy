@@ -1,10 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Banjo Buddy — Spaced Repetition (Simplified 3-Bucket)
-// For maintenance-phase skills: review in 1 / 3 / 7 days based on performance.
-// Full SM-2 is overkill for 141 BPM-gated skills.
+// Legacy: kept for backward compat. New code should use src/engine/fsrs.ts
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { SelfRating } from '../db/db'
+
+// Re-export FSRS for convenience
+export { scheduleReview, scoreToRating, getNextReviewDate, isDueForReview as isFsrsDue } from './fsrs'
 
 export interface SrSchedule {
   interval: number       // days: 1, 3, or 7

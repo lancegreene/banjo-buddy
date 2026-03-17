@@ -6,8 +6,14 @@ import { buildSessionPlan, deriveNewStatus, getNewlyUnlockedSkills, type Session
 import type { NoteEvaluation } from '../engine/streamingRollMatcher'
 import { computeSrSchedule } from '../engine/spacedRepetition'
 import { saveRecording } from '../engine/recordingService'
+import { createNewFsrsState, scheduleReview, scoreToRating, getNextReviewDate, type FsrsState } from '../engine/fsrs'
+import { checkAchievements, type AchievementContext } from '../engine/achievementTracker'
+import type { AchievementDef } from '../data/achievements'
+import { computeMasteryLevel } from '../engine/masteryLevels'
+import { computePerformanceMetrics } from '../engine/performanceMetrics'
+import type { PerformanceMetrics } from '../types/performance'
 
-export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'pathway' | 'progress'
+export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'pathway' | 'progress' | 'achievements'
 
 interface AppState {
   // App shell
@@ -52,6 +58,13 @@ interface AppState {
   newlyUnlocked: string[]
   clearNewlyUnlocked: () => void
 
+  // Achievements
+  newAchievements: AchievementDef[]
+  clearNewAchievements: () => void
+
+  // Last performance metrics (for session summary)
+  lastMetrics: PerformanceMetrics | null
+
   // Loading / error
   isLoading: boolean
   error: string | null
@@ -71,6 +84,8 @@ export const useStore = create<AppState>((set, get) => ({
   sessionPlan: null,
   activeSession: null,
   newlyUnlocked: [],
+  newAchievements: [],
+  lastMetrics: null,
   isLoading: false,
   error: null,
 
@@ -246,6 +261,7 @@ export const useStore = create<AppState>((set, get) => ({
     const newStatus = deriveNewStatus(skill, currentRecord, { skillId, achievedBpm, selfRating, compositeScore: composite }, skillRecords)
 
     // Compute spaced repetition schedule for progressed/mastered skills
+    // Legacy 3-bucket SR (kept for backward compat)
     const srFields: { srInterval: number | null; srNextReview: string | null } =
       (newStatus === 'progressed' || newStatus === 'mastered')
         ? (() => {
@@ -253,6 +269,30 @@ export const useStore = create<AppState>((set, get) => ({
             return { srInterval: sr.interval, srNextReview: sr.nextReview }
           })()
         : { srInterval: currentRecord?.srInterval ?? null, srNextReview: currentRecord?.srNextReview ?? null }
+
+    // FSRS scheduling (new v2 system)
+    let fsrsState: string | null = currentRecord?.fsrsState ?? null
+    let fsrsNextReview: string | null = currentRecord?.fsrsNextReview ?? null
+    if (newStatus === 'progressed' || newStatus === 'mastered' || newStatus === 'active') {
+      try {
+        const prevFsrs: FsrsState = fsrsState ? JSON.parse(fsrsState) : createNewFsrsState()
+        const rating = scoreToRating(composite, selfRating)
+        const newFsrs = scheduleReview(prevFsrs, rating)
+        fsrsState = JSON.stringify(newFsrs)
+        fsrsNextReview = getNextReviewDate(newFsrs)
+      } catch {
+        // Fallback: keep previous FSRS state
+      }
+    }
+
+    // Compute performance metrics for session summary
+    let metrics: PerformanceMetrics | null = null
+    let masteryLevel = currentRecord?.masteryLevel ?? null
+    if (noteEvaluations && noteEvaluations.length > 0) {
+      metrics = computePerformanceMetrics(noteEvaluations, [], achievedBpm)
+      masteryLevel = computeMasteryLevel(metrics)
+      set({ lastMetrics: metrics })
+    }
 
     await upsertSkillRecord({
       userId: user.id,
@@ -266,6 +306,9 @@ export const useStore = create<AppState>((set, get) => ({
       progressedAt: newStatus === 'progressed' && !currentRecord?.progressedAt ? nowISO() : (currentRecord?.progressedAt ?? null),
       masteredAt: newStatus === 'mastered' && !currentRecord?.masteredAt ? nowISO() : (currentRecord?.masteredAt ?? null),
       ...srFields,
+      fsrsState,
+      fsrsNextReview,
+      masteryLevel,
     })
 
     // Check newly unlocked using the pre-update snapshot so wasLocked is accurate
@@ -285,8 +328,36 @@ export const useStore = create<AppState>((set, get) => ({
     set({ skillRecords: finalRecords, newlyUnlocked: newlyUnlocked.map((s) => s.id) })
     get().refreshSessionPlan()
 
+    // Check achievements
+    try {
+      const sessions = await db.practiceSessions.where('userId').equals(user.id).toArray()
+      const allItems = await db.sessionItems.toArray()
+      const sessionIds = new Set(sessions.map(s => s.id))
+      const myItems = allItems.filter(i => sessionIds.has(i.sessionId))
+      const bestBpms = myItems.filter(i => i.achievedBpm !== null).map(i => i.achievedBpm!)
+      const skillsByStatus: Record<string, number> = {}
+      for (const r of finalRecords.values()) {
+        skillsByStatus[r.status] = (skillsByStatus[r.status] ?? 0) + 1
+      }
+      const context: AchievementContext = {
+        currentStreak: get().streak,
+        totalMinutes: sessions.reduce((a, s) => a + (s.durationMinutes ?? 0), 0),
+        totalSessions: sessions.length,
+        totalItems: myItems.length,
+        skillsByStatus,
+        bestBpm: bestBpms.length > 0 ? Math.max(...bestBpms) : 0,
+      }
+      const newAchievements = await checkAchievements(user.id, context)
+      if (newAchievements.length > 0) {
+        set({ newAchievements: newAchievements })
+      }
+    } catch {
+      // Non-critical: don't block on achievement check failure
+    }
+
     return { newlyUnlocked: newlyUnlocked.map((s) => s.id) }
   },
 
   clearNewlyUnlocked: () => set({ newlyUnlocked: [] }),
+  clearNewAchievements: () => set({ newAchievements: [] }),
 }))

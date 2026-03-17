@@ -4,20 +4,41 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState } from 'react'
+import { useStore } from '../../store/useStore'
 import { OverallStatsCard } from './OverallStatsCard'
 import { PracticeHeatmap } from './PracticeHeatmap'
 import { BpmTrendChart } from './BpmTrendChart'
 import { SkillPicker } from './SkillPicker'
 import { SessionHistoryList } from './SessionHistoryList'
+import { RadarChart } from '../Charts/RadarChart'
 
 export function ProgressPage() {
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null)
+  const lastMetrics = useStore((s) => s.lastMetrics)
 
   return (
     <div className="progress-page">
       <h1 className="progress-page-title">Your Progress</h1>
 
       <OverallStatsCard />
+
+      {lastMetrics && (
+        <div className="progress-section">
+          <h3 className="section-title">Performance Overview</h3>
+          <RadarChart
+            values={[
+              lastMetrics.timing,
+              lastMetrics.noteAccuracy,
+              lastMetrics.rollEvenness,
+              lastMetrics.dynamics,
+              lastMetrics.tempoStability,
+            ]}
+            labels={['Timing', 'Notes', 'Rolls', 'Dynamics', 'Tempo']}
+            size={220}
+          />
+        </div>
+      )}
+
       <PracticeHeatmap />
 
       <div className="progress-section">

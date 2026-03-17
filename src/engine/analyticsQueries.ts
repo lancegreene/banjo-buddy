@@ -265,6 +265,26 @@ export interface AccuracyTrendPoint {
   avgAccuracy: number
 }
 
+export async function getSkillProgressTrend(
+  skillId: string,
+  lastN: number = 10
+): Promise<{ date: string; score: number; bpm: number | null }[]> {
+  const items = await db.sessionItems
+    .where('[skillId+completedAt]')
+    .between([skillId, ''], [skillId, '\uffff'])
+    .toArray()
+
+  return items
+    .filter(i => i.compositeScore !== null)
+    .sort((a, b) => a.completedAt.localeCompare(b.completedAt))
+    .slice(-lastN)
+    .map(i => ({
+      date: i.completedAt.slice(0, 10),
+      score: i.compositeScore!,
+      bpm: i.achievedBpm,
+    }))
+}
+
 export async function getRecentAccuracyTrend(
   skillId: string,
   windowDays = 30
