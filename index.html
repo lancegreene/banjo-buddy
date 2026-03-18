@@ -4,10 +4,22 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/banjo-buddy/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
-    <script type="module" crossorigin src="/banjo-buddy/assets/index-CBNzKUpN.js"></script>
-    <link rel="stylesheet" crossorigin href="/banjo-buddy/assets/index-CzZrZ5iM.css">
-  </head>
+    <meta name="theme-color" content="#1A1D23" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/banjo-buddy/manifest.json" />
+    <link rel="apple-touch-icon" href="/banjo-buddy/icons/icon-192.png" />
+    <title>Banjo Buddy</title>
+    <script>
+      // Set theme before first paint to prevent flash
+      (function() {
+        var t = localStorage.getItem('banjo-buddy-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
+    <script type="module" crossorigin src="/banjo-buddy/assets/index-D5qglDi1.js"></script>
+    <link rel="stylesheet" crossorigin href="/banjo-buddy/assets/index-DR2pfSVz.css">
+  <script id="vite-plugin-pwa:register-sw" src="/banjo-buddy/registerSW.js"></script></head>
   <body>
     <div id="root"></div>
   </body>
