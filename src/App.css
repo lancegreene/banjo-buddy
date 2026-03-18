@@ -5635,6 +5635,7 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
+  z-index: 7001;
   min-width: 180px;
   background: var(--bg-surface);
   border: 1px solid var(--border-primary, #333);
