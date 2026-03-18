@@ -110,13 +110,11 @@ export default function App() {
   const setPage = useStore((s) => s.setPage)
   const loadUser = useStore((s) => s.loadUser)
   const isLoading = useStore((s) => s.isLoading)
-  const user = useStore((s) => s.user)
   const selectedSkillId = useStore((s) => s.selectedSkillId)
   const newAchievements = useStore((s) => s.newAchievements)
   const clearNewAchievements = useStore((s) => s.clearNewAchievements)
   const newlyUnlocked = useStore((s) => s.newlyUnlocked)
   const showLoginScreen = useStore((s) => s.showLoginScreen)
-  const activeUserRole = useStore((s) => s.activeUserRole)
 
   const { theme, toggleTheme } = useTheme()
   const { celebration, dismiss: dismissCelebration } = useCelebration()
@@ -188,8 +186,8 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* User badge — shown for teacher and student roles */}
-      {activeUserRole !== 'solo' && <UserBadge />}
+      {/* User badge + account menu (top-right) */}
+      <UserBadge theme={theme} onToggleTheme={toggleTheme} />
 
       {/* Confetti overlay for celebrations */}
       <ConfettiEffect trigger={newlyUnlocked.length > 0 || celebration?.type === 'confetti'} />
@@ -214,15 +212,6 @@ export default function App() {
           </PageTransition>
         </main>
       )}
-
-      {/* Theme toggle (floating) */}
-      <button
-        className="theme-toggle"
-        onClick={toggleTheme}
-        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-      >
-        {theme === 'dark' ? '☀' : '☾'}
-      </button>
 
       {/* Tool modals (Metronome / Tuner) */}
       {openModal && (
