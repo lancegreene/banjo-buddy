@@ -4,7 +4,7 @@
 // Adapts based on what was practiced recently.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { SKILLS, type Skill } from '../data/curriculum'
+import { getAllSkills, type Skill } from '../data/curriculum'
 import type { SkillRecord } from '../db/db'
 import { db } from '../db/db'
 
@@ -40,7 +40,7 @@ export async function generateWarmUp(
   )
 
   // Find warm-up candidates: simple roll/technique skills that are unlocked+
-  const candidates = SKILLS.filter((skill) => {
+  const candidates = getAllSkills().filter((skill) => {
     if (!WARMUP_CATEGORIES.includes(skill.category as typeof WARMUP_CATEGORIES[number])) return false
     const record = allRecords.get(skill.id)
     if (!record) return false

@@ -8,7 +8,7 @@
 //   4. Session balance: new material / weak spots / maintenance
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { SKILLS, type Skill, type Path } from '../data/curriculum'
+import { getAllSkills, type Skill, type Path } from '../data/curriculum'
 import type { SkillRecord, SessionItem } from '../db/db'
 import type { SkillStatus } from '../db/db'
 import { isDueForReview, daysTilReview } from './spacedRepetition'
@@ -33,12 +33,20 @@ export interface SessionPlan {
 export function evaluateSkillStatus(
   skill: Skill,
   record: SkillRecord | null,
-  allRecords: Map<string, SkillRecord>
+  allRecords: Map<string, SkillRecord>,
+  disabledSkillIds: Set<string> = new Set()
 ): SkillStatus {
   // Skills with no prerequisites are always unlocked
+  // Disabled prereqs are treated as auto-met so students aren't blocked
   const prereqsMet = skill.prerequisites.every((prereqId) => {
+    if (disabledSkillIds.has(prereqId)) return true
     const prereqRecord = allRecords.get(prereqId)
-    return prereqRecord && (prereqRecord.status === 'progressed' || prereqRecord.status === 'mastered')
+    if (!prereqRecord) return false
+    // A prerequisite is met if the user has practiced it at least once.
+    // We check practiceCount as a robust fallback — the stored status field
+    // can get out of sync for BPM-based skills whose status is dynamically derived.
+    if (prereqRecord.practiceCount > 0) return true
+    return prereqRecord.status === 'active' || prereqRecord.status === 'progressed' || prereqRecord.status === 'mastered'
   })
 
   if (!prereqsMet) return 'locked'
@@ -223,16 +231,19 @@ export function buildSessionPlan(
   path: Path,
   allRecords: Map<string, SkillRecord>,
   targetMinutes = 30,
-  recentItemsBySkill: Map<string, SessionItem[]> = new Map()
+  recentItemsBySkill: Map<string, SessionItem[]> = new Map(),
+  disabledSkillIds: Set<string> = new Set()
 ): SessionPlan {
-  // Filter skills for this path
-  const pathSkills = SKILLS.filter((s) => s.path === path || s.path === 'all')
+  // Filter skills for this path, excluding disabled skills
+  const pathSkills = getAllSkills().filter((s) =>
+    (s.path === path || s.path === 'all') && !disabledSkillIds.has(s.id)
+  )
 
   // Evaluate every skill
   const evaluated = pathSkills.map((skill) => {
     const record = allRecords.get(skill.id) ?? null
     const recentItems = recentItemsBySkill.get(skill.id) ?? []
-    const status = evaluateSkillStatus(skill, record, allRecords)
+    const status = evaluateSkillStatus(skill, record, allRecords, disabledSkillIds)
     const priority = computePriority(skill, record, status, recentItems)
     const reason = buildReason(skill, record, status, recentItems)
     const suggestedBpm = suggestBpm(skill, record, recentItems)
@@ -290,7 +301,8 @@ export function deriveNewStatus(
   skill: Skill,
   currentRecord: SkillRecord | null,
   result: SessionResult,
-  allRecords: Map<string, SkillRecord>
+  allRecords: Map<string, SkillRecord>,
+  disabledSkillIds: Set<string> = new Set()
 ): SkillStatus {
   // Non-BPM skills advance via self-rating
   if (skill.progressBpm === null && skill.masteryBpm === null) {
@@ -329,7 +341,7 @@ export function deriveNewStatus(
     practiceCount: (currentRecord?.practiceCount ?? 0) + 1,
   }
 
-  return evaluateSkillStatus(skill, updatedRecord, allRecords)
+  return evaluateSkillStatus(skill, updatedRecord, allRecords, disabledSkillIds)
 }
 
 // ── Skills newly unlocked after a status update ───────────────────────────────
@@ -338,9 +350,11 @@ export function getNewlyUnlockedSkills(
   updatedSkillId: string,
   newStatus: SkillStatus,
   allRecords: Map<string, SkillRecord>,
-  path: Path
+  path: Path,
+  disabledSkillIds: Set<string> = new Set()
 ): Skill[] {
-  if (newStatus !== 'progressed' && newStatus !== 'mastered') return []
+  // Any practiced status (active, progressed, mastered) can unlock dependents
+  if (newStatus === 'locked' || newStatus === 'unlocked') return []
 
   const tempRecords = new Map(allRecords)
   const existing = tempRecords.get(updatedSkillId)
@@ -357,12 +371,13 @@ export function getNewlyUnlockedSkills(
     } as SkillRecord)
   }
 
-  return SKILLS.filter((s) => {
+  return getAllSkills().filter((s) => {
     if (s.path !== path && s.path !== 'all') return false
     if (!s.prerequisites.includes(updatedSkillId)) return false
+    if (disabledSkillIds.has(s.id)) return false
     const currentRecord = allRecords.get(s.id)
-    const wasLocked = evaluateSkillStatus(s, currentRecord ?? null, allRecords) === 'locked'
-    const nowUnlocked = evaluateSkillStatus(s, currentRecord ?? null, tempRecords) === 'unlocked'
+    const wasLocked = evaluateSkillStatus(s, currentRecord ?? null, allRecords, disabledSkillIds) === 'locked'
+    const nowUnlocked = evaluateSkillStatus(s, currentRecord ?? null, tempRecords, disabledSkillIds) === 'unlocked'
     return wasLocked && nowUnlocked
   })
 }
@@ -435,13 +450,19 @@ export interface PathProgress {
   percentComplete: number
 }
 
-export function getPathProgress(path: Path, allRecords: Map<string, SkillRecord>): PathProgress {
-  const pathSkills = SKILLS.filter((s) => s.path === path || s.path === 'all')
+export function getPathProgress(
+  path: Path,
+  allRecords: Map<string, SkillRecord>,
+  disabledSkillIds: Set<string> = new Set()
+): PathProgress {
+  const pathSkills = getAllSkills().filter((s) =>
+    (s.path === path || s.path === 'all') && !disabledSkillIds.has(s.id)
+  )
   const counts = { locked: 0, unlocked: 0, active: 0, progressed: 0, mastered: 0 }
 
   for (const skill of pathSkills) {
     const record = allRecords.get(skill.id) ?? null
-    const status = evaluateSkillStatus(skill, record, allRecords)
+    const status = evaluateSkillStatus(skill, record, allRecords, disabledSkillIds)
     counts[status]++
   }
 

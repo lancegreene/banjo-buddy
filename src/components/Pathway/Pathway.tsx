@@ -1,7 +1,7 @@
 // ─── Pathway — Linear skill progression sidebar ──────────────────────────────
 import { useMemo, useRef, useEffect, useState } from 'react'
 import { useStore } from '../../store/useStore'
-import { SKILLS, SKILL_MAP, type Skill } from '../../data/curriculum'
+import { getAllSkills, SKILL_MAP, type Skill } from '../../data/curriculum'
 import { evaluateSkillStatus } from '../../engine/recommendationEngine'
 import type { SkillStatus } from '../../db/db'
 
@@ -26,13 +26,19 @@ export function Pathway() {
   const skillRecords = useStore((s) => s.skillRecords)
   const practiceSkill = useStore((s) => s.practiceSkill)
   const selectedSkillId = useStore((s) => s.selectedSkillId)
+  const disabledSkillIds = useStore((s) => s.disabledSkillIds)
+  const activeUserRole = useStore((s) => s.activeUserRole)
 
   const orderedSkills = useMemo(() => {
     if (!user) return []
-    return SKILLS
+    let skills = getAllSkills()
       .filter((s) => s.path === user.path || s.path === 'all')
-      .sort((a, b) => a.month - b.month || (a.week ?? 99) - (b.week ?? 99))
-  }, [user, skillRecords])
+    // Students don't see disabled skills
+    if (activeUserRole === 'student') {
+      skills = skills.filter((s) => !disabledSkillIds.has(s.id))
+    }
+    return skills.sort((a, b) => a.month - b.month || (a.week ?? 99) - (b.week ?? 99))
+  }, [user, skillRecords, activeUserRole, disabledSkillIds])
 
   // Group by month
   const months = useMemo(() => {
@@ -47,16 +53,18 @@ export function Pathway() {
 
   if (!user) return null
 
+  const disabled = activeUserRole === 'student' ? disabledSkillIds : new Set<string>()
+
   // Find the index of the first non-progressed/mastered skill (the "current" frontier)
   const frontierIdx = orderedSkills.findIndex((s) => {
     const r = skillRecords.get(s.id) ?? null
-    const status = evaluateSkillStatus(s, r, skillRecords)
+    const status = evaluateSkillStatus(s, r, skillRecords, disabled)
     return status !== 'progressed' && status !== 'mastered'
   })
 
   function handleClick(skill: Skill) {
     const r = skillRecords.get(skill.id) ?? null
-    const status = evaluateSkillStatus(skill, r, skillRecords)
+    const status = evaluateSkillStatus(skill, r, skillRecords, disabled)
     if (status === 'locked') return
     practiceSkill(skill.id)
   }
@@ -64,8 +72,9 @@ export function Pathway() {
   function getLockedTitle(skill: Skill): string {
     const unmet = skill.prerequisites
       .filter((id) => {
+        if (disabled.has(id)) return false
         const r = skillRecords.get(id)
-        return !r || (r.status !== 'progressed' && r.status !== 'mastered')
+        return !r || (r.practiceCount === 0 && r.status !== 'active' && r.status !== 'progressed' && r.status !== 'mastered')
       })
       .map((id) => SKILL_MAP.get(id)?.name ?? id)
     return unmet.length ? `Complete first: ${unmet.join(', ')}` : 'Complete prerequisites to unlock'
@@ -100,7 +109,7 @@ export function Pathway() {
             <div className="pathway-month-label">Month {month}</div>
             {filtered.map((skill) => {
               const record = skillRecords.get(skill.id) ?? null
-              const status = evaluateSkillStatus(skill, record, skillRecords)
+              const status = evaluateSkillStatus(skill, record, skillRecords, disabled)
               const isPlayable = status !== 'locked'
               const isFrontier = globalIdx === frontierIdx
               const idx = globalIdx++

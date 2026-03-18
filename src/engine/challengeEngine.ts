@@ -4,7 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { db, newId, nowISO } from '../db/db'
-import { SKILLS } from '../data/curriculum'
+import { getAllSkills } from '../data/curriculum'
 
 export interface Challenge {
   id: string
@@ -27,13 +27,13 @@ export function getCurrentChallenge(): Challenge {
   const weekNum = Math.floor(monday.getTime() / (7 * 24 * 60 * 60 * 1000))
 
   // Filter to skills with BPM targets
-  const bpmSkills = SKILLS.filter(s => s.progressBpm && s.progressBpm >= 60)
+  const bpmSkills = getAllSkills().filter(s => s.progressBpm && s.progressBpm >= 60)
   if (bpmSkills.length === 0) {
     return {
       id: `challenge-${weekStart}`,
       title: 'Practice Challenge',
       description: 'Practice any skill 3 times this week',
-      skillId: SKILLS[0]?.id ?? '',
+      skillId: getAllSkills()[0]?.id ?? '',
       targetBpm: 60,
       targetAccuracy: 70,
       weekStart,

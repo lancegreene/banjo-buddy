@@ -78,3 +78,26 @@ export const ROLL_PATTERNS: RollPattern[] = [
 ]
 
 export const ROLL_MAP = new Map(ROLL_PATTERNS.map((r) => [r.id, r]))
+
+/** Reload ROLL_MAP with defaults + any custom patterns from IndexedDB. */
+export async function refreshRollMap(): Promise<void> {
+  const { db } = await import('../db/db')
+  const custom = await db.customRollPatterns.toArray()
+
+  ROLL_MAP.clear()
+  for (const p of ROLL_PATTERNS) ROLL_MAP.set(p.id, p)
+  for (const c of custom) {
+    ROLL_MAP.set(c.id, {
+      id: c.id,
+      name: c.name,
+      strings: c.strings,
+      fingers: c.fingers,
+      description: c.description,
+    })
+  }
+}
+
+/** Get all patterns (default + custom) as an array. */
+export function getAllPatterns(): RollPattern[] {
+  return Array.from(ROLL_MAP.values())
+}

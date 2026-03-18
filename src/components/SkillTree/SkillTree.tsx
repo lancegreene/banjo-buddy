@@ -1,6 +1,6 @@
 import { useMemo, useRef, useEffect, useState } from 'react'
 import { useStore } from '../../store/useStore'
-import { SKILLS, SKILL_MAP, CATEGORIES, type Skill, type SkillCategory } from '../../data/curriculum'
+import { getAllSkills, SKILL_MAP, CATEGORIES, type Skill, type SkillCategory } from '../../data/curriculum'
 import { evaluateSkillStatus } from '../../engine/recommendationEngine'
 import type { SkillStatus } from '../../db/db'
 import { getEffectiveMastery, masteryLevelToLabel, MASTERY_COLORS } from '../../engine/masteryLevels'
@@ -33,20 +33,24 @@ const CATEGORY_COLORS: Record<SkillCategory, string> = {
   performance: '#ffa726',
 }
 
-function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill }: {
+function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill, isDisabledByTeacher }: {
   skill: Skill
   isCurrent: boolean
   compact?: boolean
   isSelected?: boolean
   onNavigateToSkill?: (skillId: string) => void
+  isDisabledByTeacher?: boolean
 }) {
   const skillRecords = useStore((s) => s.skillRecords)
+  const disabledSkillIds = useStore((s) => s.disabledSkillIds)
+  const activeUserRole = useStore((s) => s.activeUserRole)
   const practiceSkill = useStore((s) => s.practiceSkill)
   const ref = useRef<HTMLDivElement>(null)
   const [showPrereqs, setShowPrereqs] = useState(false)
 
+  const disabled = activeUserRole === 'student' ? disabledSkillIds : new Set<string>()
   const record = skillRecords.get(skill.id) ?? null
-  const status = evaluateSkillStatus(skill, record, skillRecords)
+  const status = evaluateSkillStatus(skill, record, skillRecords, disabled)
 
   useEffect(() => {
     if (isCurrent && ref.current) {
@@ -56,14 +60,15 @@ function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill }:
 
   const isPlayable = status !== 'locked'
 
-  // Build unmet prerequisites list for locked skills
+  // Build unmet prerequisites list for locked skills (skip disabled prereqs — they're auto-met)
   const unmetPrereqs = !isPlayable
     ? skill.prerequisites
         .filter((id) => {
+          if (disabled.has(id)) return false
           const r = skillRecords.get(id)
-          return !r || (r.status !== 'progressed' && r.status !== 'mastered')
+          return !r || (r.practiceCount === 0 && r.status !== 'active' && r.status !== 'progressed' && r.status !== 'mastered')
         })
-        .map((id) => ({ id, name: SKILL_MAP.get(id)?.name ?? id, status: evaluateSkillStatus(SKILL_MAP.get(id)!, skillRecords.get(id) ?? null, skillRecords) }))
+        .map((id) => ({ id, name: SKILL_MAP.get(id)?.name ?? id, status: evaluateSkillStatus(SKILL_MAP.get(id)!, skillRecords.get(id) ?? null, skillRecords, disabled) }))
     : []
 
   function handleLockedClick() {
@@ -85,7 +90,7 @@ function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill }:
     return (
       <div ref={ref} className={`skill-card-compact-wrap ${showPrereqs ? 'skill-card-prereqs-open' : ''}`}>
         <div
-          className={`skill-card-compact skill-card-${status} ${isPlayable ? 'skill-card-clickable' : 'skill-card-locked-clickable'} ${isSelected ? 'skill-card-selected' : ''}`}
+          className={`skill-card-compact skill-card-${status} ${isPlayable ? 'skill-card-clickable' : 'skill-card-locked-clickable'} ${isSelected ? 'skill-card-selected' : ''} ${isDisabledByTeacher ? 'skill-card-teacher-disabled' : ''}`}
           onClick={isPlayable ? () => practiceSkill(skill.id) : handleLockedClick}
           title={isPlayable ? `Practice: ${skill.name}` : undefined}
         >
@@ -106,6 +111,7 @@ function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill }:
             )
           })()}
           {skill.isMilestone && <span className="skill-milestone-badge">🎯</span>}
+          {isDisabledByTeacher && <span className="skill-disabled-badge">disabled</span>}
           {!isPlayable && unmetPrereqs.length > 0 && (
             <span className="skill-prereq-toggle">{showPrereqs ? '▾' : '▸'}</span>
           )}
@@ -203,6 +209,8 @@ export function SkillTree() {
   const user = useStore((s) => s.user)
   const skillRecords = useStore((s) => s.skillRecords)
   const selectedSkillId = useStore((s) => s.selectedSkillId)
+  const disabledSkillIds = useStore((s) => s.disabledSkillIds)
+  const activeUserRole = useStore((s) => s.activeUserRole)
 
   // Find most recently practiced skill to highlight
   const currentSkillId = useMemo(() => {
@@ -220,19 +228,23 @@ export function SkillTree() {
   // Determine which category the current skill belongs to
   const currentCategory = useMemo(() => {
     if (!currentSkillId) return CATEGORIES[0].id
-    return SKILLS.find((s) => s.id === currentSkillId)?.category ?? CATEGORIES[0].id
+    return SKILL_MAP.get(currentSkillId)?.category ?? CATEGORIES[0].id
   }, [currentSkillId])
 
   // Also auto-expand category of selected skill
   const selectedCategory = useMemo(() => {
     if (!selectedSkillId) return null
-    return SKILLS.find((s) => s.id === selectedSkillId)?.category ?? null
+    return SKILL_MAP.get(selectedSkillId)?.category ?? null
   }, [selectedSkillId])
 
-  // Group skills by category, filtered by user path
+  // Group skills by category, filtered by user path + disabled skills
   const categories = useMemo(() => {
     if (!user) return []
-    const pathSkills = SKILLS.filter((s) => s.path === user.path || s.path === 'all')
+    let pathSkills = getAllSkills().filter((s) => s.path === user.path || s.path === 'all')
+    // Students don't see disabled skills; teachers see all
+    if (activeUserRole === 'student') {
+      pathSkills = pathSkills.filter((s) => !disabledSkillIds.has(s.id))
+    }
     return CATEGORIES
       .map(({ id, label }) => ({
         id,
@@ -242,7 +254,7 @@ export function SkillTree() {
           .sort((a, b) => a.month - b.month || (a.week ?? 99) - (b.week ?? 99)),
       }))
       .filter((cat) => cat.skills.length > 0)
-  }, [user, skillRecords])
+  }, [user, skillRecords, activeUserRole, disabledSkillIds])
 
   // Categories start collapsed; current category starts open
   const [expandedCategories, setExpandedCategories] = useState<Set<SkillCategory>>(
@@ -284,7 +296,7 @@ export function SkillTree() {
 
   // Navigate to a skill: expand its category and scroll to it
   function handleNavigateToSkill(skillId: string) {
-    const targetSkill = SKILLS.find((s) => s.id === skillId)
+    const targetSkill = SKILL_MAP.get(skillId)
     if (!targetSkill) return
 
     // Expand the target skill's category
@@ -349,6 +361,7 @@ export function SkillTree() {
                       compact
                       isSelected={skill.id === selectedSkillId}
                       onNavigateToSkill={handleNavigateToSkill}
+                      isDisabledByTeacher={activeUserRole === 'teacher' && disabledSkillIds.has(skill.id)}
                     />
                   ))}
                 </div>

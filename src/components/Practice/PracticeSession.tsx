@@ -31,7 +31,8 @@ import { SessionSummary } from './SessionSummary'
 import { SessionTimer } from './SessionTimer'
 import { ChunkDrillPrompt } from './ChunkDrill'
 import { MentalPractice } from './MentalPractice'
-import { NoteHighwayRenderer } from '../NoteHighway/NoteHighwayRenderer'
+import { WarmupModal } from './WarmupModal'
+import { NoteHighwayRenderer, type HighwayResult } from '../NoteHighway/NoteHighwayRenderer'
 import type { HighwayNote } from '../NoteHighway/noteHighwayTypes'
 import { SECTION_MAP } from '../../data/songLibrary'
 import { identifyWeakChunks, type ChunkDrill } from '../../engine/autoChunker'
@@ -134,6 +135,8 @@ function ExerciseView({
   const highwayPlayingRef = useRef(false)
   type RollPanelTab = 'pattern' | 'weakspots' | 'highway'
   const [rollTab, setRollTab] = useState<RollPanelTab>('pattern')
+  const [rollDetectorActive, setRollDetectorActive] = useState(false)
+  const rollDetectorRef = useRef(false)
 
   // Pending scores from analysis tools
   const [pendingRhythm, setPendingRhythm] = useState<number | null>(null)
@@ -160,7 +163,10 @@ function ExerciseView({
   const highwayRendererRef = useRef<NoteHighwayRenderer | null>(null)
   const highwayCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const highwayStartTimeRef = useRef<number>(0)
+  const highwayWaitingRef = useRef(false)  // true = listening but waiting for first pick
+  const [highwayWaiting, setHighwayWaiting] = useState(false)
   const [highwayHitCount, setHighwayHitCount] = useState(0)
+  const [highwayResult, setHighwayResult] = useState<HighwayResult | null>(null)
 
   const showHighway = rollTab === 'highway' && !!skill.rollPatternId
 
@@ -186,6 +192,12 @@ function ExerciseView({
 
       const renderer = new NoteHighwayRenderer(canvas, {}, cssW, cssH)
       renderer.setNotes(highwayNotes)
+      renderer.setOnComplete((result) => {
+        stopListening()
+        highwayPlayingRef.current = false
+        setHighwayPlaying(false)
+        setHighwayResult(result)
+      })
       highwayRendererRef.current = renderer
     }, 50)
 
@@ -222,6 +234,16 @@ function ExerciseView({
     onNoteDetected: (captured) => {
       const renderer = highwayRendererRef.current
       if (!renderer || !highwayPlayingRef.current) return
+
+      // First pick triggers the highway animation
+      if (highwayWaitingRef.current) {
+        highwayStartTimeRef.current = performance.now()
+        renderer.setCurrentTime(0)
+        renderer.start()
+        highwayWaitingRef.current = false
+        setHighwayWaiting(false)
+      }
+
       const elapsedSec = (captured.timestamp - highwayStartTimeRef.current) / 1000
       const windowSec = 0.3 // 300ms hit window
       const notes = highwayNotesRef.current
@@ -261,7 +283,7 @@ function ExerciseView({
 
   // Stop listening when switching away from analysis tools (but not if highway is using the mic)
   useEffect(() => {
-    if (activeTool !== 'roll' && activeTool !== 'lick' && isListening && !highwayPlayingRef.current) {
+    if (activeTool !== 'roll' && activeTool !== 'lick' && isListening && !highwayPlayingRef.current && !rollDetectorRef.current) {
       stopListening()
     }
   }, [activeTool, isListening, stopListening])
@@ -309,13 +331,44 @@ function ExerciseView({
             return (
               <div className="ev-roll-panel">
                 <div className="ev-roll-tabs">
-                  <button className={`ev-roll-tab ${rollTab === 'pattern' ? 'ev-roll-tab-active' : ''}`} onClick={() => setRollTab('pattern')}>Pattern</button>
-                  <button className={`ev-roll-tab ${rollTab === 'highway' ? 'ev-roll-tab-active' : ''}`} onClick={() => setRollTab('highway')}>Play Along</button>
-                  <button className={`ev-roll-tab ${rollTab === 'weakspots' ? 'ev-roll-tab-active' : ''}`} onClick={() => setRollTab('weakspots')}>Weak Spots</button>
+                  <button className={`ev-roll-tab ${rollTab === 'pattern' ? 'ev-roll-tab-active' : ''}`} onClick={() => { setRollTab('pattern') }}>Pattern</button>
+                  <button className={`ev-roll-tab ${rollTab === 'highway' ? 'ev-roll-tab-active' : ''}`} onClick={() => { if (rollDetectorActive) { stopListening(); setRollDetectorActive(false); rollDetectorRef.current = false } setRollTab('highway') }}>Play Along</button>
+                  <button className={`ev-roll-tab ${rollTab === 'weakspots' ? 'ev-roll-tab-active' : ''}`} onClick={() => { if (rollDetectorActive) { stopListening(); setRollDetectorActive(false); rollDetectorRef.current = false } setRollTab('weakspots') }}>Weak Spots</button>
                 </div>
                 <div className="ev-roll-body">
                   {rollTab === 'pattern' && (
-                    <BanjoTabDiagram strings={pattern.strings} fingers={pattern.fingers} label={pattern.name} />
+                    <>
+                      <BanjoTabDiagram
+                        strings={pattern.strings}
+                        fingers={pattern.fingers}
+                        label={pattern.name}
+                        playedStrings={rollDetectorActive ? notes.map(n => n.banjoString ?? 0) : undefined}
+                      />
+                      <div className="roll-detector-controls">
+                        <button
+                          className={`btn btn-sm ${rollDetectorActive ? 'btn-stop-detect' : 'btn-primary'}`}
+                          onClick={() => {
+                            if (rollDetectorActive) {
+                              stopListening()
+                              setRollDetectorActive(false)
+                              rollDetectorRef.current = false
+                            } else {
+                              clearNotes()
+                              startListening()
+                              setRollDetectorActive(true)
+                              rollDetectorRef.current = true
+                            }
+                          }}
+                        >
+                          {rollDetectorActive ? '■ Stop Detector' : '● Enable Roll Detector'}
+                        </button>
+                        {rollDetectorActive && (
+                          <span className="roll-detector-status">
+                            Listening... {notes.length} notes
+                          </span>
+                        )}
+                      </div>
+                    </>
                   )}
                   {rollTab === 'weakspots' && (
                     <WeakSpotChart skillId={skill.id} patternId={skill.rollPatternId!} />
@@ -333,16 +386,20 @@ function ExerciseView({
                               renderer.stop()
                               stopListening()
                               highwayPlayingRef.current = false
+                              highwayWaitingRef.current = false
                               setHighwayPlaying(false)
+                              setHighwayWaiting(false)
                             } else {
                               stopListening()
                               startListening()
                               setHighwayHitCount(0)
+                              setHighwayResult(null)
                               const fresh = highwayNotes.map(n => ({ ...n, state: 'upcoming' as const }))
                               renderer.setNotes(fresh)
-                              highwayStartTimeRef.current = performance.now()
                               renderer.setCurrentTime(0)
-                              renderer.start()
+                              // Don't start animation yet — wait for first pick
+                              highwayWaitingRef.current = true
+                              setHighwayWaiting(true)
                               highwayPlayingRef.current = true
                               setHighwayPlaying(true)
                             }
@@ -352,10 +409,21 @@ function ExerciseView({
                         </button>
                         {highwayPlaying && (
                           <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
-                            Hits: {highwayHitCount}
+                            {highwayWaiting ? 'Pick a string to begin...' : `Hits: ${highwayHitCount}`}
                           </span>
                         )}
                       </div>
+                      {highwayResult && (
+                        <div className={`highway-result ${highwayResult.percent >= 80 ? 'highway-result-good' : highwayResult.percent >= 50 ? 'highway-result-ok' : 'highway-result-poor'}`}>
+                          <span className="highway-result-percent">{highwayResult.percent}%</span>
+                          <span className="highway-result-detail">
+                            {highwayResult.hits}/{highwayResult.total} notes hit
+                          </span>
+                          <span className="highway-result-label">
+                            {highwayResult.percent >= 90 ? 'Excellent!' : highwayResult.percent >= 80 ? 'Great job!' : highwayResult.percent >= 50 ? 'Keep practicing' : 'Try slowing down'}
+                          </span>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -463,6 +531,9 @@ function ExerciseView({
   )
 }
 
+// Module-level flag: once warmup is skipped, don't show again until page reload
+let warmupSkippedThisSession = false
+
 export function PracticeSession() {
   const sessionPlan = useStore((s) => s.sessionPlan)
   const selectedSkillId = useStore((s) => s.selectedSkillId)
@@ -483,6 +554,7 @@ export function PracticeSession() {
   const [lastItemMetrics, setLastItemMetrics] = useState<PerformanceMetrics | null>(null)
   const [lastItemChunks, setLastItemChunks] = useState<ChunkDrill[]>([])
   const [lastItemNextReview, setLastItemNextReview] = useState<string | null>(null)
+  const [showWarmup, setShowWarmup] = useState(false)
 
   async function handleFocusMode() {
     setLoadingFocus(true)
@@ -512,13 +584,17 @@ export function PracticeSession() {
     ? [...(activePlan.newSkills), ...(activePlan.activeWork), ...(activePlan.maintenance)]
     : []
 
-  // Auto-start into exercise view for single-skill mode
+  // Auto-start into exercise view for single-skill mode (show warmup first)
   useEffect(() => {
     if (singleSkillItem && (view === 'plan' || view === 'complete')) {
       setCurrentIndex(0)
       setCompletedIds([])
       clearNewlyUnlocked()
-      startSession().then(() => setView('item'))
+      if (warmupSkippedThisSession) {
+        startSession().then(() => setView('item'))
+      } else {
+        setShowWarmup(true)
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSkillId])
@@ -611,6 +687,15 @@ export function PracticeSession() {
     )
   }
 
+  if (showWarmup) {
+    return (
+      <WarmupModal
+        onComplete={() => { warmupSkippedThisSession = true; setShowWarmup(false); handleStart() }}
+        onSkip={() => { warmupSkippedThisSession = true; setShowWarmup(false); handleStart() }}
+      />
+    )
+  }
+
   if (view === 'plan') {
     return (
       <div className="practice-plan-view">
@@ -628,7 +713,13 @@ export function PracticeSession() {
         </div>
 
         <div className="practice-plan-actions">
-          <button className="btn btn-primary" onClick={handleStart}>
+          <button className="btn btn-primary" onClick={() => {
+            if (warmupSkippedThisSession) {
+              handleStart()
+            } else {
+              setShowWarmup(true)
+            }
+          }}>
             Begin Session
           </button>
           {!focusPlan && (
@@ -649,6 +740,7 @@ export function PracticeSession() {
             </button>
           )}
         </div>
+
       </div>
     )
   }

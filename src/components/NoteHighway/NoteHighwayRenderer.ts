@@ -1,6 +1,13 @@
 import type { HighwayNote, HighwayConfig } from './noteHighwayTypes'
 import { DEFAULT_HIGHWAY_CONFIG } from './noteHighwayTypes'
 
+export interface HighwayResult {
+  total: number
+  hits: number
+  misses: number
+  percent: number
+}
+
 export class NoteHighwayRenderer {
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
@@ -12,6 +19,8 @@ export class NoteHighwayRenderer {
   private running = false
   private cssWidth: number
   private cssHeight: number
+  private onComplete: ((result: HighwayResult) => void) | null = null
+  private completed = false
 
   constructor(canvas: HTMLCanvasElement, config: Partial<HighwayConfig> = {}, cssWidth?: number, cssHeight?: number) {
     this.canvas = canvas
@@ -22,8 +31,13 @@ export class NoteHighwayRenderer {
     this.cssHeight = cssHeight ?? canvas.height
   }
 
+  setOnComplete(cb: (result: HighwayResult) => void) {
+    this.onComplete = cb
+  }
+
   setNotes(notes: HighwayNote[]) {
     this.notes = notes
+    this.completed = false
     this.render() // draw immediately so lanes + notes are visible before start()
   }
 
@@ -62,6 +76,31 @@ export class NoteHighwayRenderer {
     const dt = (now - this.lastFrameTime) / 1000
     this.lastFrameTime = now
     this.currentTime += dt
+
+    // Check if all notes have scrolled past the strike zone
+    if (!this.completed && this.notes.length > 0) {
+      const lastNoteTime = this.notes[this.notes.length - 1].time
+      if (this.currentTime > lastNoteTime + 0.5) {
+        this.completed = true
+        // Mark remaining upcoming notes as miss
+        for (const n of this.notes) {
+          if (n.state === 'upcoming') n.state = 'miss'
+        }
+        const total = this.notes.length
+        const hits = this.notes.filter(n => n.state === 'hit').length
+        const result: HighwayResult = {
+          total,
+          hits,
+          misses: total - hits,
+          percent: total > 0 ? Math.round((hits / total) * 100) : 0,
+        }
+        // Render one more frame to show misses, then fire callback
+        this.render()
+        this.stop()
+        if (this.onComplete) this.onComplete(result)
+        return
+      }
+    }
 
     this.render()
     this.animFrameId = requestAnimationFrame(this.animate)

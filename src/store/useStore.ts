@@ -1,7 +1,7 @@
 import { create } from 'zustand'
-import { db, getOrCreateUser, getSkillRecordMap, upsertSkillRecord, getCurrentStreak, newId, nowISO, todayDate } from '../db/db'
-import type { UserProfile, SkillRecord, PracticeSession, SessionItem, SelfRating, NoteAccuracyRecord } from '../db/db'
-import { SKILL_MAP, type Path } from '../data/curriculum'
+import { db, getOrCreateUser, getSkillRecordMap, upsertSkillRecord, getCurrentStreak, newId, nowISO, todayDate, getStudents, createStudent as dbCreateStudent, deleteStudent as dbDeleteStudent, getOrCreateTeacherConfig, updateTeacherConfig } from '../db/db'
+import type { UserProfile, SkillRecord, PracticeSession, SessionItem, SelfRating, NoteAccuracyRecord, TeacherConfig, UserRole } from '../db/db'
+import { SKILL_MAP, refreshSkillMap, type Path } from '../data/curriculum'
 import { buildSessionPlan, deriveNewStatus, getNewlyUnlockedSkills, type SessionPlan } from '../engine/recommendationEngine'
 import type { NoteEvaluation } from '../engine/streamingRollMatcher'
 import { computeSrSchedule } from '../engine/spacedRepetition'
@@ -12,8 +12,9 @@ import type { AchievementDef } from '../data/achievements'
 import { computeMasteryLevel } from '../engine/masteryLevels'
 import { computePerformanceMetrics } from '../engine/performanceMetrics'
 import type { PerformanceMetrics } from '../types/performance'
+import { refreshRollMap } from '../data/rollPatterns'
 
-export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'pathway' | 'progress' | 'achievements'
+export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'pathway' | 'progress' | 'achievements' | 'settings'
 
 interface AppState {
   // App shell
@@ -65,6 +66,21 @@ interface AppState {
   // Last performance metrics (for session summary)
   lastMetrics: PerformanceMetrics | null
 
+  // Multi-user / teacher mode
+  activeUserId: string | null
+  activeUserRole: UserRole
+  teacherConfig: TeacherConfig | null
+  disabledSkillIds: Set<string>
+  students: UserProfile[]
+  showLoginScreen: boolean
+  loginAsGuest: () => Promise<void>
+  loginAsTeacher: () => Promise<void>
+  loginAsUser: (userId: string) => Promise<void>
+  logoutUser: () => void
+  createStudent: (name: string) => Promise<void>
+  deleteStudent: (userId: string) => Promise<void>
+  toggleSkillEnabled: (skillId: string) => Promise<void>
+
   // Loading / error
   isLoading: boolean
   error: string | null
@@ -86,6 +102,12 @@ export const useStore = create<AppState>((set, get) => ({
   newlyUnlocked: [],
   newAchievements: [],
   lastMetrics: null,
+  activeUserId: null,
+  activeUserRole: 'solo',
+  teacherConfig: null,
+  disabledSkillIds: new Set(),
+  students: [],
+  showLoginScreen: false,
   isLoading: false,
   error: null,
 
@@ -93,10 +115,31 @@ export const useStore = create<AppState>((set, get) => ({
     set({ isLoading: true, error: null })
     try {
       const user = await getOrCreateUser()
-      const skillRecords = await getSkillRecordMap(user.id)
-      const streak = await getCurrentStreak(user.id)
-      set({ user, skillRecords, streak, isLoading: false })
-      get().refreshSessionPlan()
+      await refreshRollMap()
+      await refreshSkillMap()
+
+      // Load students (if any exist from a previous teacher session)
+      const studentList = await getStudents(user.id)
+      // Load teacher config if it exists
+      let config: TeacherConfig | null = null
+      let disabled = new Set<string>()
+      try {
+        const existing = await db.teacherConfigs.get(user.id)
+        if (existing) {
+          config = existing
+          disabled = new Set(existing.disabledSkillIds)
+        }
+      } catch { /* no config yet, that's fine */ }
+
+      set({
+        user,
+        students: studentList,
+        teacherConfig: config,
+        disabledSkillIds: disabled,
+        showLoginScreen: true,
+        activeUserId: null,
+        isLoading: false,
+      })
     } catch (err) {
       set({ error: String(err), isLoading: false })
     }
@@ -144,7 +187,9 @@ export const useStore = create<AppState>((set, get) => ({
       recentItemsBySkill = new Map()
     }
 
-    const plan = buildSessionPlan(user.path, skillRecords, 30, recentItemsBySkill)
+    const { disabledSkillIds, activeUserRole } = get()
+    const disabled = activeUserRole === 'student' ? disabledSkillIds : new Set<string>()
+    const plan = buildSessionPlan(user.path, skillRecords, 30, recentItemsBySkill, disabled)
     set({ sessionPlan: plan })
   },
 
@@ -258,7 +303,9 @@ export const useStore = create<AppState>((set, get) => ({
     // Update skill record
     const currentRecord = skillRecords.get(skillId) ?? null
     const newBestBpm = Math.max(currentRecord?.bestBpm ?? 0, achievedBpm ?? 0)
-    const newStatus = deriveNewStatus(skill, currentRecord, { skillId, achievedBpm, selfRating, compositeScore: composite }, skillRecords)
+    const { disabledSkillIds: currentDisabledIds, activeUserRole: currentUserRole } = get()
+    const disabledForDerive = currentUserRole === 'student' ? currentDisabledIds : new Set<string>()
+    const newStatus = deriveNewStatus(skill, currentRecord, { skillId, achievedBpm, selfRating, compositeScore: composite }, skillRecords, disabledForDerive)
 
     // Compute spaced repetition schedule for progressed/mastered skills
     // Legacy 3-bucket SR (kept for backward compat)
@@ -312,7 +359,7 @@ export const useStore = create<AppState>((set, get) => ({
     })
 
     // Check newly unlocked using the pre-update snapshot so wasLocked is accurate
-    const newlyUnlocked = getNewlyUnlockedSkills(skillId, newStatus, prevSkillRecords, user.path)
+    const newlyUnlocked = getNewlyUnlockedSkills(skillId, newStatus, prevSkillRecords, user.path, disabledForDerive)
 
     // Mark newly unlocked skills
     for (const unlockedSkill of newlyUnlocked) {
@@ -360,4 +407,126 @@ export const useStore = create<AppState>((set, get) => ({
 
   clearNewlyUnlocked: () => set({ newlyUnlocked: [] }),
   clearNewAchievements: () => set({ newAchievements: [] }),
+
+  // ── Login actions ───────────────────────────────────────────────────────
+
+  loginAsGuest: async () => {
+    const { user } = get()
+    if (!user) return
+    // Guest = solo mode, all defaults, no teacher features
+    const skillRecords = await getSkillRecordMap(user.id)
+    const streak = await getCurrentStreak(user.id)
+    set({
+      activeUserId: user.id,
+      activeUserRole: 'solo',
+      showLoginScreen: false,
+      skillRecords,
+      streak,
+      disabledSkillIds: new Set(),
+    })
+    get().refreshSessionPlan()
+  },
+
+  loginAsTeacher: async () => {
+    const { user } = get()
+    if (!user) return
+    // Ensure teacher config exists
+    await db.userProfiles.update(user.id, { role: 'teacher', updatedAt: nowISO() })
+    const config = await getOrCreateTeacherConfig(user.id)
+    const skillRecords = await getSkillRecordMap(user.id)
+    const streak = await getCurrentStreak(user.id)
+    const studentList = await getStudents(user.id)
+    set({
+      activeUserId: user.id,
+      activeUserRole: 'teacher',
+      showLoginScreen: false,
+      user: { ...user, role: 'teacher' },
+      teacherConfig: config,
+      disabledSkillIds: new Set(config.disabledSkillIds),
+      students: studentList,
+      skillRecords,
+      streak,
+    })
+    get().refreshSessionPlan()
+  },
+
+  loginAsUser: async (userId: string) => {
+    // Logging in as a student
+    const student = await db.userProfiles.get(userId)
+    if (!student) return
+    const { teacherConfig } = get()
+    const disabled = teacherConfig ? new Set(teacherConfig.disabledSkillIds) : new Set<string>()
+    const skillRecords = await getSkillRecordMap(student.id)
+    const streak = await getCurrentStreak(student.id)
+    set({
+      activeUserId: student.id,
+      activeUserRole: 'student',
+      showLoginScreen: false,
+      skillRecords,
+      streak,
+      user: student,
+      disabledSkillIds: disabled,
+    })
+    get().refreshSessionPlan()
+  },
+
+  logoutUser: async () => {
+    // Restore the 'local' user so the login screen can show it
+    const localUser = await getOrCreateUser()
+    const studentList = await getStudents(localUser.id)
+    // Reload teacher config in case it changed
+    let config: TeacherConfig | null = null
+    try {
+      const existing = await db.teacherConfigs.get(localUser.id)
+      if (existing) config = existing
+    } catch { /* fine */ }
+
+    set({
+      user: localUser,
+      activeUserId: null,
+      activeUserRole: 'solo',
+      showLoginScreen: true,
+      activeSession: null,
+      selectedSkillId: null,
+      currentPage: 'dashboard',
+      students: studentList,
+      teacherConfig: config,
+      disabledSkillIds: config ? new Set(config.disabledSkillIds) : new Set(),
+    })
+  },
+
+  createStudent: async (name: string) => {
+    const { user } = get()
+    if (!user) return
+    const teacherId = user.role === 'teacher' ? user.id : (user.teacherId ?? user.id)
+    await dbCreateStudent(name, teacherId, 'newby')
+    const studentList = await getStudents(teacherId)
+    set({ students: studentList })
+  },
+
+  deleteStudent: async (userId: string) => {
+    await dbDeleteStudent(userId)
+    const { user } = get()
+    if (!user) return
+    const teacherId = user.role === 'teacher' ? user.id : (user.teacherId ?? user.id)
+    const studentList = await getStudents(teacherId)
+    set({ students: studentList })
+  },
+
+  toggleSkillEnabled: async (skillId: string) => {
+    const { teacherConfig } = get()
+    if (!teacherConfig) return
+    const disabled = new Set(teacherConfig.disabledSkillIds)
+    if (disabled.has(skillId)) {
+      disabled.delete(skillId)
+    } else {
+      disabled.add(skillId)
+    }
+    const updated: TeacherConfig = {
+      ...teacherConfig,
+      disabledSkillIds: [...disabled],
+    }
+    await updateTeacherConfig(updated)
+    set({ teacherConfig: updated, disabledSkillIds: disabled })
+  },
 }))

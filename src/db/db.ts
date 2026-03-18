@@ -9,14 +9,23 @@ import type { Path } from '../data/curriculum'
 export type SkillStatus = 'locked' | 'unlocked' | 'active' | 'progressed' | 'mastered'
 export type SessionItemType = 'roll' | 'song' | 'exercise' | 'technique' | 'theory'
 export type SelfRating = 'felt_good' | 'ok' | 'needs_work'
+export type UserRole = 'solo' | 'teacher' | 'student'
 
 // ── Table shapes ─────────────────────────────────────────────────────────────
 
 export interface UserProfile {
-  id: string           // 'local' for Phase 1, UUID for cloud
+  id: string           // 'local' for solo/teacher, UUID for students
   name: string
   path: Path
+  role: UserRole       // 'solo' default, 'teacher' or 'student'
+  teacherId: string | null  // for students, points to teacher's user ID
   createdAt: string    // ISO
+  updatedAt: string
+}
+
+export interface TeacherConfig {
+  id: string                   // same as teacher's userId ('local')
+  disabledSkillIds: string[]   // skills toggled off for students
   updatedAt: string
 }
 
@@ -110,6 +119,17 @@ export interface Achievement {
   createdAt: string
 }
 
+export interface CustomRollPattern {
+  id: string                 // 'custom_' + uuid fragment
+  name: string
+  strings: (number | null)[]
+  fingers: ('T' | 'I' | 'M')[]
+  description: string
+  addAsSkill: boolean        // whether to generate a practice skill for this pattern
+  createdAt: string
+  updatedAt: string
+}
+
 // ── Database class ────────────────────────────────────────────────────────────
 
 class BanjoBuddyDB extends Dexie {
@@ -121,6 +141,8 @@ class BanjoBuddyDB extends Dexie {
   streakRecords!: Table<StreakRecord>
   noteAccuracyRecords!: Table<NoteAccuracyRecord>
   achievements!: Table<Achievement>
+  customRollPatterns!: Table<CustomRollPattern>
+  teacherConfigs!: Table<TeacherConfig>
 
   constructor() {
     super('BanjoBuddyDB')
@@ -189,6 +211,38 @@ class BanjoBuddyDB extends Dexie {
         if (record.masteryLevel === undefined) record.masteryLevel = null
       })
     })
+
+    // v6: Custom roll patterns table
+    this.version(6).stores({
+      userProfiles:       'id, path',
+      skillRecords:       'id, userId, skillId, status, lastPracticed, [userId+skillId], srNextReview, [userId+fsrsNextReview]',
+      practiceSessions:   'id, userId, date, startedAt',
+      sessionItems:       'id, sessionId, skillId, completedAt, [skillId+completedAt]',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, date, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
+      achievements:       '++id, achievementId, userId, earnedAt',
+      customRollPatterns: 'id, name, createdAt',
+    })
+
+    // v7: Teacher mode — add role/teacherId to userProfiles, teacherConfigs table
+    this.version(7).stores({
+      userProfiles:       'id, path, role',
+      skillRecords:       'id, userId, skillId, status, lastPracticed, [userId+skillId], srNextReview, [userId+fsrsNextReview]',
+      practiceSessions:   'id, userId, date, startedAt',
+      sessionItems:       'id, sessionId, skillId, completedAt, [skillId+completedAt]',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, date, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
+      achievements:       '++id, achievementId, userId, earnedAt',
+      customRollPatterns: 'id, name, createdAt',
+      teacherConfigs:     'id',
+    }).upgrade((tx) => {
+      return tx.table('userProfiles').toCollection().modify((profile: UserProfile) => {
+        if ((profile as any).role === undefined) profile.role = 'solo'
+        if ((profile as any).teacherId === undefined) profile.teacherId = null
+      })
+    })
   }
 }
 
@@ -217,6 +271,8 @@ export async function getOrCreateUser(): Promise<UserProfile> {
     id: 'local',
     name: 'My Profile',
     path: 'newby',
+    role: 'solo',
+    teacherId: null,
     createdAt: nowISO(),
     updatedAt: nowISO(),
   }
@@ -255,6 +311,61 @@ export async function upsertSkillRecord(record: Partial<SkillRecord> & { skillId
       ...record,
     } as SkillRecord)
   }
+}
+
+// ── Teacher mode helpers ──────────────────────────────────────────────────────
+
+export async function getStudents(teacherId: string): Promise<UserProfile[]> {
+  return db.userProfiles.where('role').equals('student').filter((p) => p.teacherId === teacherId).toArray()
+}
+
+export async function createStudent(name: string, teacherId: string, path: Path): Promise<UserProfile> {
+  const student: UserProfile = {
+    id: newId(),
+    name,
+    path,
+    role: 'student',
+    teacherId,
+    createdAt: nowISO(),
+    updatedAt: nowISO(),
+  }
+  await db.userProfiles.add(student)
+  return student
+}
+
+export async function deleteStudent(userId: string): Promise<void> {
+  // Remove student's skill records, sessions, session items, streak records, and profile
+  const sessions = await db.practiceSessions.where('userId').equals(userId).toArray()
+  const sessionIds = sessions.map((s) => s.id)
+  if (sessionIds.length > 0) {
+    const items = await db.sessionItems.where('sessionId').anyOf(sessionIds).toArray()
+    const itemIds = items.map((i) => i.id)
+    if (itemIds.length > 0) {
+      await db.noteAccuracyRecords.where('sessionItemId').anyOf(itemIds).delete()
+      await db.recordings.where('sessionItemId').anyOf(itemIds).delete()
+    }
+    await db.sessionItems.where('sessionId').anyOf(sessionIds).delete()
+  }
+  await db.practiceSessions.where('userId').equals(userId).delete()
+  await db.skillRecords.where('userId').equals(userId).delete()
+  await db.streakRecords.where('userId').equals(userId).delete()
+  await db.userProfiles.delete(userId)
+}
+
+export async function getOrCreateTeacherConfig(teacherId: string): Promise<TeacherConfig> {
+  const existing = await db.teacherConfigs.get(teacherId)
+  if (existing) return existing
+  const config: TeacherConfig = {
+    id: teacherId,
+    disabledSkillIds: [],
+    updatedAt: nowISO(),
+  }
+  await db.teacherConfigs.add(config)
+  return config
+}
+
+export async function updateTeacherConfig(config: TeacherConfig): Promise<void> {
+  await db.teacherConfigs.put({ ...config, updatedAt: nowISO() })
 }
 
 // Calculate current streak from streak records

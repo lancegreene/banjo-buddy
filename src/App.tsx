@@ -17,6 +17,10 @@ import { OnboardingFlow } from './components/Onboarding/OnboardingFlow'
 import { PageTransition } from './components/Motion/PageTransition'
 import { ConfettiEffect } from './components/Celebrations/ConfettiEffect'
 import { useCelebration } from './hooks/useCelebration'
+import { SettingsPage } from './components/Settings/SettingsPage'
+import { UserPicker } from './components/Login/UserPicker'
+import { UserBadge } from './components/Login/UserBadge'
+import { IntroFlow } from './components/Intro/IntroFlow'
 
 type ToolModal = 'metronome' | 'tuner'
 
@@ -26,6 +30,7 @@ const NAV_ITEMS: { id: Page | ToolModal; label: string; icon: string }[] = [
   { id: 'skill-tree', label: 'Skills', icon: '◈' },
   { id: 'progress', label: 'Progress', icon: '▦' },
   { id: 'achievements', label: 'Awards', icon: '★' },
+  { id: 'settings', label: 'Settings', icon: '⚙' },
   { id: 'metronome', label: 'Metro', icon: '♩' },
   { id: 'tuner', label: 'Tuner', icon: '◎' },
 ]
@@ -39,6 +44,7 @@ function PageContent({ page }: { page: Page }) {
     case 'practice':      return <PracticeSession />
     case 'progress':      return <ProgressPage />
     case 'achievements':  return <AchievementList />
+    case 'settings':      return <SettingsPage />
     default:              return <Dashboard />
   }
 }
@@ -109,12 +115,17 @@ export default function App() {
   const newAchievements = useStore((s) => s.newAchievements)
   const clearNewAchievements = useStore((s) => s.clearNewAchievements)
   const newlyUnlocked = useStore((s) => s.newlyUnlocked)
+  const showLoginScreen = useStore((s) => s.showLoginScreen)
+  const activeUserRole = useStore((s) => s.activeUserRole)
 
   const { theme, toggleTheme } = useTheme()
   const { celebration, dismiss: dismissCelebration } = useCelebration()
   const [openModal, setOpenModal] = useState<ToolModal | null>(null)
   const [splashDismissed, setSplashDismissed] = useState(
     () => sessionStorage.getItem('banjo-splash-seen') === 'true'
+  )
+  const [introDone, setIntroDone] = useState(
+    () => localStorage.getItem('banjo-buddy-intro-done') === 'true'
   )
   const [onboardingDone, setOnboardingDone] = useState(
     () => localStorage.getItem('banjo-buddy-onboarded') === 'true'
@@ -144,7 +155,19 @@ export default function App() {
     )
   }
 
-  // Onboarding gate: show if user has never completed it
+  // Intro gate: educational walkthrough for first-time users
+  if (!introDone) {
+    return (
+      <IntroFlow
+        onComplete={() => {
+          localStorage.setItem('banjo-buddy-intro-done', 'true')
+          setIntroDone(true)
+        }}
+      />
+    )
+  }
+
+  // Onboarding gate: mic setup + note testing
   if (!onboardingDone) {
     return (
       <OnboardingFlow
@@ -156,10 +179,18 @@ export default function App() {
     )
   }
 
+  // Login screen gate — always shown until a user is selected
+  if (showLoginScreen) {
+    return <UserPicker />
+  }
+
   const isSplitPage = SPLIT_PAGES.has(page)
 
   return (
     <div className="app">
+      {/* User badge — shown for teacher and student roles */}
+      {activeUserRole !== 'solo' && <UserBadge />}
+
       {/* Confetti overlay for celebrations */}
       <ConfettiEffect trigger={newlyUnlocked.length > 0 || celebration?.type === 'confetti'} />
 

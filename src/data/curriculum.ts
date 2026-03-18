@@ -821,8 +821,78 @@ export const SKILLS: Skill[] = [
       { instruction: 'Full pattern with metronome, 16 reps.', bpm: 70 },
     ],
     scoringTypes: ['rhythm', 'tempo', 'self_rate'],
-    rollPatternId: 'forward_roll',
+    rollPatternId: 'forward_reverse',
     assessmentPrompt: 'Record 16-rep forward-reverse roll at target BPM.',
+  },
+  {
+    id: 'roll_reverse',
+    category: 'rolls',
+    name: 'Reverse roll — open strings',
+    path: 'newby',
+    month: 5,
+    description: 'Forward into backward: T-I-M-T then M-I-T-T — a versatile pattern for fills.',
+    progressBpm: 80,
+    masteryBpm: 150,
+    masteryCriteria: '16-rep pattern at target BPM with even timing and smooth direction change.',
+    prerequisites: ['roll_forward_open', 'roll_backward_open'],
+    exercises: [
+      {
+        instruction: 'Listen to the reverse roll: 3-2-1-5-1-2-3-5.',
+        type: 'listen',
+        demo: { kind: 'roll', id: 'reverse_roll', cycles: 2 },
+      },
+      {
+        instruction: 'Try it slowly — open strings, no metronome. 8 reps.',
+        type: 'try',
+        detect: { kind: 'roll', id: 'reverse_roll' },
+        passThreshold: 60,
+      },
+      {
+        instruction: 'With metronome, 16 reps.',
+        type: 'try',
+        bpm: 60,
+        detect: { kind: 'roll', id: 'reverse_roll' },
+        passThreshold: 70,
+      },
+    ],
+    scoringTypes: ['rhythm', 'tempo', 'self_rate'],
+    rollPatternId: 'reverse_roll',
+    assessmentPrompt: 'Record 16-rep reverse roll at target BPM.',
+  },
+  {
+    id: 'roll_square',
+    category: 'rolls',
+    name: 'Square roll — open strings',
+    path: 'beginner',
+    month: 6,
+    description: 'Thumb on 5th string alternates with index-middle pattern — great for backup playing.',
+    progressBpm: 80,
+    masteryBpm: 150,
+    masteryCriteria: '16-rep pattern at target BPM with even timing.',
+    prerequisites: ['roll_alternating_thumb'],
+    exercises: [
+      {
+        instruction: 'Listen to the square roll: 5-1-2-1-5-1-2-1.',
+        type: 'listen',
+        demo: { kind: 'roll', id: 'square_roll', cycles: 2 },
+      },
+      {
+        instruction: 'Try it slowly — open strings, no metronome. 8 reps.',
+        type: 'try',
+        detect: { kind: 'roll', id: 'square_roll' },
+        passThreshold: 60,
+      },
+      {
+        instruction: 'With metronome, 16 reps.',
+        type: 'try',
+        bpm: 60,
+        detect: { kind: 'roll', id: 'square_roll' },
+        passThreshold: 70,
+      },
+    ],
+    scoringTypes: ['rhythm', 'tempo', 'self_rate'],
+    rollPatternId: 'square_roll',
+    assessmentPrompt: 'Record 16-rep square roll at target BPM.',
   },
   {
     id: 'cripple_creek_90bpm',
@@ -2060,7 +2130,7 @@ export const SKILLS: Skill[] = [
     progressBpm: 80,
     masteryBpm: 140,
     masteryCriteria: 'Lick played cleanly with pull-off in time. Can insert it at the end of any G phrase.',
-    prerequisites: ['chord_g', 'forward_roll_open'],
+    prerequisites: ['chord_g', 'roll_forward_open'],
     lickId: 'g_lick_basic',
     exercises: [
       { instruction: 'Listen to the G-lick. This is the "Godfather" of all banjo licks — used at the end of nearly every phrase.',
@@ -2133,7 +2203,7 @@ export const SKILLS: Skill[] = [
     progressBpm: 80,
     masteryBpm: 140,
     masteryCriteria: 'C-lick played cleanly with proper C chord fretting.',
-    prerequisites: ['chord_c', 'forward_roll_open'],
+    prerequisites: ['chord_c', 'roll_forward_open'],
     lickId: 'c_lick_basic',
     exercises: [
       { instruction: 'Listen to the basic C-lick. Notice the C and E chord tones.',
@@ -2204,7 +2274,7 @@ export const SKILLS: Skill[] = [
     progressBpm: 80,
     masteryBpm: 140,
     masteryCriteria: 'D-lick played cleanly with proper D chord fretting.',
-    prerequisites: ['chord_d7', 'forward_roll_open'],
+    prerequisites: ['chord_d7', 'roll_forward_open'],
     lickId: 'd_lick_basic',
     exercises: [
       { instruction: 'Listen to the basic D-lick. Notice how it wants to resolve back to G.',
@@ -2267,8 +2337,64 @@ export const SKILLS: Skill[] = [
 
 export const SKILL_MAP = new Map<string, Skill>(SKILLS.map((s) => [s.id, s]))
 
+/** Reload SKILL_MAP with defaults + generated skills for custom roll patterns. */
+export async function refreshSkillMap(): Promise<void> {
+  const { db } = await import('../db/db')
+  const allCustom = await db.customRollPatterns.toArray()
+  const custom = allCustom.filter(p => p.addAsSkill)
+
+  SKILL_MAP.clear()
+  for (const s of SKILLS) SKILL_MAP.set(s.id, s)
+
+  for (const pattern of custom) {
+    const skillId = `skill_${pattern.id}`
+    if (SKILL_MAP.has(skillId)) continue
+    const skill: Skill = {
+      id: skillId,
+      category: 'rolls',
+      name: `${pattern.name} — open strings`,
+      path: 'newby',
+      month: 99,
+      description: pattern.description || `Practice the ${pattern.name} roll pattern.`,
+      progressBpm: 80,
+      masteryBpm: 150,
+      masteryCriteria: `16-rep pattern at target BPM with even timing.`,
+      prerequisites: [],
+      exercises: [
+        {
+          instruction: `Listen to the ${pattern.name} pattern.`,
+          type: 'listen' as const,
+          demo: { kind: 'roll' as const, id: pattern.id, cycles: 2 },
+        },
+        {
+          instruction: 'Try it slowly — open strings, no metronome. 8 reps.',
+          type: 'try' as const,
+          detect: { kind: 'roll' as const, id: pattern.id },
+          passThreshold: 60,
+        },
+        {
+          instruction: 'With metronome, 16 reps.',
+          type: 'try' as const,
+          bpm: 60,
+          detect: { kind: 'roll' as const, id: pattern.id },
+          passThreshold: 70,
+        },
+      ],
+      scoringTypes: ['rhythm', 'tempo', 'self_rate'],
+      rollPatternId: pattern.id,
+      assessmentPrompt: `Record 16-rep ${pattern.name} at target BPM.`,
+    }
+    SKILL_MAP.set(skillId, skill)
+  }
+}
+
+/** Get all skills (defaults + custom). Use this instead of SKILLS array. */
+export function getAllSkills(): Skill[] {
+  return [...SKILL_MAP.values()]
+}
+
 export function getSkillsByPath(path: Path): Skill[] {
-  return SKILLS.filter((s) => s.path === path || s.path === 'all')
+  return getAllSkills().filter((s) => s.path === path || s.path === 'all')
 }
 
 export function getSkillsByMonth(path: Path, month: number): Skill[] {
@@ -2282,7 +2408,7 @@ export function getPrerequisites(skillId: string): Skill[] {
 }
 
 export function getDependents(skillId: string): Skill[] {
-  return SKILLS.filter((s) => s.prerequisites.includes(skillId))
+  return [...SKILL_MAP.values()].filter((s) => s.prerequisites.includes(skillId))
 }
 
 export const PATHS: { id: Path; label: string; description: string }[] = [

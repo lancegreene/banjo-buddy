@@ -4,7 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useStore } from '../../store/useStore'
-import { SKILLS } from '../../data/curriculum'
+import { getAllSkills } from '../../data/curriculum'
 
 interface SkillPickerProps {
   value: string | null
@@ -15,7 +15,7 @@ export function SkillPicker({ value, onChange }: SkillPickerProps) {
   const skillRecords = useStore((s) => s.skillRecords)
 
   // Only show skills that have been practiced
-  const practicedSkills = SKILLS.filter((s) => {
+  const practicedSkills = getAllSkills().filter((s) => {
     const record = skillRecords.get(s.id)
     return record && record.practiceCount > 0
   })

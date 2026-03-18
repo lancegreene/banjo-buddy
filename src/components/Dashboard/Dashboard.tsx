@@ -204,8 +204,11 @@ export function Dashboard() {
   const user = useStore((s) => s.user)
   const skillRecords = useStore((s) => s.skillRecords)
   const setPage = useStore((s) => s.setPage)
+  const disabledSkillIds = useStore((s) => s.disabledSkillIds)
+  const activeUserRole = useStore((s) => s.activeUserRole)
 
-  const progress = user ? getPathProgress(user.path, skillRecords) : null
+  const disabled = activeUserRole === 'student' ? disabledSkillIds : new Set<string>()
+  const progress = user ? getPathProgress(user.path, skillRecords, disabled) : null
 
   return (
     <div className="dashboard">

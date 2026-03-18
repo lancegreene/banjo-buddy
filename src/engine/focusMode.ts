@@ -3,7 +3,7 @@
 // Generates a targeted drill from the weakest skills across the curriculum.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { SKILLS, type Skill } from '../data/curriculum'
+import { getAllSkills, type Skill } from '../data/curriculum'
 import type { SkillRecord, SessionItem } from '../db/db'
 import { db } from '../db/db'
 import { analyzeWeakSpots, type WeakSpotReport } from './weakSpotAnalysis'
@@ -25,7 +25,7 @@ export async function generateFocusDrill(
   // Find all active/progressed skills with practice data
   const candidates: { skill: Skill; record: SkillRecord; accuracy: number }[] = []
 
-  for (const skill of SKILLS) {
+  for (const skill of getAllSkills()) {
     const record = allRecords.get(skill.id)
     if (!record) continue
     if (record.status !== 'active' && record.status !== 'progressed') continue
