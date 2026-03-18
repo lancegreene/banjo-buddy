@@ -126,6 +126,7 @@ export interface CustomRollPattern {
   fingers: ('T' | 'I' | 'M')[]
   description: string
   addAsSkill: boolean        // whether to generate a practice skill for this pattern
+  createdBy: string          // userId of the creator
   createdAt: string
   updatedAt: string
 }
@@ -241,6 +242,25 @@ class BanjoBuddyDB extends Dexie {
       return tx.table('userProfiles').toCollection().modify((profile: UserProfile) => {
         if ((profile as any).role === undefined) profile.role = 'solo'
         if ((profile as any).teacherId === undefined) profile.teacherId = null
+      })
+    })
+
+    // v8: Add createdBy to customRollPatterns for per-user ownership
+    this.version(8).stores({
+      userProfiles:       'id, path, role',
+      skillRecords:       'id, userId, skillId, status, lastPracticed, [userId+skillId], srNextReview, [userId+fsrsNextReview]',
+      practiceSessions:   'id, userId, date, startedAt',
+      sessionItems:       'id, sessionId, skillId, completedAt, [skillId+completedAt]',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, date, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
+      achievements:       '++id, achievementId, userId, earnedAt',
+      customRollPatterns: 'id, name, createdBy, createdAt',
+      teacherConfigs:     'id',
+    }).upgrade((tx) => {
+      // Backfill createdBy with 'local' (the default solo user) for existing patterns
+      return tx.table('customRollPatterns').toCollection().modify((pattern: any) => {
+        if (pattern.createdBy === undefined) pattern.createdBy = 'local'
       })
     })
   }

@@ -79,14 +79,42 @@ export const ROLL_PATTERNS: RollPattern[] = [
 
 export const ROLL_MAP = new Map(ROLL_PATTERNS.map((r) => [r.id, r]))
 
-/** Reload ROLL_MAP with defaults + any custom patterns from IndexedDB. */
-export async function refreshRollMap(): Promise<void> {
+/**
+ * Reload ROLL_MAP with defaults + visible custom patterns from IndexedDB.
+ *
+ * Visibility rules:
+ * - Solo/Guest: only patterns created by the current user
+ * - Teacher: all patterns (theirs + students')
+ * - Student: their own patterns + teacher's patterns
+ */
+export async function refreshRollMap(
+  userId?: string,
+  userRole?: string,
+  teacherId?: string | null
+): Promise<void> {
   const { db } = await import('../db/db')
-  const custom = await db.customRollPatterns.toArray()
+  const allCustom = await db.customRollPatterns.toArray()
+
+  // Filter custom patterns based on role
+  let visible = allCustom
+  if (userId) {
+    if (userRole === 'teacher') {
+      // Teachers see everything
+      visible = allCustom
+    } else if (userRole === 'student' && teacherId) {
+      // Students see their own + teacher's patterns
+      visible = allCustom.filter(
+        (c) => c.createdBy === userId || c.createdBy === teacherId
+      )
+    } else {
+      // Solo/Guest: only their own
+      visible = allCustom.filter((c) => c.createdBy === userId)
+    }
+  }
 
   ROLL_MAP.clear()
   for (const p of ROLL_PATTERNS) ROLL_MAP.set(p.id, p)
-  for (const c of custom) {
+  for (const c of visible) {
     ROLL_MAP.set(c.id, {
       id: c.id,
       name: c.name,

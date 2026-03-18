@@ -115,8 +115,8 @@ export const useStore = create<AppState>((set, get) => ({
     set({ isLoading: true, error: null })
     try {
       const user = await getOrCreateUser()
-      await refreshRollMap()
-      await refreshSkillMap()
+      await refreshRollMap(user.id, user.role, user.teacherId)
+      await refreshSkillMap(user.id, user.role, user.teacherId)
 
       // Load students (if any exist from a previous teacher session)
       const studentList = await getStudents(user.id)
@@ -414,6 +414,8 @@ export const useStore = create<AppState>((set, get) => ({
     const { user } = get()
     if (!user) return
     // Guest = solo mode, all defaults, no teacher features
+    await refreshRollMap(user.id, 'solo', null)
+    await refreshSkillMap(user.id, 'solo', null)
     const skillRecords = await getSkillRecordMap(user.id)
     const streak = await getCurrentStreak(user.id)
     set({
@@ -432,6 +434,8 @@ export const useStore = create<AppState>((set, get) => ({
     if (!user) return
     // Ensure teacher config exists
     await db.userProfiles.update(user.id, { role: 'teacher', updatedAt: nowISO() })
+    await refreshRollMap(user.id, 'teacher', null)
+    await refreshSkillMap(user.id, 'teacher', null)
     const config = await getOrCreateTeacherConfig(user.id)
     const skillRecords = await getSkillRecordMap(user.id)
     const streak = await getCurrentStreak(user.id)
@@ -456,6 +460,8 @@ export const useStore = create<AppState>((set, get) => ({
     if (!student) return
     const { teacherConfig } = get()
     const disabled = teacherConfig ? new Set(teacherConfig.disabledSkillIds) : new Set<string>()
+    await refreshRollMap(student.id, 'student', student.teacherId)
+    await refreshSkillMap(student.id, 'student', student.teacherId)
     const skillRecords = await getSkillRecordMap(student.id)
     const streak = await getCurrentStreak(student.id)
     set({

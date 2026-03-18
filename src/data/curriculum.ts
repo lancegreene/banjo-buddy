@@ -2338,10 +2338,27 @@ export const SKILLS: Skill[] = [
 export const SKILL_MAP = new Map<string, Skill>(SKILLS.map((s) => [s.id, s]))
 
 /** Reload SKILL_MAP with defaults + generated skills for custom roll patterns. */
-export async function refreshSkillMap(): Promise<void> {
+export async function refreshSkillMap(
+  userId?: string,
+  userRole?: string,
+  teacherId?: string | null
+): Promise<void> {
   const { db } = await import('../db/db')
   const allCustom = await db.customRollPatterns.toArray()
-  const custom = allCustom.filter(p => p.addAsSkill)
+
+  // Filter by visibility: same rules as refreshRollMap
+  let visible = allCustom
+  if (userId) {
+    if (userRole === 'teacher') {
+      visible = allCustom
+    } else if (userRole === 'student' && teacherId) {
+      visible = allCustom.filter((c) => c.createdBy === userId || c.createdBy === teacherId)
+    } else {
+      visible = allCustom.filter((c) => c.createdBy === userId)
+    }
+  }
+
+  const custom = visible.filter(p => p.addAsSkill)
 
   SKILL_MAP.clear()
   for (const s of SKILLS) SKILL_MAP.set(s.id, s)

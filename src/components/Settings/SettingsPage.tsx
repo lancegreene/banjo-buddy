@@ -15,6 +15,7 @@ import { useStore } from '../../store/useStore'
 type SettingsView = 'list' | 'create' | 'edit' | 'curriculum'
 
 export function SettingsPage() {
+  const user = useStore((s) => s.user)
   const activeUserRole = useStore((s) => s.activeUserRole)
   const students = useStore((s) => s.students)
   const createStudent = useStore((s) => s.createStudent)
@@ -30,17 +31,28 @@ export function SettingsPage() {
   const isTeacher = activeUserRole === 'teacher'
 
   async function loadCustomPatterns() {
-    const patterns = await db.customRollPatterns.orderBy('createdAt').reverse().toArray()
-    setCustomPatterns(patterns)
+    const allPatterns = await db.customRollPatterns.orderBy('createdAt').reverse().toArray()
+    // Filter by visibility: teachers see all, students see theirs + teacher's, solo sees own
+    let visible = allPatterns
+    if (user) {
+      if (activeUserRole === 'teacher') {
+        visible = allPatterns
+      } else if (activeUserRole === 'student' && user.teacherId) {
+        visible = allPatterns.filter((p) => p.createdBy === user.id || p.createdBy === user.teacherId)
+      } else {
+        visible = allPatterns.filter((p) => p.createdBy === user.id)
+      }
+    }
+    setCustomPatterns(visible)
   }
 
   useEffect(() => {
     loadCustomPatterns()
-  }, [])
+  }, [user?.id, activeUserRole])
 
   async function handleDelete(id: string) {
     await db.customRollPatterns.delete(id)
-    await refreshRollMap()
+    await refreshRollMap(user?.id, activeUserRole, user?.teacherId)
     loadCustomPatterns()
   }
 
