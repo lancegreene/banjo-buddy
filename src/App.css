@@ -5024,6 +5024,25 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   background: var(--status-success);
 }
 
+.onboarding-skip {
+  position: absolute;
+  bottom: 32px;
+  right: 32px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  transition: color 0.2s, background 0.2s;
+}
+
+.onboarding-skip:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+}
+
 .mic-level-bar {
   width: 100%;
   max-width: 300px;

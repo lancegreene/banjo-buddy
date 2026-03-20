@@ -55,6 +55,12 @@ export function OnboardingFlow({ onComplete }: Props) {
           {step === 'success' && <OnboardingSuccess onComplete={onComplete} />}
         </motion.div>
       </AnimatePresence>
+
+      {step !== 'success' && (
+        <button className="onboarding-skip" onClick={onComplete}>
+          Skip Setup →
+        </button>
+      )}
     </div>
   )
 }
