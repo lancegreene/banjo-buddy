@@ -259,7 +259,7 @@ export function Metronome({ controlledBpm }: MetronomeProps = {}) {
   const beatDots = Array.from({ length: beatsPerMeasure }, (_, i) => i)
 
   return (
-    <div className="metronome">
+    <div className="metronome" data-tour="metronome">
       {/* Classic metronome illustration with swinging pendulum */}
       <MetronomeBody bpm={bpm} isRunning={isRunning} beat={beat} />
 
@@ -274,7 +274,7 @@ export function Metronome({ controlledBpm }: MetronomeProps = {}) {
       </div>
 
       {/* BPM display with +/- */}
-      <div className="metro-bpm-row">
+      <div className="metro-bpm-row" data-tour="metro-controls">
         <button className="metro-adj-btn" onClick={() => updateBpm(bpm - BPM_STEP)} aria-label="Decrease BPM">−</button>
         <div className="metro-bpm-center">
           <input

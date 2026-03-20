@@ -22,6 +22,7 @@ import { UserPicker } from './components/Login/UserPicker'
 import { UserBadge } from './components/Login/UserBadge'
 import { IntroFlow } from './components/Intro/IntroFlow'
 import { SiteTour } from './components/Tour/SiteTour'
+import { FretboardLab } from './components/Fretboard/FretboardLab'
 
 const NAV_ITEMS: { id: Page | ToolModal; label: string; icon: string; tour: string }[] = [
   { id: 'dashboard', label: 'Home', icon: '⌂', tour: 'nav-home' },
@@ -44,6 +45,7 @@ function PageContent({ page }: { page: Page }) {
     case 'progress':      return <ProgressPage />
     case 'achievements':  return <AchievementList />
     case 'settings':      return <SettingsPage />
+    case 'fretboard-lab': return <FretboardLab />
     default:              return <Dashboard />
   }
 }
@@ -214,7 +216,7 @@ export default function App() {
       {isSplitPage ? (
         <main className="app-content-split">
           {page === 'skill-tree' ? <SkillTree /> : <Pathway />}
-          <div className="skill-tree-main">
+          <div className="skill-tree-main" data-tour="skill-tree-main">
             {selectedSkillId ? <PracticeSession /> : <BanjoWatermark />}
           </div>
         </main>

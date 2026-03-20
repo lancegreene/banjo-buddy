@@ -318,7 +318,7 @@ export function SkillTree() {
   if (!user) return null
 
   return (
-    <div className="skill-tree-sidebar">
+    <div className="skill-tree-sidebar" data-tour="skill-tree-sidebar">
       <div className="skill-tree-header">
         <h2>Skills</h2>
       </div>
@@ -331,7 +331,7 @@ export function SkillTree() {
       />
 
       {/* Category sections */}
-      {categories.map(({ id, label, skills: catSkills }) => {
+      {categories.map(({ id, label, skills: catSkills }, catIdx) => {
         const filtered = searchLower
           ? catSkills.filter((s) => s.name.toLowerCase().includes(searchLower))
           : catSkills
@@ -340,7 +340,7 @@ export function SkillTree() {
         const color = CATEGORY_COLORS[id]
 
         return (
-          <div key={id} className={`skill-tree-category ${isOpen ? 'skill-tree-category-open' : ''}`}>
+          <div key={id} className={`skill-tree-category ${isOpen ? 'skill-tree-category-open' : ''}`} {...(catIdx === 0 ? { 'data-tour': 'skill-category-first' } : {})}>
             <div
               className="skill-category-header"
               style={{ borderLeftColor: color }}

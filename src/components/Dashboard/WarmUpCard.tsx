@@ -29,7 +29,7 @@ export function WarmUpCard() {
   }
 
   return (
-    <div className="warmup-card">
+    <div className="warmup-card" data-tour="warmup-card">
       <div className="warmup-card-header">
         <h3 className="section-title">Warm Up</h3>
         {!warmUp && (

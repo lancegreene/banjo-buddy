@@ -112,7 +112,7 @@ function PathSelector() {
   const setUserPath = useStore((s) => s.setUserPath)
 
   return (
-    <div className="path-selector">
+    <div className="path-selector" data-tour="path-selector">
       <h3 className="section-title">Your Learning Path</h3>
       <div className="path-cards">
         {PATHS.map((path) => (
@@ -176,7 +176,7 @@ function TodaysPlan() {
   ]
 
   return (
-    <div className="todays-plan">
+    <div className="todays-plan" data-tour="todays-plan">
       <div className="todays-plan-header">
         <h3 className="section-title">Today's Plan</h3>
       </div>
@@ -217,7 +217,7 @@ export function Dashboard() {
       <ContinueHero />
 
       {progress && (
-        <div className="progress-overview">
+        <div className="progress-overview" data-tour="progress-overview">
           <ProgressRing percent={progress.percentComplete} />
           <div className="progress-stats">
             <div className="stat">
@@ -237,7 +237,7 @@ export function Dashboard() {
       )}
 
       {/* Mini 4-week heatmap */}
-      <div className="dashboard-heatmap-section">
+      <div className="dashboard-heatmap-section" data-tour="dashboard-heatmap">
         <PracticeHeatmap weeks={4} mini />
         <button className="btn-text" onClick={() => setPage('progress')}>
           View full progress →

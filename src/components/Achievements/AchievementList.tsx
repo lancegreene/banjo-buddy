@@ -28,7 +28,7 @@ export function AchievementList() {
   }
 
   return (
-    <div className="achievements-page">
+    <div className="achievements-page" data-tour="achievements-page">
       <h2 className="achievements-title">Achievements</h2>
       <p className="achievements-subtitle">
         {earned.size} / {ACHIEVEMENTS.length} earned

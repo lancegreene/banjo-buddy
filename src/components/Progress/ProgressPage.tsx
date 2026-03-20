@@ -20,7 +20,9 @@ export function ProgressPage() {
     <div className="progress-page">
       <h1 className="progress-page-title">Your Progress</h1>
 
-      <OverallStatsCard />
+      <div data-tour="progress-stats">
+        <OverallStatsCard />
+      </div>
 
       {lastMetrics && (
         <div className="progress-section">
@@ -39,9 +41,11 @@ export function ProgressPage() {
         </div>
       )}
 
-      <PracticeHeatmap />
+      <div data-tour="progress-heatmap">
+        <PracticeHeatmap />
+      </div>
 
-      <div className="progress-section">
+      <div className="progress-section" data-tour="progress-bpm">
         <h3 className="section-title">BPM Trends</h3>
         <SkillPicker value={selectedSkillId} onChange={setSelectedSkillId} />
         {selectedSkillId && <BpmTrendChart skillId={selectedSkillId} />}
@@ -50,7 +54,9 @@ export function ProgressPage() {
         )}
       </div>
 
-      <SessionHistoryList />
+      <div data-tour="progress-history">
+        <SessionHistoryList />
+      </div>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useStore } from '../../store/useStore'
-import { SKILL_MAP, type ScoringType } from '../../data/curriculum'
+import { SKILLS, SKILL_MAP, type ScoringType } from '../../data/curriculum'
 import { evaluateSkillStatus, type RecommendedItem, type SessionPlan } from '../../engine/recommendationEngine'
 import type { SelfRating } from '../../db/db'
 import type { NoteEvaluation } from '../../engine/streamingRollMatcher'
@@ -769,11 +769,35 @@ export function PracticeSession() {
     }
   }
 
+  function getNextSkillId(): string | null {
+    if (!selectedSkillId) return null
+    const currentIdx = SKILLS.findIndex((s) => s.id === selectedSkillId)
+    if (currentIdx < 0) return null
+    // Find the next skill in curriculum order that isn't disabled or locked
+    for (let i = currentIdx + 1; i < SKILLS.length; i++) {
+      const skill = SKILLS[i]
+      if (disabled.has(skill.id)) continue
+      const status = evaluateSkillStatus(skill, skillRecords.get(skill.id) ?? null, skillRecords, disabled, isTeacher)
+      if (status !== 'locked') return skill.id
+    }
+    return null
+  }
+
+  const nextSkillId = singleSkillItem ? getNextSkillId() : null
+
   function handleDone() {
     if (singleSkillItem) {
       clearSelectedSkill()
     } else {
       setPage('dashboard')
+    }
+  }
+
+  function handleNextSkill() {
+    if (nextSkillId) {
+      practiceSkill(nextSkillId)
+    } else {
+      clearSelectedSkill()
     }
   }
 
@@ -943,9 +967,24 @@ export function PracticeSession() {
             </ul>
           </div>
         )}
-        <button className="btn btn-primary" onClick={handleDone}>
-          {singleSkillItem ? 'Back to Skills' : 'Back to Dashboard'}
-        </button>
+        {singleSkillItem ? (
+          <div className="practice-complete-actions">
+            <button className="btn btn-primary" onClick={handleNextSkill}>
+              {nextSkillId
+                ? `Move to: ${SKILL_MAP.get(nextSkillId)?.name ?? 'Next Skill'} →`
+                : 'Back to Skills'}
+            </button>
+            {nextSkillId && (
+              <button className="btn btn-secondary" onClick={handleDone}>
+                Back to Skills
+              </button>
+            )}
+          </div>
+        ) : (
+          <button className="btn btn-primary" onClick={handleDone}>
+            Back to Dashboard
+          </button>
+        )}
       </div>
     )
   }
@@ -990,7 +1029,7 @@ export function PracticeSession() {
 
       {singleSkillItem ? (
         <button className="skip-btn" onClick={() => clearSelectedSkill()}>
-          ← Back to Skills
+          ← Skills
         </button>
       ) : (
         <button className="skip-btn" onClick={handleSkip}>

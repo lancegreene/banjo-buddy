@@ -87,7 +87,7 @@ export function Pathway() {
   let globalIdx = 0
 
   return (
-    <div className="pathway-sidebar">
+    <div className="pathway-sidebar" data-tour="pathway-sidebar">
       <div className="pathway-header">
         <h2>Pathway</h2>
       </div>
@@ -99,7 +99,7 @@ export function Pathway() {
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      <div className="pathway-timeline">
+      <div className="pathway-timeline" data-tour="pathway-timeline">
         {months.map(([month, skills]) => {
           const filtered = searchLower
             ? skills.filter((s) => s.name.toLowerCase().includes(searchLower))

@@ -200,7 +200,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="settings-page">
+    <div className="settings-page" data-tour="settings-page">
       <h1 className="settings-title">Settings</h1>
 
       {/* Quick Actions */}
@@ -216,9 +216,27 @@ export function SettingsPage() {
         </button>
       </section>
 
+      {/* Experimental */}
+      <section className="settings-section">
+        <div className="settings-section-header">
+          <div>
+            <h2 className="settings-section-title">Experimental</h2>
+            <p className="settings-section-desc">
+              New features in development. Try them out and let us know what you think.
+            </p>
+          </div>
+        </div>
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={() => useStore.getState().setPage('fretboard-lab')}
+        >
+          Fretboard Lab
+        </button>
+      </section>
+
       {/* Teacher Tools — only visible when logged in as Teacher */}
       {isTeacher && (
-        <section className="settings-section">
+        <section className="settings-section" data-tour="settings-teacher">
           <div className="settings-section-header">
             <div>
               <h2 className="settings-section-title">Teacher Tools</h2>
@@ -286,7 +304,7 @@ export function SettingsPage() {
 
       {/* Teaching Media — only visible when logged in as Teacher */}
       {isTeacher && (
-        <section className="settings-section">
+        <section className="settings-section" data-tour="settings-media">
           <div className="settings-section-header">
             <div>
               <h2 className="settings-section-title">Teaching Media</h2>
@@ -416,7 +434,7 @@ export function SettingsPage() {
       )}
 
       {/* Custom Roll Patterns */}
-      <section className="settings-section">
+      <section className="settings-section" data-tour="settings-patterns">
         <div className="settings-section-header">
           <div>
             <h2 className="settings-section-title">Custom Roll Patterns</h2>

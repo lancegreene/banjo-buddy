@@ -244,9 +244,9 @@ export function Tuner() {
   }
 
   return (
-    <div className="tuner">
+    <div className="tuner" data-tour="tuner">
       {/* Open string reference row */}
-      <div className="string-reference">
+      <div className="string-reference" data-tour="tuner-strings">
         <span className="string-ref-label">Open strings</span>
         <div className="string-ref-list">
           {BANJO_STRINGS.map((s) => (
