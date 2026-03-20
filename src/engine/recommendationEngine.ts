@@ -34,11 +34,12 @@ export function evaluateSkillStatus(
   skill: Skill,
   record: SkillRecord | null,
   allRecords: Map<string, SkillRecord>,
-  disabledSkillIds: Set<string> = new Set()
+  disabledSkillIds: Set<string> = new Set(),
+  skipPrereqs: boolean = false
 ): SkillStatus {
-  // Skills with no prerequisites are always unlocked
+  // Teachers bypass all prerequisite checks — full curriculum access
   // Disabled prereqs are treated as auto-met so students aren't blocked
-  const prereqsMet = skill.prerequisites.every((prereqId) => {
+  const prereqsMet = skipPrereqs || skill.prerequisites.every((prereqId) => {
     if (disabledSkillIds.has(prereqId)) return true
     const prereqRecord = allRecords.get(prereqId)
     if (!prereqRecord) return false
@@ -232,7 +233,8 @@ export function buildSessionPlan(
   allRecords: Map<string, SkillRecord>,
   targetMinutes = 30,
   recentItemsBySkill: Map<string, SessionItem[]> = new Map(),
-  disabledSkillIds: Set<string> = new Set()
+  disabledSkillIds: Set<string> = new Set(),
+  skipPrereqs: boolean = false
 ): SessionPlan {
   // Filter skills for this path, excluding disabled skills
   const pathSkills = getAllSkills().filter((s) =>
@@ -243,7 +245,7 @@ export function buildSessionPlan(
   const evaluated = pathSkills.map((skill) => {
     const record = allRecords.get(skill.id) ?? null
     const recentItems = recentItemsBySkill.get(skill.id) ?? []
-    const status = evaluateSkillStatus(skill, record, allRecords, disabledSkillIds)
+    const status = evaluateSkillStatus(skill, record, allRecords, disabledSkillIds, skipPrereqs)
     const priority = computePriority(skill, record, status, recentItems)
     const reason = buildReason(skill, record, status, recentItems)
     const suggestedBpm = suggestBpm(skill, record, recentItems)
@@ -458,7 +460,8 @@ export interface PathProgress {
 export function getPathProgress(
   path: Path,
   allRecords: Map<string, SkillRecord>,
-  disabledSkillIds: Set<string> = new Set()
+  disabledSkillIds: Set<string> = new Set(),
+  skipPrereqs: boolean = false
 ): PathProgress {
   const pathSkills = getAllSkills().filter((s) =>
     (s.path === path || s.path === 'all') && !disabledSkillIds.has(s.id)
@@ -467,7 +470,7 @@ export function getPathProgress(
 
   for (const skill of pathSkills) {
     const record = allRecords.get(skill.id) ?? null
-    const status = evaluateSkillStatus(skill, record, allRecords, disabledSkillIds)
+    const status = evaluateSkillStatus(skill, record, allRecords, disabledSkillIds, skipPrereqs)
     counts[status]++
   }
 

@@ -49,14 +49,9 @@ function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill, i
   const [showPrereqs, setShowPrereqs] = useState(false)
 
   const disabled = activeUserRole === 'student' ? disabledSkillIds : new Set<string>()
+  const isTeacher = activeUserRole === 'teacher'
   const record = skillRecords.get(skill.id) ?? null
-  const status = evaluateSkillStatus(skill, record, skillRecords, disabled)
-
-  useEffect(() => {
-    if (isCurrent && ref.current) {
-      ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }
-  }, [isCurrent])
+  const status = evaluateSkillStatus(skill, record, skillRecords, disabled, isTeacher)
 
   const isPlayable = status !== 'locked'
 
@@ -68,19 +63,27 @@ function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill, i
           const r = skillRecords.get(id)
           return !r || (r.practiceCount === 0 && r.status !== 'active' && r.status !== 'progressed' && r.status !== 'mastered')
         })
-        .map((id) => ({ id, name: SKILL_MAP.get(id)?.name ?? id, status: evaluateSkillStatus(SKILL_MAP.get(id)!, skillRecords.get(id) ?? null, skillRecords, disabled) }))
+        .map((id) => ({ id, name: SKILL_MAP.get(id)?.name ?? id, status: evaluateSkillStatus(SKILL_MAP.get(id)!, skillRecords.get(id) ?? null, skillRecords, disabled, isTeacher) }))
     : []
 
+  useEffect(() => {
+    if (isCurrent && ref.current) {
+      ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Auto-expand prereqs panel when navigated to a locked skill
+      if (!isPlayable && unmetPrereqs.length > 0) {
+        setShowPrereqs(true)
+      }
+    }
+  }, [isCurrent])
+
   function handleLockedClick() {
+    practiceSkill(skill.id)
     setShowPrereqs((prev) => !prev)
   }
 
-  function handlePrereqClick(prereqId: string, prereqStatus: SkillStatus) {
-    if (prereqStatus !== 'locked' && onNavigateToSkill) {
-      // Prereq is playable — navigate to practice it
-      practiceSkill(prereqId)
-    } else if (onNavigateToSkill) {
-      // Prereq is also locked — at least scroll to it
+  function handlePrereqClick(prereqId: string) {
+    practiceSkill(prereqId)
+    if (onNavigateToSkill) {
       onNavigateToSkill(prereqId)
     }
     setShowPrereqs(false)
@@ -125,7 +128,7 @@ function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill, i
               <button
                 key={prereq.id}
                 className={`skill-prereq-link skill-prereq-link-${prereq.status}`}
-                onClick={() => handlePrereqClick(prereq.id, prereq.status)}
+                onClick={() => handlePrereqClick(prereq.id)}
               >
                 <span
                   className="skill-status-dot"
@@ -189,7 +192,7 @@ function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill, i
             <button
               key={prereq.id}
               className={`skill-prereq-link skill-prereq-link-${prereq.status}`}
-              onClick={(e) => { e.stopPropagation(); handlePrereqClick(prereq.id, prereq.status) }}
+              onClick={(e) => { e.stopPropagation(); handlePrereqClick(prereq.id) }}
             >
               <span
                 className="skill-status-dot"

@@ -55,7 +55,7 @@ function ContinueHero() {
     : null
 
   return (
-    <div className="continue-hero">
+    <div className="continue-hero" data-tour="dashboard">
       <div className="continue-hero-top">
         <div className="continue-hero-meta">
           <span className="streak-badge-inline">
@@ -179,9 +179,6 @@ function TodaysPlan() {
     <div className="todays-plan">
       <div className="todays-plan-header">
         <h3 className="section-title">Today's Plan</h3>
-        <button className="btn-text" onClick={() => setPage('practice')}>
-          Full session →
-        </button>
       </div>
       <div className="plan-items-compact">
         {allItems.map((item) => (
@@ -208,7 +205,8 @@ export function Dashboard() {
   const activeUserRole = useStore((s) => s.activeUserRole)
 
   const disabled = activeUserRole === 'student' ? disabledSkillIds : new Set<string>()
-  const progress = user ? getPathProgress(user.path, skillRecords, disabled) : null
+  const isTeacher = activeUserRole === 'teacher'
+  const progress = user ? getPathProgress(user.path, skillRecords, disabled, isTeacher) : null
 
   return (
     <div className="dashboard">

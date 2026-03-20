@@ -54,17 +54,18 @@ export function Pathway() {
   if (!user) return null
 
   const disabled = activeUserRole === 'student' ? disabledSkillIds : new Set<string>()
+  const isTeacher = activeUserRole === 'teacher'
 
   // Find the index of the first non-progressed/mastered skill (the "current" frontier)
   const frontierIdx = orderedSkills.findIndex((s) => {
     const r = skillRecords.get(s.id) ?? null
-    const status = evaluateSkillStatus(s, r, skillRecords, disabled)
+    const status = evaluateSkillStatus(s, r, skillRecords, disabled, isTeacher)
     return status !== 'progressed' && status !== 'mastered'
   })
 
   function handleClick(skill: Skill) {
     const r = skillRecords.get(skill.id) ?? null
-    const status = evaluateSkillStatus(skill, r, skillRecords, disabled)
+    const status = evaluateSkillStatus(skill, r, skillRecords, disabled, isTeacher)
     if (status === 'locked') return
     practiceSkill(skill.id)
   }
@@ -109,7 +110,7 @@ export function Pathway() {
             <div className="pathway-month-label">Month {month}</div>
             {filtered.map((skill) => {
               const record = skillRecords.get(skill.id) ?? null
-              const status = evaluateSkillStatus(skill, record, skillRecords, disabled)
+              const status = evaluateSkillStatus(skill, record, skillRecords, disabled, isTeacher)
               const isPlayable = status !== 'locked'
               const isFrontier = globalIdx === frontierIdx
               const idx = globalIdx++

@@ -22,7 +22,7 @@ export function UserBadge({ theme, onToggleTheme }: Props) {
   if (!user) return null
 
   return (
-    <div className="user-badge-wrap">
+    <div className="user-badge-wrap" data-tour="user-badge">
       <button className="user-badge" onClick={() => setOpen(!open)} title="Account menu">
         <span className="user-badge-avatar">
           {user.name.charAt(0).toUpperCase()}

@@ -10,11 +10,12 @@ export type SkillStatus = 'locked' | 'unlocked' | 'active' | 'progressed' | 'mas
 export type SessionItemType = 'roll' | 'song' | 'exercise' | 'technique' | 'theory'
 export type SelfRating = 'felt_good' | 'ok' | 'needs_work'
 export type UserRole = 'solo' | 'teacher' | 'student'
+export type MediaType = 'video' | 'audio' | 'image' | 'tab_crop'
 
 // ── Table shapes ─────────────────────────────────────────────────────────────
 
 export interface UserProfile {
-  id: string           // 'local' for solo/teacher, UUID for students
+  id: string           // 'local' for legacy solo, UUID for teachers & students
   name: string
   path: Path
   role: UserRole       // 'solo' default, 'teacher' or 'student'
@@ -23,9 +24,18 @@ export interface UserProfile {
   updatedAt: string
 }
 
+export interface MediaDisplaySettings {
+  videoThumbWidth?: number     // px, default 216
+  tabMaxWidth?: number         // px, default 200
+  imageMaxWidth?: number       // px, default full width (0 = full)
+}
+
 export interface TeacherConfig {
   id: string                   // same as teacher's userId ('local')
-  disabledSkillIds: string[]   // skills toggled off for students
+  disabledSkillIds: string[]   // skills toggled off for students (default)
+  studentOverrides?: { [studentId: string]: string[] }  // per-student disabled lists (overrides default)
+  mediaDisplay?: MediaDisplaySettings
+  skillOrder?: { [category: string]: string[] }  // custom ordering of skill IDs within each category
   updatedAt: string
 }
 
@@ -131,6 +141,34 @@ export interface CustomRollPattern {
   updatedAt: string
 }
 
+export interface CropRect {
+  x: number       // normalized 0-1
+  y: number
+  w: number
+  h: number
+}
+
+export interface TeacherClip {
+  id: string
+  teacherId: string             // userId of recording teacher
+  skillId: string | null        // attached skill (nullable)
+  rollPatternId: string | null  // attached roll pattern (nullable)
+  mediaType: MediaType          // 'video' | 'audio' | 'image' | 'tab_crop'
+  videoBlob: Blob | null        // video/webm blob (video only)
+  audioBlob: Blob | null        // audio blob (audio only)
+  imageBlob: Blob | null        // image blob (image + tab_crop)
+  thumbnailBlob: Blob | null    // poster frame / image thumbnail
+  sourceImageId: string | null  // for tab_crop: parent image clip ID
+  cropRect: CropRect | null     // for tab_crop: crop region on source image
+  sortOrder: number | null      // for tab_crop: ordering within source
+  durationSeconds: number       // 0 for images
+  trimStart: number             // seconds, 0 if untrimmed or non-temporal
+  trimEnd: number               // seconds, = durationSeconds if untrimmed
+  title: string
+  createdAt: string
+  updatedAt: string
+}
+
 // ── Database class ────────────────────────────────────────────────────────────
 
 class BanjoBuddyDB extends Dexie {
@@ -144,6 +182,7 @@ class BanjoBuddyDB extends Dexie {
   achievements!: Table<Achievement>
   customRollPatterns!: Table<CustomRollPattern>
   teacherConfigs!: Table<TeacherConfig>
+  teacherClips!: Table<TeacherClip>
 
   constructor() {
     super('BanjoBuddyDB')
@@ -263,6 +302,46 @@ class BanjoBuddyDB extends Dexie {
         if (pattern.createdBy === undefined) pattern.createdBy = 'local'
       })
     })
+
+    // v9: Teacher video clips table
+    this.version(9).stores({
+      userProfiles:       'id, path, role',
+      skillRecords:       'id, userId, skillId, status, lastPracticed, [userId+skillId], srNextReview, [userId+fsrsNextReview]',
+      practiceSessions:   'id, userId, date, startedAt',
+      sessionItems:       'id, sessionId, skillId, completedAt, [skillId+completedAt]',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, date, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
+      achievements:       '++id, achievementId, userId, earnedAt',
+      customRollPatterns: 'id, name, createdBy, createdAt',
+      teacherConfigs:     'id',
+      teacherClips:       'id, teacherId, skillId, rollPatternId, createdAt',
+    })
+
+    // v10: Multi-media clips — add mediaType, sourceImageId, nullable blobs
+    this.version(10).stores({
+      userProfiles:       'id, path, role',
+      skillRecords:       'id, userId, skillId, status, lastPracticed, [userId+skillId], srNextReview, [userId+fsrsNextReview]',
+      practiceSessions:   'id, userId, date, startedAt',
+      sessionItems:       'id, sessionId, skillId, completedAt, [skillId+completedAt]',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, date, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
+      achievements:       '++id, achievementId, userId, earnedAt',
+      customRollPatterns: 'id, name, createdBy, createdAt',
+      teacherConfigs:     'id',
+      teacherClips:       'id, teacherId, skillId, rollPatternId, mediaType, sourceImageId, createdAt',
+    }).upgrade((tx) => {
+      return tx.table('teacherClips').toCollection().modify((clip: any) => {
+        if (clip.mediaType === undefined) clip.mediaType = 'video'
+        if (clip.audioBlob === undefined) clip.audioBlob = null
+        if (clip.imageBlob === undefined) clip.imageBlob = null
+        if (clip.sourceImageId === undefined) clip.sourceImageId = null
+        if (clip.cropRect === undefined) clip.cropRect = null
+        if (clip.sortOrder === undefined) clip.sortOrder = null
+        // Existing clips have videoBlob as non-null — keep as-is
+      })
+    })
   }
 }
 
@@ -339,7 +418,11 @@ export async function getStudents(teacherId: string): Promise<UserProfile[]> {
   return db.userProfiles.where('role').equals('student').filter((p) => p.teacherId === teacherId).toArray()
 }
 
-export async function createStudent(name: string, teacherId: string, path: Path): Promise<UserProfile> {
+export async function getStandaloneStudents(): Promise<UserProfile[]> {
+  return db.userProfiles.where('role').equals('student').filter((p) => !p.teacherId).toArray()
+}
+
+export async function createStudent(name: string, teacherId: string | null, path: Path): Promise<UserProfile> {
   const student: UserProfile = {
     id: newId(),
     name,
@@ -386,6 +469,56 @@ export async function getOrCreateTeacherConfig(teacherId: string): Promise<Teach
 
 export async function updateTeacherConfig(config: TeacherConfig): Promise<void> {
   await db.teacherConfigs.put({ ...config, updatedAt: nowISO() })
+}
+
+// ── Multi-teacher helpers ─────────────────────────────────────────────────────
+
+export async function getTeachers(): Promise<UserProfile[]> {
+  return db.userProfiles.where('role').equals('teacher').toArray()
+}
+
+export async function createTeacher(name: string): Promise<UserProfile> {
+  const teacher: UserProfile = {
+    id: newId(),
+    name,
+    path: 'newby',
+    role: 'teacher',
+    teacherId: null,
+    createdAt: nowISO(),
+    updatedAt: nowISO(),
+  }
+  await db.userProfiles.add(teacher)
+  return teacher
+}
+
+export async function deleteTeacher(teacherId: string): Promise<void> {
+  // Remove all students of this teacher first
+  const students = await getStudents(teacherId)
+  for (const s of students) {
+    await deleteStudent(s.id)
+  }
+  // Remove teacher config
+  await db.teacherConfigs.delete(teacherId)
+  // Remove teacher's video clips
+  await db.teacherClips.where('teacherId').equals(teacherId).delete()
+  // Remove teacher's custom patterns
+  await db.customRollPatterns.where('createdBy').equals(teacherId).delete()
+  // Remove teacher's own data
+  const sessions = await db.practiceSessions.where('userId').equals(teacherId).toArray()
+  const sessionIds = sessions.map((s) => s.id)
+  if (sessionIds.length > 0) {
+    const items = await db.sessionItems.where('sessionId').anyOf(sessionIds).toArray()
+    const itemIds = items.map((i) => i.id)
+    if (itemIds.length > 0) {
+      await db.noteAccuracyRecords.where('sessionItemId').anyOf(itemIds).delete()
+      await db.recordings.where('sessionItemId').anyOf(itemIds).delete()
+    }
+    await db.sessionItems.where('sessionId').anyOf(sessionIds).delete()
+  }
+  await db.practiceSessions.where('userId').equals(teacherId).delete()
+  await db.skillRecords.where('userId').equals(teacherId).delete()
+  await db.streakRecords.where('userId').equals(teacherId).delete()
+  await db.userProfiles.delete(teacherId)
 }
 
 // Calculate current streak from streak records

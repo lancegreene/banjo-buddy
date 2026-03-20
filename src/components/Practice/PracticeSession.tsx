@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useStore } from '../../store/useStore'
 import { SKILL_MAP, type ScoringType } from '../../data/curriculum'
-import type { RecommendedItem, SessionPlan } from '../../engine/recommendationEngine'
+import { evaluateSkillStatus, type RecommendedItem, type SessionPlan } from '../../engine/recommendationEngine'
 import type { SelfRating } from '../../db/db'
 import type { NoteEvaluation } from '../../engine/streamingRollMatcher'
 import { createAdaptiveTempoState, evaluateTempoAdjustment, type AdaptiveTempoState } from '../../engine/adaptiveTempo'
@@ -9,7 +9,7 @@ import { createTempoRamp, evaluateRampCycle, getCurrentRampBpm, type TempoRampSt
 import { generateFocusDrill, focusDrillToSessionPlan, type FocusDrillItem } from '../../engine/focusMode'
 import { TempoRampView } from './TempoRampView'
 import { Metronome } from '../Metronome/Metronome'
-import { Tuner } from '../Tuner/Tuner'
+
 import { RollDetector } from '../RollDetector/RollDetector'
 import { LiveRollFeedback } from '../RollDetector/LiveRollFeedback'
 import { LickDetector } from '../LickDetector/LickDetector'
@@ -37,6 +37,13 @@ import type { HighwayNote } from '../NoteHighway/noteHighwayTypes'
 import { SECTION_MAP } from '../../data/songLibrary'
 import { identifyWeakChunks, type ChunkDrill } from '../../engine/autoChunker'
 import type { PerformanceMetrics } from '../../types/performance'
+import { TeacherMediaPlayer } from '../Teaching/TeacherMediaPlayer'
+import { VideoRecorder } from '../Teaching/VideoRecorder'
+import { AudioRecorderTeacher } from '../Teaching/AudioRecorderTeacher'
+import { ImageUploader } from '../Teaching/ImageUploader'
+import { TabCropper } from '../Teaching/TabCropper'
+import { getClipsForSkillOrPattern } from '../../engine/teacherClipService'
+import type { TeacherClip } from '../../db/db'
 
 type PracticeView = 'plan' | 'item' | 'summary' | 'metronome' | 'complete'
 
@@ -119,7 +126,7 @@ function generateHighwayNotes(
   return notes
 }
 
-type ActiveTool = 'metronome' | 'tuner' | 'roll' | 'lick' | 'recorder' | 'calibrate' | 'listen' | 'play_along' | null
+type ActiveTool = 'metronome' | 'roll' | 'lick' | 'recorder' | 'calibrate' | 'listen' | 'play_along' | 'video_record' | 'audio_record' | 'upload_image' | 'upload_tab' | null
 
 function ExerciseView({
   item,
@@ -128,9 +135,21 @@ function ExerciseView({
   item: RecommendedItem
   onComplete: (achievedBpm: number | null, rating: SelfRating, scores: Record<string, number>, noteEvaluations?: NoteEvaluation[]) => void
 }) {
+  const openModal = useStore((s) => s.openModal)
+  const setOpenModal = useStore((s) => s.setOpenModal)
+  const activeUserRole = useStore((s) => s.activeUserRole)
+  const isTeacher = activeUserRole === 'teacher'
   const [achievedBpm, setAchievedBpm] = useState<string>(String(item.suggestedBpm ?? ''))
   const [rating, setRating] = useState<SelfRating | null>(null)
   const [activeTool, setActiveTool] = useState<ActiveTool>(null)
+
+  const { skill } = item
+
+  // Teacher demo clips
+  const [teacherClips, setTeacherClips] = useState<TeacherClip[]>([])
+  useEffect(() => {
+    getClipsForSkillOrPattern(skill.id, skill.rollPatternId ?? null).then(setTeacherClips)
+  }, [skill.id, skill.rollPatternId])
   const [highwayPlaying, setHighwayPlaying] = useState(false)
   const highwayPlayingRef = useRef(false)
   type RollPanelTab = 'pattern' | 'weakspots' | 'highway'
@@ -150,9 +169,7 @@ function ExerciseView({
   const [autoTempo, setAutoTempo] = useState(false)
   const [adaptiveState, setAdaptiveState] = useState<AdaptiveTempoState | null>(null)
 
-  const { skill } = item
-
-  // Highway notes generated from roll pattern (must be after `skill` is destructured)
+  // Highway notes generated from roll pattern
   const highwayNotes = useMemo(
     () => skill.rollPatternId ? generateHighwayNotes(skill.rollPatternId, item.suggestedBpm ?? 80) : [],
     [skill.rollPatternId, item.suggestedBpm]
@@ -324,6 +341,15 @@ function ExerciseView({
 
           <BpmProgressBar item={item} />
 
+          {/* Teacher demo clips */}
+          {teacherClips.length > 0 && (
+            <TeacherMediaPlayer
+              clips={teacherClips}
+              editable={isTeacher}
+              onClipsReordered={() => getClipsForSkillOrPattern(skill.id, skill.rollPatternId ?? null).then(setTeacherClips)}
+            />
+          )}
+
           {/* Unified roll panel (Pattern / Weak Spots / Highway) */}
           {skill.rollPatternId && (() => {
             const pattern = ROLL_MAP.get(skill.rollPatternId!)
@@ -472,17 +498,80 @@ function ExerciseView({
           <div className="ev-tools">
             {hasSong && <button className={`tool-btn ${activeTool === 'play_along' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('play_along')}>▶ Along</button>}
             <button className={`tool-btn ${activeTool === 'metronome' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('metronome')}>♩ Metro</button>
-            {hasPitch && <button className={`tool-btn ${activeTool === 'tuner' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('tuner')}>◎ Tuner</button>}
+            {hasPitch && <button className={`tool-btn${skill.id === 'tuning_basic' && openModal !== 'tuner' ? ' tool-btn-pulse' : ''}`} onClick={() => setOpenModal('tuner')}>◎ Tuner</button>}
             {(hasAnalysis || hasPitch) && <button className={`tool-btn ${activeTool === 'recorder' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('recorder')}>● Rec</button>}
             <button className={`tool-btn tool-btn-cal ${activeTool === 'calibrate' ? 'tool-btn-active' : ''} ${loadCalibration() ? 'tool-btn-cal-saved' : ''}`} onClick={() => toggleTool('calibrate')} title="Calibrate audio detection">⚙ Cal</button>
+            {activeUserRole === 'teacher' && (
+              <>
+                <button className={`tool-btn ${activeTool === 'video_record' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('video_record')} title="Record video clip">🎥 Video</button>
+                <button className={`tool-btn ${activeTool === 'audio_record' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('audio_record')} title="Record audio clip">🎤 Audio</button>
+                <button className={`tool-btn ${activeTool === 'upload_image' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('upload_image')} title="Upload image">🖼 Img</button>
+                <button className={`tool-btn ${activeTool === 'upload_tab' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('upload_tab')} title="Upload tablature">🎵 Tab</button>
+              </>
+            )}
           </div>
+          {skill.id === 'tuning_basic' && openModal !== 'tuner' && (
+            <div className="tool-btn-hint" onClick={() => setOpenModal('tuner')}>↑ Tap the Tuner button to start tuning!</div>
+          )}
 
           {/* Inline tool panels */}
           {activeTool === 'metronome' && <div className="inline-tool-panel"><Metronome controlledBpm={autoTempo && adaptiveState ? adaptiveState.currentBpm : undefined} /></div>}
-          {activeTool === 'tuner' && <div className="inline-tool-panel"><Tuner /></div>}
+
           {activeTool === 'recorder' && <div className="inline-tool-panel"><AudioRecorder skillId={skill.id} bpm={item.suggestedBpm} analyserRef={analyserRef} streamRef={streamRef} /></div>}
           {activeTool === 'calibrate' && <div className="inline-tool-panel"><CalibrationWizard onClose={() => setActiveTool(null)} /></div>}
           {activeTool === 'play_along' && skill.songId && <div className="inline-tool-panel"><PlayAlong songId={skill.songId} sectionId={skill.songSectionId} bpm={item.suggestedBpm ?? 70} synth={synth} /></div>}
+          {activeTool === 'video_record' && (
+            <div className="inline-tool-panel">
+              <VideoRecorder
+                skillId={skill.id}
+                rollPatternId={skill.rollPatternId}
+                onSaved={() => {
+                  setActiveTool(null)
+                  getClipsForSkillOrPattern(skill.id, skill.rollPatternId ?? null).then(setTeacherClips)
+                }}
+                onCancel={() => setActiveTool(null)}
+              />
+            </div>
+          )}
+          {activeTool === 'audio_record' && (
+            <div className="inline-tool-panel">
+              <AudioRecorderTeacher
+                skillId={skill.id}
+                rollPatternId={skill.rollPatternId}
+                onSaved={() => {
+                  setActiveTool(null)
+                  getClipsForSkillOrPattern(skill.id, skill.rollPatternId ?? null).then(setTeacherClips)
+                }}
+                onCancel={() => setActiveTool(null)}
+              />
+            </div>
+          )}
+          {activeTool === 'upload_image' && (
+            <div className="inline-tool-panel">
+              <ImageUploader
+                skillId={skill.id}
+                rollPatternId={skill.rollPatternId}
+                onSaved={() => {
+                  setActiveTool(null)
+                  getClipsForSkillOrPattern(skill.id, skill.rollPatternId ?? null).then(setTeacherClips)
+                }}
+                onCancel={() => setActiveTool(null)}
+              />
+            </div>
+          )}
+          {activeTool === 'upload_tab' && (
+            <div className="inline-tool-panel">
+              <TabCropper
+                skillId={skill.id}
+                rollPatternId={skill.rollPatternId}
+                onSaved={() => {
+                  setActiveTool(null)
+                  getClipsForSkillOrPattern(skill.id, skill.rollPatternId ?? null).then(setTeacherClips)
+                }}
+                onCancel={() => setActiveTool(null)}
+              />
+            </div>
+          )}
 
           {/* Realtime feedback */}
           {noteEvalsRef.current.length > 0 && <RealtimeFeedback evaluations={noteEvalsRef.current} />}
@@ -567,7 +656,18 @@ export function PracticeSession() {
 
   // Single-skill mode: when user taps a skill from the SkillTree
   const selectedSkill = selectedSkillId ? SKILL_MAP.get(selectedSkillId) ?? null : null
-  const singleSkillItem: RecommendedItem | null = selectedSkill
+  const disabledSkillIds = useStore((s) => s.disabledSkillIds)
+  const activeUserRole = useStore((s) => s.activeUserRole)
+  const practiceSkill = useStore((s) => s.practiceSkill)
+  const disabled = activeUserRole === 'student' ? disabledSkillIds : new Set<string>()
+  const isTeacher = activeUserRole === 'teacher'
+
+  // Check if the selected skill is locked
+  const isSelectedLocked = selectedSkill
+    ? evaluateSkillStatus(selectedSkill, skillRecords.get(selectedSkill.id) ?? null, skillRecords, disabled, isTeacher) === 'locked'
+    : false
+
+  const singleSkillItem: RecommendedItem | null = (selectedSkill && !isSelectedLocked)
     ? {
         skill: selectedSkill,
         record: skillRecords.get(selectedSkill.id) ?? null,
@@ -677,6 +777,65 @@ export function PracticeSession() {
     }
   }
 
+  // Locked skill view — shown after all hooks have run
+  if (selectedSkill && isSelectedLocked) {
+    const unmetPrereqs = selectedSkill.prerequisites
+      .filter((id) => {
+        if (disabled.has(id)) return false
+        const r = skillRecords.get(id)
+        return !r || (r.practiceCount === 0 && r.status !== 'active' && r.status !== 'progressed' && r.status !== 'mastered')
+      })
+      .map((id) => {
+        const s = SKILL_MAP.get(id)
+        const r = skillRecords.get(id) ?? null
+        return {
+          id,
+          name: s?.name ?? id,
+          status: s ? evaluateSkillStatus(s, r, skillRecords, disabled, isTeacher) : 'locked' as const,
+        }
+      })
+
+    const nextPrereq = unmetPrereqs.find((p) => p.status !== 'locked')
+    const otherPrereqs = unmetPrereqs.filter((p) => p !== nextPrereq)
+
+    return (
+      <div className="locked-skill-view">
+        <div className="locked-skill-icon">🔒</div>
+        <h2 className="locked-skill-name">{selectedSkill.name}</h2>
+        <p className="locked-skill-desc">{selectedSkill.description}</p>
+
+        {nextPrereq && (
+          <div className="locked-skill-next">
+            <span className="locked-skill-next-label">Complete this skill first to make progress:</span>
+            <button
+              className="locked-skill-next-btn"
+              onClick={() => practiceSkill(nextPrereq.id)}
+            >
+              <span className="locked-skill-next-name">{nextPrereq.name}</span>
+              <span className="locked-skill-next-arrow">Start Practicing →</span>
+            </button>
+          </div>
+        )}
+
+        {otherPrereqs.length > 0 && (
+          <div className="locked-skill-prereqs">
+            <span className="locked-skill-prereqs-label">{nextPrereq ? 'Also needed:' : 'Complete these to unlock:'}</span>
+            {otherPrereqs.map((prereq) => (
+              <button
+                key={prereq.id}
+                className={`locked-skill-prereq-btn ${prereq.status !== 'locked' ? 'locked-skill-prereq-playable' : ''}`}
+                onClick={() => practiceSkill(prereq.id)}
+              >
+                <span className="locked-skill-prereq-name">{prereq.name}</span>
+                <span className="locked-skill-prereq-arrow">{prereq.status !== 'locked' ? '→ Practice' : '→ View'}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (!singleSkillItem && (!sessionPlan || allItems.length === 0)) {
     return (
       <div className="practice-empty">
@@ -687,18 +846,17 @@ export function PracticeSession() {
     )
   }
 
-  if (showWarmup) {
-    return (
-      <WarmupModal
-        onComplete={() => { warmupSkippedThisSession = true; setShowWarmup(false); handleStart() }}
-        onSkip={() => { warmupSkippedThisSession = true; setShowWarmup(false); handleStart() }}
-      />
-    )
-  }
+  const warmupOverlay = showWarmup ? (
+    <WarmupModal
+      onComplete={() => { warmupSkippedThisSession = true; setShowWarmup(false); handleStart() }}
+      onSkip={() => { warmupSkippedThisSession = true; setShowWarmup(false); handleStart() }}
+    />
+  ) : null
 
   if (view === 'plan') {
     return (
       <div className="practice-plan-view">
+        {warmupOverlay}
         <h2>{focusPlan ? 'Focus Mode' : "Today's Session"}</h2>
         <p className="practice-plan-desc">{allItems.length} items planned</p>
 
@@ -749,6 +907,7 @@ export function PracticeSession() {
     const currentItem = allItems[currentIndex]
     return (
       <div className="practice-session">
+        {warmupOverlay}
         <SessionSummary
           metrics={lastItemMetrics}
           nextReviewDate={lastItemNextReview}
@@ -770,6 +929,7 @@ export function PracticeSession() {
   if (view === 'complete') {
     return (
       <div className="practice-complete">
+        {warmupOverlay}
         <div className="complete-icon">🎉</div>
         <h2>Session Complete!</h2>
         <p>You practiced {completedIds.length} skill{completedIds.length !== 1 ? 's' : ''}.</p>
@@ -794,6 +954,7 @@ export function PracticeSession() {
 
   return (
     <div className="practice-session">
+      {warmupOverlay}
       {/* Back button for single-skill mode */}
       {singleSkillItem && (
         <button className="practice-back-btn" onClick={() => clearSelectedSkill()}>

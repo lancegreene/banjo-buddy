@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import './styles/tokens.css'
 import './App.css'
-import { useStore, type Page } from './store/useStore'
+import { useStore, type Page, type ToolModal } from './store/useStore'
 import { useTheme } from './hooks/useTheme'
 import { Splash } from './components/Splash/Splash'
 import { Dashboard } from './components/Dashboard/Dashboard'
@@ -21,18 +21,17 @@ import { SettingsPage } from './components/Settings/SettingsPage'
 import { UserPicker } from './components/Login/UserPicker'
 import { UserBadge } from './components/Login/UserBadge'
 import { IntroFlow } from './components/Intro/IntroFlow'
+import { SiteTour } from './components/Tour/SiteTour'
 
-type ToolModal = 'metronome' | 'tuner'
-
-const NAV_ITEMS: { id: Page | ToolModal; label: string; icon: string }[] = [
-  { id: 'dashboard', label: 'Home', icon: '⌂' },
-  { id: 'pathway', label: 'Pathway', icon: '⟠' },
-  { id: 'skill-tree', label: 'Skills', icon: '◈' },
-  { id: 'progress', label: 'Progress', icon: '▦' },
-  { id: 'achievements', label: 'Awards', icon: '★' },
-  { id: 'settings', label: 'Settings', icon: '⚙' },
-  { id: 'metronome', label: 'Metro', icon: '♩' },
-  { id: 'tuner', label: 'Tuner', icon: '◎' },
+const NAV_ITEMS: { id: Page | ToolModal; label: string; icon: string; tour: string }[] = [
+  { id: 'dashboard', label: 'Home', icon: '⌂', tour: 'nav-home' },
+  { id: 'pathway', label: 'Pathway', icon: '⟠', tour: 'nav-pathway' },
+  { id: 'skill-tree', label: 'Skills', icon: '◈', tour: 'nav-skills' },
+  { id: 'progress', label: 'Progress', icon: '▦', tour: 'nav-progress' },
+  { id: 'achievements', label: 'Awards', icon: '★', tour: 'nav-awards' },
+  { id: 'settings', label: 'Settings', icon: '⚙', tour: 'nav-settings' },
+  { id: 'metronome', label: 'Metro', icon: '♩', tour: 'nav-metro' },
+  { id: 'tuner', label: 'Tuner', icon: '◎', tour: 'nav-tuner' },
 ]
 
 const MODAL_IDS = new Set<string>(['metronome', 'tuner'])
@@ -115,10 +114,13 @@ export default function App() {
   const clearNewAchievements = useStore((s) => s.clearNewAchievements)
   const newlyUnlocked = useStore((s) => s.newlyUnlocked)
   const showLoginScreen = useStore((s) => s.showLoginScreen)
+  const tourPending = useStore((s) => s.tourPending)
+  const startTour = useStore((s) => s.startTour)
 
   const { theme, toggleTheme } = useTheme()
   const { celebration, dismiss: dismissCelebration } = useCelebration()
-  const [openModal, setOpenModal] = useState<ToolModal | null>(null)
+  const openModal = useStore((s) => s.openModal)
+  const setOpenModal = useStore((s) => s.setOpenModal)
   const [splashDismissed, setSplashDismissed] = useState(
     () => sessionStorage.getItem('banjo-splash-seen') === 'true'
   )
@@ -132,6 +134,14 @@ export default function App() {
   useEffect(() => {
     loadUser()
   }, [])
+
+  // Auto-start tour after login if user opted in during intro
+  useEffect(() => {
+    if (tourPending && !showLoginScreen) {
+      const timer = setTimeout(() => startTour(), 600)
+      return () => clearTimeout(timer)
+    }
+  }, [tourPending, showLoginScreen])
 
   if (isLoading) {
     return (
@@ -189,6 +199,9 @@ export default function App() {
       {/* User badge + account menu (top-right) */}
       <UserBadge theme={theme} onToggleTheme={toggleTheme} />
 
+      {/* Site tour overlay */}
+      <SiteTour />
+
       {/* Confetti overlay for celebrations */}
       <ConfettiEffect trigger={newlyUnlocked.length > 0 || celebration?.type === 'confetti'} />
 
@@ -231,6 +244,7 @@ export default function App() {
         {NAV_ITEMS.map((item) => (
           <button
             key={item.id}
+            data-tour={item.tour}
             className={`nav-btn ${
               MODAL_IDS.has(item.id)
                 ? openModal === item.id ? 'nav-btn-active' : ''

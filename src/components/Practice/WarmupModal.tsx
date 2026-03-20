@@ -154,11 +154,9 @@ export function WarmupModal({ onComplete, onSkip }: WarmupModalProps) {
   const timeRemaining = TOTAL_DURATION - totalElapsed
 
   return (
-    <div className="warmup-overlay">
-      <div className="warmup-screen">
-
-        {/* ── Top bar ── */}
-        <div className="warmup-topbar">
+    <div className="tool-modal-backdrop" onClick={started ? undefined : onSkip}>
+      <div className="tool-modal warmup-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="tool-modal-header">
           <span className="warmup-topbar-title">Warm Up</span>
           {started && !finished && (
             <span className="warmup-topbar-time">{formatTime(timeRemaining)} remaining</span>
@@ -167,6 +165,7 @@ export function WarmupModal({ onComplete, onSkip }: WarmupModalProps) {
             {started ? 'End & Start Session →' : 'Skip →'}
           </button>
         </div>
+        <div className="tool-modal-body">
 
         {/* ── Not started yet ── */}
         {!started && (
@@ -287,6 +286,7 @@ export function WarmupModal({ onComplete, onSkip }: WarmupModalProps) {
           </div>
         )}
 
+        </div>
       </div>
     </div>
   )

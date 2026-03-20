@@ -286,9 +286,48 @@ function StepPath({ onComplete }: { onComplete: () => void }) {
   )
 }
 
+// ─── Step 6: Tour Prompt ─────────────────────────────────────────────────────
+
+function StepTourPrompt({ onComplete }: { onComplete: () => void }) {
+  function handleTakeTour() {
+    localStorage.setItem('banjo-buddy-tour-pending', 'true')
+    onComplete()
+  }
+
+  return (
+    <div className="intro-step intro-step-tour">
+      <motion.div
+        className="intro-tour-icon"
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.4, type: 'spring' }}
+      >
+        <svg viewBox="0 0 64 64" className="intro-icon-svg" style={{ width: 80, height: 80 }}>
+          <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="2.5" fill="none" />
+          <text x="32" y="40" textAnchor="middle" fontSize="28" fill="currentColor" fontWeight="bold">?</text>
+        </svg>
+      </motion.div>
+
+      <h2 className="intro-heading">Want a Quick Tour?</h2>
+      <p className="intro-subheading">
+        We can show you around the app — where to find your practice sessions, skills, progress tracking, and more.
+      </p>
+
+      <div className="intro-tour-actions">
+        <button className="intro-btn intro-btn-primary" onClick={handleTakeTour}>
+          Show Me Around
+        </button>
+        <button className="intro-btn intro-btn-secondary" onClick={onComplete}>
+          I'll Explore on My Own
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Flow ────────────────────────────────────────────────────────────────
 
-const STEPS = ['welcome', 'how', 'strings', 'picking', 'path'] as const
+const STEPS = ['welcome', 'how', 'strings', 'picking', 'path', 'tour'] as const
 type Step = typeof STEPS[number]
 
 export function IntroFlow({ onComplete }: Props) {
@@ -330,7 +369,8 @@ export function IntroFlow({ onComplete }: Props) {
           {step === 'how' && <StepHowItWorks onNext={next} />}
           {step === 'strings' && <StepStrings onNext={next} />}
           {step === 'picking' && <StepPicking onNext={next} />}
-          {step === 'path' && <StepPath onComplete={onComplete} />}
+          {step === 'path' && <StepPath onComplete={next} />}
+          {step === 'tour' && <StepTourPrompt onComplete={onComplete} />}
         </motion.div>
       </AnimatePresence>
     </div>
