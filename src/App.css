@@ -7911,6 +7911,70 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 
 /* ─── Site Tour Overlay ───────────────────────────────────────────────────── */
 
+/* Tour offer modal */
+.tour-offer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 0.3s ease;
+}
+
+.tour-offer-modal {
+  background: var(--bg-card, #1e1e2e);
+  border: 1px solid var(--border, #333);
+  border-radius: 16px;
+  padding: 2rem 2.5rem;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.tour-offer-modal h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.4rem;
+  color: var(--accent-primary, #D4A04A);
+}
+
+.tour-offer-modal p {
+  margin: 0 0 1.5rem;
+  color: var(--text-secondary, #aaa);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.tour-offer-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.tour-offer-btn {
+  padding: 0.6rem 1.4rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s;
+}
+
+.tour-offer-btn:hover { opacity: 0.85; }
+
+.tour-offer-btn-primary {
+  background: var(--accent-primary, #D4A04A);
+  color: #fff;
+}
+
+.tour-offer-btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border, #555);
+  color: var(--text-secondary, #aaa);
+}
+
 .tour-overlay {
   position: fixed;
   inset: 0;

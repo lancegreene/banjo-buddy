@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { db, getOrCreateUser, getSkillRecordMap, upsertSkillRecord, getCurrentStreak, newId, nowISO, todayDate, getStudents, getStandaloneStudents, createStudent as dbCreateStudent, deleteStudent as dbDeleteStudent, getOrCreateTeacherConfig, updateTeacherConfig, getTeachers, createTeacher as dbCreateTeacher, deleteTeacher as dbDeleteTeacher } from '../db/db'
+import { db, getOrCreateUser, getSkillRecordMap, upsertSkillRecord, getCurrentStreak, newId, nowISO, todayDate, getStudents, getStandaloneStudents, createStudent as dbCreateStudent, deleteStudent as dbDeleteStudent, getOrCreateTeacherConfig, updateTeacherConfig, getTeachers, createTeacher as dbCreateTeacher, deleteTeacher as dbDeleteTeacher, markTourSeen } from '../db/db'
 import type { UserProfile, SkillRecord, PracticeSession, SessionItem, SelfRating, NoteAccuracyRecord, TeacherConfig, UserRole } from '../db/db'
 import { SKILL_MAP, refreshSkillMap, type Path } from '../data/curriculum'
 import { buildSessionPlan, deriveNewStatus, getNewlyUnlockedSkills, evaluateSkillStatus, type SessionPlan } from '../engine/recommendationEngine'
@@ -149,8 +149,11 @@ export const useStore = create<AppState>((set, get) => ({
     set((s) => ({ tourStep: s.tourStep + 1 }))
   },
   dismissTour: () => {
+    const userId = get().activeUserId
     set({ tourActive: false, tourStep: 0, tourPending: false })
     localStorage.setItem('banjo-buddy-tour-done', 'true')
+    // Mark tour as seen for this user so it doesn't auto-start again
+    if (userId) markTourSeen(userId)
   },
   isLoading: false,
   error: null,
@@ -514,7 +517,9 @@ export const useStore = create<AppState>((set, get) => ({
     await refreshSkillMap(student.id, 'student', student.teacherId)
     const skillRecords = await getSkillRecordMap(student.id)
     const streak = await getCurrentStreak(student.id)
-    const tourPending = localStorage.getItem('banjo-buddy-tour-pending') === 'true'
+    // Auto-start tour for new students who haven't seen it yet
+    const tourPending = student.hasSeenTour === false
+      || localStorage.getItem('banjo-buddy-tour-pending') === 'true'
     set({
       activeUserId: student.id,
       activeUserRole: 'student',

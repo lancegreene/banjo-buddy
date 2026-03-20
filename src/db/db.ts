@@ -20,6 +20,7 @@ export interface UserProfile {
   path: Path
   role: UserRole       // 'solo' default, 'teacher' or 'student'
   teacherId: string | null  // for students, points to teacher's user ID
+  hasSeenTour?: boolean // false for new students, triggers auto-tour on first login
   createdAt: string    // ISO
   updatedAt: string
 }
@@ -429,11 +430,16 @@ export async function createStudent(name: string, teacherId: string | null, path
     path,
     role: 'student',
     teacherId,
+    hasSeenTour: false,
     createdAt: nowISO(),
     updatedAt: nowISO(),
   }
   await db.userProfiles.add(student)
   return student
+}
+
+export async function markTourSeen(userId: string): Promise<void> {
+  await db.userProfiles.update(userId, { hasSeenTour: true, updatedAt: nowISO() })
 }
 
 export async function deleteStudent(userId: string): Promise<void> {

@@ -118,6 +118,8 @@ export default function App() {
   const showLoginScreen = useStore((s) => s.showLoginScreen)
   const tourPending = useStore((s) => s.tourPending)
   const startTour = useStore((s) => s.startTour)
+  const dismissTour = useStore((s) => s.dismissTour)
+  const [showTourOffer, setShowTourOffer] = useState(false)
 
   const { theme, toggleTheme } = useTheme()
   const { celebration, dismiss: dismissCelebration } = useCelebration()
@@ -137,10 +139,10 @@ export default function App() {
     loadUser()
   }, [])
 
-  // Auto-start tour after login if user opted in during intro
+  // Show tour offer after login if this is a new user
   useEffect(() => {
     if (tourPending && !showLoginScreen) {
-      const timer = setTimeout(() => startTour(), 600)
+      const timer = setTimeout(() => setShowTourOffer(true), 600)
       return () => clearTimeout(timer)
     }
   }, [tourPending, showLoginScreen])
@@ -203,6 +205,30 @@ export default function App() {
 
       {/* Site tour overlay */}
       <SiteTour />
+
+      {/* Tour offer modal for new users */}
+      {showTourOffer && (
+        <div className="tour-offer-overlay">
+          <div className="tour-offer-modal">
+            <h2>Welcome to Banjo Buddy!</h2>
+            <p>Would you like a quick tour to get familiar with the app?</p>
+            <div className="tour-offer-actions">
+              <button
+                className="tour-offer-btn tour-offer-btn-primary"
+                onClick={() => { setShowTourOffer(false); startTour() }}
+              >
+                Show Me Around
+              </button>
+              <button
+                className="tour-offer-btn tour-offer-btn-secondary"
+                onClick={() => { setShowTourOffer(false); dismissTour() }}
+              >
+                Skip for Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confetti overlay for celebrations */}
       <ConfettiEffect trigger={newlyUnlocked.length > 0 || celebration?.type === 'confetti'} />
