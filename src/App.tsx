@@ -188,6 +188,7 @@ export default function App() {
       <OnboardingFlow
         onComplete={() => {
           localStorage.setItem('banjo-buddy-onboarded', 'true')
+          localStorage.setItem('banjo-buddy-tour-pending', 'true')
           setOnboardingDone(true)
         }}
       />
@@ -218,13 +219,13 @@ export default function App() {
             <div className="tour-offer-actions">
               <button
                 className="tour-offer-btn tour-offer-btn-primary"
-                onClick={() => { setShowTourOffer(false); startTour() }}
+                onClick={() => { setShowTourOffer(false); localStorage.removeItem('banjo-buddy-tour-pending'); startTour() }}
               >
                 Show Me Around
               </button>
               <button
                 className="tour-offer-btn tour-offer-btn-secondary"
-                onClick={() => { setShowTourOffer(false); dismissTour() }}
+                onClick={() => { setShowTourOffer(false); localStorage.removeItem('banjo-buddy-tour-pending'); dismissTour() }}
               >
                 Skip for Now
               </button>
