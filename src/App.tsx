@@ -219,13 +219,13 @@ export default function App() {
             <div className="tour-offer-actions">
               <button
                 className="tour-offer-btn tour-offer-btn-primary"
-                onClick={() => { setShowTourOffer(false); localStorage.removeItem('banjo-buddy-tour-pending'); startTour() }}
+                onClick={() => { setShowTourOffer(false); localStorage.setItem('banjo-buddy-tour-seen', 'true'); startTour() }}
               >
                 Show Me Around
               </button>
               <button
                 className="tour-offer-btn tour-offer-btn-secondary"
-                onClick={() => { setShowTourOffer(false); localStorage.removeItem('banjo-buddy-tour-pending'); dismissTour() }}
+                onClick={() => { setShowTourOffer(false); localStorage.setItem('banjo-buddy-tour-seen', 'true'); dismissTour() }}
               >
                 Skip for Now
               </button>

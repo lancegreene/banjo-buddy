@@ -467,7 +467,7 @@ export const useStore = create<AppState>((set, get) => ({
     await refreshSkillMap(user.id, 'solo', null)
     const skillRecords = await getSkillRecordMap(user.id)
     const streak = await getCurrentStreak(user.id)
-    const tourPending = localStorage.getItem('banjo-buddy-tour-pending') === 'true'
+    const tourPending = localStorage.getItem('banjo-buddy-tour-seen') !== 'true'
     set({
       activeUserId: user.id,
       activeUserRole: 'solo',
@@ -489,7 +489,7 @@ export const useStore = create<AppState>((set, get) => ({
     const skillRecords = await getSkillRecordMap(teacher.id)
     const streak = await getCurrentStreak(teacher.id)
     const studentList = await getStudents(teacher.id)
-    const tourPending = localStorage.getItem('banjo-buddy-tour-pending') === 'true'
+    const tourPending = localStorage.getItem('banjo-buddy-tour-seen') !== 'true'
     set({
       activeUserId: teacher.id,
       activeUserRole: 'teacher',
@@ -522,7 +522,8 @@ export const useStore = create<AppState>((set, get) => ({
     const skillRecords = await getSkillRecordMap(student.id)
     const streak = await getCurrentStreak(student.id)
     // Auto-start tour for new students who haven't seen it yet
-    const tourPending = student.hasSeenTour === false
+    const tourPending = localStorage.getItem('banjo-buddy-tour-seen') !== 'true'
+      || student.hasSeenTour === false
       || localStorage.getItem('banjo-buddy-tour-pending') === 'true'
     set({
       activeUserId: student.id,
