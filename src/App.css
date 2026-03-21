@@ -2545,9 +2545,11 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 
   .skill-tree-sidebar,
   .pathway-sidebar {
-    width: 100%;
-    min-width: 100%;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
     max-height: none;
+    flex-shrink: 1;
     border-right: none;
     border-bottom: 1.5px solid var(--border-primary);
     overflow-y: auto;
