@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import * as Tone from 'tone'
 import { useStore } from '../../store/useStore'
 import { SKILLS, SKILL_MAP, type ScoringType } from '../../data/curriculum'
 import { evaluateSkillStatus, type RecommendedItem, type SessionPlan } from '../../engine/recommendationEngine'
@@ -20,11 +21,11 @@ import { BanjoTabDiagram } from '../BanjoTabDiagram/BanjoTabDiagram'
 import { ROLL_MAP } from '../../data/rollPatterns'
 import { BanjoChordDiagram } from '../BanjoChordDiagram/BanjoChordDiagram'
 import { CHORD_GROUPS } from '../../data/chordDiagrams'
-import { WeakSpotChart } from '../Progress/WeakSpotChart'
 import { CalibrationWizard } from '../Calibration/CalibrationWizard'
 import { loadCalibration } from '../../utils/calibration'
 import { ListenButton } from './ListenButton'
 import { InteractiveStep } from './InteractiveStep'
+import { LessonCarousel } from '../Theory/LessonCarousel'
 import { PlayAlong } from './PlayAlong'
 import { RealtimeFeedback } from './RealtimeFeedback'
 import { SessionSummary } from './SessionSummary'
@@ -152,7 +153,7 @@ function ExerciseView({
   }, [skill.id, skill.rollPatternId])
   const [highwayPlaying, setHighwayPlaying] = useState(false)
   const highwayPlayingRef = useRef(false)
-  type RollPanelTab = 'pattern' | 'weakspots' | 'highway'
+  type RollPanelTab = 'pattern' | 'highway' | 'fretlab'
   const [rollTab, setRollTab] = useState<RollPanelTab>('pattern')
   const [rollDetectorActive, setRollDetectorActive] = useState(false)
   const rollDetectorRef = useRef(false)
@@ -331,6 +332,12 @@ function ExerciseView({
           </div>
         </div>
         <p className="ev-desc">{skill.description}</p>
+        {item.reason.includes('prerequisites') && skill.prerequisites.length > 0 && (
+          <div className="ev-prereq-banner">
+            <span className="ev-prereq-icon">◈</span>
+            <span>Prerequisites: {skill.prerequisites.map((id) => SKILL_MAP.get(id)?.name ?? id).join(', ')}</span>
+          </div>
+        )}
       </div>
 
       {/* ── Two-column grid ── */}
@@ -340,6 +347,14 @@ function ExerciseView({
         <div className="ev-col-main">
 
           <BpmProgressBar item={item} />
+
+          {/* Skill reference image */}
+          {skill.image && (
+            <div className="ev-skill-image">
+              <img src={skill.image.src} alt={skill.image.alt} className="ev-skill-img" />
+              {skill.image.caption && <p className="ev-skill-img-caption">{skill.image.caption}</p>}
+            </div>
+          )}
 
           {/* Teacher demo clips */}
           {teacherClips.length > 0 && (
@@ -359,7 +374,7 @@ function ExerciseView({
                 <div className="ev-roll-tabs">
                   <button className={`ev-roll-tab ${rollTab === 'pattern' ? 'ev-roll-tab-active' : ''}`} onClick={() => { setRollTab('pattern') }}>Pattern</button>
                   <button className={`ev-roll-tab ${rollTab === 'highway' ? 'ev-roll-tab-active' : ''}`} onClick={() => { if (rollDetectorActive) { stopListening(); setRollDetectorActive(false); rollDetectorRef.current = false } setRollTab('highway') }}>Play Along</button>
-                  <button className={`ev-roll-tab ${rollTab === 'weakspots' ? 'ev-roll-tab-active' : ''}`} onClick={() => { if (rollDetectorActive) { stopListening(); setRollDetectorActive(false); rollDetectorRef.current = false } setRollTab('weakspots') }}>Weak Spots</button>
+                  <button className={`ev-roll-tab ev-roll-tab-fretlab ${rollTab === 'fretlab' ? 'ev-roll-tab-active' : ''}`} onClick={() => { if (rollDetectorActive) { stopListening(); setRollDetectorActive(false); rollDetectorRef.current = false } setRollTab('fretlab') }}>Fret Lab</button>
                 </div>
                 <div className="ev-roll-body">
                   {rollTab === 'pattern' && (
@@ -376,6 +391,9 @@ function ExerciseView({
                           onClick={() => {
                             if (rollDetectorActive) {
                               stopListening()
+                              synth.stop()
+                              Tone.getTransport().stop()
+                              Tone.getTransport().cancel()
                               setRollDetectorActive(false)
                               rollDetectorRef.current = false
                             } else {
@@ -396,8 +414,16 @@ function ExerciseView({
                       </div>
                     </>
                   )}
-                  {rollTab === 'weakspots' && (
-                    <WeakSpotChart skillId={skill.id} patternId={skill.rollPatternId!} />
+                  {rollTab === 'fretlab' && (
+                    <div className="ev-fretlab-trigger">
+                      <p className="ev-fretlab-desc">Interactive fretboard — see notes light up as you play.</p>
+                      <button
+                        className="fretlab-play-btn"
+                        onClick={() => { useStore.getState().setFretlabPatternId(skill.rollPatternId ?? null); setOpenModal('fretlab') }}
+                      >
+                        🎸 Open Fret Lab
+                      </button>
+                    </div>
                   )}
                   {rollTab === 'highway' && (
                     <>
@@ -411,6 +437,9 @@ function ExerciseView({
                             if (highwayPlaying) {
                               renderer.stop()
                               stopListening()
+                              synth.stop()
+                              Tone.getTransport().stop()
+                              Tone.getTransport().cancel()
                               highwayPlayingRef.current = false
                               highwayWaitingRef.current = false
                               setHighwayPlaying(false)
@@ -457,21 +486,34 @@ function ExerciseView({
             )
           })()}
 
-          {/* Exercises */}
-          <div className="exercise-steps">
-            <h3 className="steps-title">Exercises</h3>
-            {skill.exercises.map((ex, i) => (
-              ex.type ? (
-                <InteractiveStep key={i} exercise={ex} stepNumber={i + 1} synth={synth} notes={notes} isListening={isListening} startListening={startListening} stopListening={stopListening} clearNotes={clearNotes} onPass={() => {}} onFail={() => {}} defaultBpm={item.suggestedBpm} hideTabDiagram={!!skill.rollPatternId} />
-              ) : (
-                <div key={i} className="exercise-step">
-                  <span className="step-num">{i + 1}</span>
-                  <span className="step-instruction">{ex.instruction}</span>
-                  {ex.bpm && <span className="step-bpm">@ {ex.bpm} BPM</span>}
-                </div>
-              )
-            ))}
-          </div>
+          {/* Exercises — carousel for theory lessons, list for others */}
+          {hasInteractiveExercises && skill.exercises.every((ex) => ex.type) ? (
+            <LessonCarousel
+              exercises={skill.exercises}
+              synth={synth}
+              notes={notes}
+              isListening={isListening}
+              startListening={startListening}
+              stopListening={stopListening}
+              clearNotes={clearNotes}
+              defaultBpm={item.suggestedBpm}
+            />
+          ) : (
+            <div className="exercise-steps">
+              <h3 className="steps-title">Exercises</h3>
+              {skill.exercises.map((ex, i) => (
+                ex.type ? (
+                  <InteractiveStep key={i} exercise={ex} stepNumber={i + 1} synth={synth} notes={notes} isListening={isListening} startListening={startListening} stopListening={stopListening} clearNotes={clearNotes} onPass={() => {}} onFail={() => {}} defaultBpm={item.suggestedBpm} hideTabDiagram={!!skill.rollPatternId} />
+                ) : (
+                  <div key={i} className="exercise-step">
+                    <span className="step-num">{i + 1}</span>
+                    <span className="step-instruction">{ex.instruction}</span>
+                    {ex.bpm && <span className="step-bpm">@ {ex.bpm} BPM</span>}
+                  </div>
+                )
+              ))}
+            </div>
+          )}
 
           {/* Chord diagrams */}
           {skill.chordId && (() => {
@@ -667,11 +709,11 @@ export function PracticeSession() {
     ? evaluateSkillStatus(selectedSkill, skillRecords.get(selectedSkill.id) ?? null, skillRecords, disabled, isTeacher) === 'locked'
     : false
 
-  const singleSkillItem: RecommendedItem | null = (selectedSkill && !isSelectedLocked)
+  const singleSkillItem: RecommendedItem | null = selectedSkill
     ? {
         skill: selectedSkill,
         record: skillRecords.get(selectedSkill.id) ?? null,
-        reason: 'Selected from skill tree',
+        reason: isSelectedLocked ? 'Preview (prerequisites needed)' : 'Selected from skill tree',
         suggestedBpm: selectedSkill.progressBpm ?? null,
         priority: 0,
       }
@@ -801,64 +843,7 @@ export function PracticeSession() {
     }
   }
 
-  // Locked skill view — shown after all hooks have run
-  if (selectedSkill && isSelectedLocked) {
-    const unmetPrereqs = selectedSkill.prerequisites
-      .filter((id) => {
-        if (disabled.has(id)) return false
-        const r = skillRecords.get(id)
-        return !r || (r.practiceCount === 0 && r.status !== 'active' && r.status !== 'progressed' && r.status !== 'mastered')
-      })
-      .map((id) => {
-        const s = SKILL_MAP.get(id)
-        const r = skillRecords.get(id) ?? null
-        return {
-          id,
-          name: s?.name ?? id,
-          status: s ? evaluateSkillStatus(s, r, skillRecords, disabled, isTeacher) : 'locked' as const,
-        }
-      })
-
-    const nextPrereq = unmetPrereqs.find((p) => p.status !== 'locked')
-    const otherPrereqs = unmetPrereqs.filter((p) => p !== nextPrereq)
-
-    return (
-      <div className="locked-skill-view">
-        <div className="locked-skill-icon">🔒</div>
-        <h2 className="locked-skill-name">{selectedSkill.name}</h2>
-        <p className="locked-skill-desc">{selectedSkill.description}</p>
-
-        {nextPrereq && (
-          <div className="locked-skill-next">
-            <span className="locked-skill-next-label">Complete this skill first to make progress:</span>
-            <button
-              className="locked-skill-next-btn"
-              onClick={() => practiceSkill(nextPrereq.id)}
-            >
-              <span className="locked-skill-next-name">{nextPrereq.name}</span>
-              <span className="locked-skill-next-arrow">Start Practicing →</span>
-            </button>
-          </div>
-        )}
-
-        {otherPrereqs.length > 0 && (
-          <div className="locked-skill-prereqs">
-            <span className="locked-skill-prereqs-label">{nextPrereq ? 'Also needed:' : 'Complete these to unlock:'}</span>
-            {otherPrereqs.map((prereq) => (
-              <button
-                key={prereq.id}
-                className={`locked-skill-prereq-btn ${prereq.status !== 'locked' ? 'locked-skill-prereq-playable' : ''}`}
-                onClick={() => practiceSkill(prereq.id)}
-              >
-                <span className="locked-skill-prereq-name">{prereq.name}</span>
-                <span className="locked-skill-prereq-arrow">{prereq.status !== 'locked' ? '→ Practice' : '→ View'}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
+  // Locked skills now open normally with a prereq banner (see ev-prereq-banner in ExerciseView)
 
   if (!singleSkillItem && (!sessionPlan || allItems.length === 0)) {
     return (
@@ -990,6 +975,18 @@ export function PracticeSession() {
   }
 
   const currentItem = allItems[currentIndex]
+
+  if (!currentItem) {
+    return (
+      <div className="practice-session">
+        {warmupOverlay}
+        <div className="no-session-content">
+          <p>No skill selected.</p>
+          <button className="btn btn-primary" onClick={() => setPage('dashboard')}>Back to Dashboard</button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="practice-session">

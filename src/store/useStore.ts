@@ -15,7 +15,7 @@ import type { PerformanceMetrics } from '../types/performance'
 import { refreshRollMap } from '../data/rollPatterns'
 
 export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'pathway' | 'progress' | 'achievements' | 'settings' | 'fretboard-lab'
-export type ToolModal = 'metronome' | 'tuner'
+export type ToolModal = 'metronome' | 'tuner' | 'fretlab'
 
 interface AppState {
   // App shell
@@ -25,6 +25,8 @@ interface AppState {
   // Tool modals (shared across pages)
   openModal: ToolModal | null
   setOpenModal: (modal: ToolModal | null) => void
+  fretlabPatternId: string | null
+  setFretlabPatternId: (id: string | null) => void
 
   // Single-skill practice (set before navigating to 'practice')
   selectedSkillId: string | null
@@ -116,6 +118,8 @@ export const useStore = create<AppState>((set, get) => ({
 
   openModal: null,
   setOpenModal: (modal) => set({ openModal: modal }),
+  fretlabPatternId: null,
+  setFretlabPatternId: (id) => set({ fretlabPatternId: id }),
 
   selectedSkillId: null,
   practiceSkill: (skillId) => set({ selectedSkillId: skillId }),

@@ -23,6 +23,7 @@ import { UserBadge } from './components/Login/UserBadge'
 import { IntroFlow } from './components/Intro/IntroFlow'
 import { SiteTour } from './components/Tour/SiteTour'
 import { FretboardLab } from './components/Fretboard/FretboardLab'
+import { FretLabPanel } from './components/Fretboard/FretLabPanel'
 
 const NAV_ITEMS: { id: Page | ToolModal; label: string; icon: string; tour: string }[] = [
   { id: 'dashboard', label: 'Home', icon: '⌂', tour: 'nav-home' },
@@ -33,9 +34,10 @@ const NAV_ITEMS: { id: Page | ToolModal; label: string; icon: string; tour: stri
   { id: 'settings', label: 'Settings', icon: '⚙', tour: 'nav-settings' },
   { id: 'metronome', label: 'Metro', icon: '♩', tour: 'nav-metro' },
   { id: 'tuner', label: 'Tuner', icon: '◎', tour: 'nav-tuner' },
+  { id: 'fretlab', label: 'Fret Lab', icon: '🎸', tour: 'nav-fretlab' },
 ]
 
-const MODAL_IDS = new Set<string>(['metronome', 'tuner'])
+const MODAL_IDS = new Set<string>(['metronome', 'tuner', 'fretlab'])
 const SPLIT_PAGES = new Set<Page>(['skill-tree', 'pathway'])
 
 function PageContent({ page }: { page: Page }) {
@@ -125,6 +127,7 @@ export default function App() {
   const { celebration, dismiss: dismissCelebration } = useCelebration()
   const openModal = useStore((s) => s.openModal)
   const setOpenModal = useStore((s) => s.setOpenModal)
+  const fretlabPatternId = useStore((s) => s.fretlabPatternId)
   const [splashDismissed, setSplashDismissed] = useState(
     () => sessionStorage.getItem('banjo-splash-seen') === 'true'
   )
@@ -272,7 +275,7 @@ export default function App() {
               <button className="tool-modal-close" onClick={() => setOpenModal(null)}>✕</button>
             </div>
             <div className="tool-modal-body">
-              {openModal === 'metronome' ? <Metronome /> : <Tuner />}
+              {openModal === 'metronome' ? <Metronome /> : openModal === 'tuner' ? <Tuner /> : <FretLabPanel rollPatternId={fretlabPatternId} bpm={100} />}
             </div>
           </div>
         </div>

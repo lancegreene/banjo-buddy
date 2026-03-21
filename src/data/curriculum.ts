@@ -34,6 +34,13 @@ export interface ExerciseDetect {
   requiredHits?: number
 }
 
+export type VisualKind = 'note_tree' | 'beat_timeline' | 'rest_chart'
+
+export interface ExerciseVisual {
+  kind: VisualKind
+  params?: Record<string, unknown>
+}
+
 export interface Exercise {
   instruction: string
   bpm?: number
@@ -42,6 +49,7 @@ export interface Exercise {
   detect?: ExerciseDetect
   passThreshold?: number     // 0-100 accuracy to pass
   quiz?: QuizQuestion        // for quiz-type exercises
+  visual?: ExerciseVisual    // animated theory visual (note_tree, beat_timeline, rest_chart)
 }
 
 export interface SkillImage {
@@ -332,6 +340,204 @@ export const SKILLS: Skill[] = [
     assessmentPrompt: 'Complete 5 sessions this week — streak tracking counts them automatically.',
     isInformational: true,
   },
+
+  // ── NEWBY — Month 1, Week 2: Foundational Music Theory ─────────────────
+
+  {
+    id: 'timing_beats_measures',
+    category: 'theory',
+    name: 'Beats, measures & counting',
+    path: 'newby',
+    month: 1, week: 2,
+    description: 'What a beat is, what a measure is, how to count "1-2-3-4", and why banjo uses 4/4 time.',
+    progressBpm: null,
+    masteryBpm: null,
+    masteryCriteria: 'Can explain beats, measures, and time signatures. Claps along to a metronome accurately.',
+    prerequisites: ['tab_reading_basic'],
+    exercises: [
+      {
+        instruction: 'A measure is a container that holds beats. In 4/4 time, each measure holds 4 beats. Most banjo music is in 4/4 (sometimes written as 2/4 — same feel, half the measure).',
+        type: 'info',
+        visual: { kind: 'beat_timeline', params: { subdivision: 4, bpm: 80 } },
+      },
+      {
+        instruction: 'The time signature tells you two things: the top number = how many beats per measure, the bottom number = what note value gets one beat. 4/4 means 4 quarter notes per measure.',
+        type: 'info',
+      },
+      {
+        instruction: 'Listen to the metronome and tap along. Count out loud: "1-2-3-4, 1-2-3-4". Your foot should land on every click.',
+        type: 'listen',
+        demo: { kind: 'string', strings: [3, 3, 3, 3] },
+      },
+      {
+        instruction: 'Quiz: Test your understanding of beats and measures.',
+        type: 'quiz',
+        quiz: {
+          prompt: 'How many beats are in one measure of 4/4 time?',
+          options: ['2 beats', '3 beats', '4 beats', '8 beats'],
+          correctIndex: 2,
+          explanation: '4/4 time means 4 beats per measure. The top number (4) tells you the beat count.',
+        },
+      },
+    ],
+    scoringTypes: ['self_rate'],
+    assessmentPrompt: 'Clap along with a metronome for 8 measures without losing the count.',
+  },
+  {
+    id: 'note_values_basic',
+    category: 'theory',
+    name: 'Note types: whole, half & quarter',
+    path: 'newby',
+    month: 1, week: 2,
+    description: 'Understanding the three largest note values: whole (4 beats), half (2 beats), and quarter (1 beat).',
+    progressBpm: null,
+    masteryBpm: null,
+    masteryCriteria: 'Identifies note types by sight and knows their beat values.',
+    prerequisites: ['timing_beats_measures'],
+    exercises: [
+      {
+        instruction: 'Notes have different lengths. A whole note fills an entire measure (4 beats). A half note lasts 2 beats. A quarter note lasts 1 beat. Watch how they subdivide:',
+        type: 'info',
+        visual: { kind: 'note_tree' },
+      },
+      {
+        instruction: 'Listen to the difference: first you\'ll hear quarter notes (4 per measure), then half notes (2 per measure). Notice how half notes ring twice as long.',
+        type: 'listen',
+        demo: { kind: 'string', strings: [3, 3, 3, 3] },
+      },
+      {
+        instruction: 'On banjo, you rarely hold a note for 4 full beats — but understanding note values helps you read tab timing and know when the next note should come.',
+        type: 'info',
+      },
+      {
+        instruction: 'Quiz: Test your note value knowledge.',
+        type: 'quiz',
+        quiz: {
+          prompt: 'How many quarter notes equal one whole note?',
+          options: ['2', '3', '4', '8'],
+          correctIndex: 2,
+          explanation: 'A whole note = 4 beats, and each quarter note = 1 beat, so 4 quarter notes fill a whole note.',
+        },
+      },
+    ],
+    scoringTypes: ['self_rate'],
+    assessmentPrompt: 'Name each note type and its beat value when shown.',
+  },
+  {
+    id: 'note_values_subdivisions',
+    category: 'theory',
+    name: 'Eighth & sixteenth notes on banjo',
+    path: 'newby',
+    month: 1, week: 2,
+    description: 'The subdivisions that Scruggs-style banjo lives in: eighth notes (2 per beat) and sixteenth notes (4 per beat).',
+    progressBpm: null,
+    masteryBpm: null,
+    masteryCriteria: 'Understands that rolls are eighth-note patterns and can count "1-and-2-and".',
+    prerequisites: ['note_values_basic'],
+    exercises: [
+      {
+        instruction: 'A quarter note splits into 2 eighth notes. Count them: "1-and-2-and-3-and-4-and". This is the heartbeat of Scruggs-style banjo — every roll is a stream of eighth notes.',
+        type: 'info',
+        visual: { kind: 'beat_timeline', params: { subdivision: 8, bpm: 80 } },
+      },
+      {
+        instruction: 'Sixteenth notes split each eighth in half again: "1-e-and-a-2-e-and-a". These show up in fast licks and fills.',
+        type: 'info',
+        visual: { kind: 'beat_timeline', params: { subdivision: 16, bpm: 60 } },
+      },
+      {
+        instruction: 'Listen to a forward roll. Each pick is one eighth note — 8 picks = 1 measure. This is why rolls feel so driving and continuous.',
+        type: 'listen',
+        demo: { kind: 'roll', id: 'forward_roll', cycles: 2 },
+      },
+      {
+        instruction: 'Quiz: Connect rhythms to banjo playing.',
+        type: 'quiz',
+        quiz: {
+          prompt: 'In a standard forward roll, each picked note is what type of note?',
+          options: ['Quarter note', 'Eighth note', 'Sixteenth note', 'Half note'],
+          correctIndex: 1,
+          explanation: 'A forward roll has 8 notes per measure in 4/4 time — that\'s 2 notes per beat, which makes them eighth notes.',
+        },
+      },
+    ],
+    scoringTypes: ['self_rate'],
+    assessmentPrompt: 'Count "1-and-2-and-3-and-4-and" while listening to a roll, landing on the beats.',
+  },
+  {
+    id: 'rests_and_timing',
+    category: 'theory',
+    name: 'Rests: the sound of silence',
+    path: 'newby',
+    month: 1, week: 2,
+    description: 'Rest symbols and their values. Why knowing when NOT to play is part of good banjo phrasing.',
+    progressBpm: null,
+    masteryBpm: null,
+    masteryCriteria: 'Identifies rest symbols and their beat values. Understands rests create musical space.',
+    prerequisites: ['note_values_subdivisions'],
+    exercises: [
+      {
+        instruction: 'Every note type has a matching rest — a period of silence with the same duration. A quarter rest = 1 beat of silence. A half rest = 2 beats. Here are all the rest symbols:',
+        type: 'info',
+        visual: { kind: 'rest_chart' },
+      },
+      {
+        instruction: 'In Scruggs style, rests are less common than in other music — the right hand usually keeps rolling. But rests matter for: ending phrases cleanly, backup playing, and reading arrangements.',
+        type: 'info',
+      },
+      {
+        instruction: 'Quiz: Match rests to their values.',
+        type: 'quiz',
+        quiz: {
+          prompt: 'A quarter rest means:',
+          options: ['Play quietly for 1 beat', 'Silence for 1 beat', 'Silence for 2 beats', 'Silence for half a beat'],
+          correctIndex: 1,
+          explanation: 'A quarter rest = 1 beat of silence, matching the duration of a quarter note.',
+        },
+      },
+    ],
+    scoringTypes: ['self_rate'],
+    assessmentPrompt: 'Name rest symbols and their beat values when shown.',
+  },
+  {
+    id: 'timing_special_notation',
+    category: 'theory',
+    name: 'Dotted notes, ties & special timing',
+    path: 'newby',
+    month: 1, week: 2,
+    description: 'Dotted notes (add half the value), ties (connect durations), grace notes, and other timing marks you\'ll see in banjo tab.',
+    progressBpm: null,
+    masteryBpm: null,
+    masteryCriteria: 'Calculates dotted note values and understands ties, grace notes, and fermata.',
+    prerequisites: ['rests_and_timing'],
+    exercises: [
+      {
+        instruction: 'A dot after a note adds half its value. A dotted half note = 2 + 1 = 3 beats. A dotted quarter = 1 + ½ = 1.5 beats. This creates the "long-short" feel heard in many songs.',
+        type: 'info',
+      },
+      {
+        instruction: 'A tie connects two notes of the same pitch — you play the first and hold through the second. Two tied quarter notes = one half note in duration, but only one pick.',
+        type: 'info',
+      },
+      {
+        instruction: 'Grace notes are quick ornamental notes before a main note — they have no real time value of their own. On banjo, hammer-ons and pull-offs often function as grace notes.',
+        type: 'info',
+      },
+      {
+        instruction: 'Quiz: Special timing notation.',
+        type: 'quiz',
+        quiz: {
+          prompt: 'A dotted half note lasts how many beats?',
+          options: ['2 beats', '2.5 beats', '3 beats', '4 beats'],
+          correctIndex: 2,
+          explanation: 'A half note = 2 beats. The dot adds half (1 beat). So a dotted half note = 2 + 1 = 3 beats.',
+        },
+      },
+    ],
+    scoringTypes: ['self_rate'],
+    assessmentPrompt: 'Calculate dotted note values and explain what a tie does.',
+  },
+
   {
     id: 'roll_forward_open',
     category: 'rolls',
@@ -343,7 +549,7 @@ export const SKILLS: Skill[] = [
     progressBpm: 80,
     masteryBpm: 160,
     masteryCriteria: '16 reps in a row, even tone on all strings, no muted notes, timing steady.',
-    prerequisites: ['picking_mechanics'],
+    prerequisites: ['picking_mechanics', 'note_values_subdivisions'],
     exercises: [
       {
         instruction: 'Listen to the forward roll pattern: 3-2-1-5-3-1-5-1.',

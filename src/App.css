@@ -307,6 +307,16 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .nav-icon { font-size: 20px; line-height: 1; }
 .nav-label { font-size: 11px; font-weight: 500; }
 
+/* Fret Lab nav button glow */
+.nav-btn[data-tour="nav-fretlab"] .nav-label {
+  color: #22d3ee;
+  text-shadow: 0 0 6px rgba(34, 211, 238, 0.5);
+}
+.nav-btn[data-tour="nav-fretlab"]:hover .nav-label,
+.nav-btn[data-tour="nav-fretlab"].nav-btn-active .nav-label {
+  text-shadow: 0 0 10px rgba(34, 211, 238, 0.7), 0 0 20px rgba(34, 211, 238, 0.3);
+}
+
 /* ─── Shared Buttons ────────────────────────────────────────────────────────── */
 
 .btn {
@@ -4897,6 +4907,510 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 
 .quiz-complete-text { color: var(--text-tertiary); margin-top: 4px; }
 
+/* ─── Skill Reference Image ─────────────────────────────────────────────── */
+
+.ev-skill-image {
+  margin-bottom: 12px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-primary);
+}
+
+.ev-skill-img {
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  background: #f5f0e8;
+}
+
+.ev-skill-img-caption {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  padding: 6px 10px;
+  background: var(--bg-surface);
+  font-style: italic;
+}
+
+/* ─── Note Value Visual ─────────────────────────────────────────────────── */
+
+.note-visual {
+  margin: 8px 0 12px;
+  padding: 12px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-primary);
+}
+
+/* Note Tree */
+.note-tree-svg {
+  width: 100%;
+  max-width: 400px;
+  display: block;
+  margin: 0 auto;
+  color: var(--text-primary);
+}
+
+.note-tree-row {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+.note-tree-row-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.note-visual-replay {
+  display: block;
+  margin: 8px auto 0;
+  background: none;
+  border: 1px solid var(--border-primary);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.note-visual-replay:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+}
+
+/* Beat Timeline */
+.beat-timeline-header {
+  margin-bottom: 8px;
+}
+
+.beat-timeline-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.beat-timeline-bar {
+  position: relative;
+  height: 48px;
+  background: #1a1a1a;
+  border-radius: 8px;
+  border: 1px solid var(--border-primary);
+  margin-bottom: 8px;
+}
+
+.beat-timeline-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-primary);
+  opacity: 0.5;
+}
+
+.beat-dot {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.beat-dot::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #333;
+  border: 1.5px solid #555;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.beat-dot-downbeat::before {
+  width: 14px;
+  height: 14px;
+  border-color: #666;
+}
+
+.beat-dot-played::before {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.beat-dot-active::before {
+  background: #f5a623;
+  border-color: #f5a623;
+  transform: scale(1.4);
+  box-shadow: 0 0 8px rgba(245, 166, 35, 0.5);
+}
+
+.beat-dot-label {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  font-family: monospace;
+  margin-top: 14px;
+}
+
+.note-visual-play {
+  display: block;
+  margin: 0 auto;
+  background: var(--accent-primary);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.note-visual-play:hover {
+  opacity: 0.9;
+}
+
+/* Rest Chart */
+.rest-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .rest-chart-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.rest-chart-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px;
+  background: #1a1a1a;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-primary);
+}
+
+.rest-chart-symbol {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.rest-chart-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.rest-chart-beats {
+  font-size: 10px;
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.rest-chart-desc {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* ─── Lesson Carousel ───────────────────────────────────────────────────── */
+
+.lesson-carousel {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+  padding: 20px;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Progress bar */
+.lc-progress {
+  height: 4px;
+  background: #1a1a1a;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.lc-progress-fill {
+  height: 100%;
+  background: var(--accent-primary);
+  border-radius: 2px;
+  transition: width 0.4s ease-out;
+}
+
+.lc-progress-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-bottom: 16px;
+}
+
+/* Slide */
+.lc-slide {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: lcSlideIn 0.35s ease-out;
+}
+
+@keyframes lcSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.lc-slide-exit-left {
+  animation: lcSlideOutLeft 0.25s ease-in forwards;
+}
+
+.lc-slide-exit-right {
+  animation: lcSlideOutRight 0.25s ease-in forwards;
+}
+
+@keyframes lcSlideOutLeft {
+  to {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+}
+
+@keyframes lcSlideOutRight {
+  to {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+
+/* Step badge */
+.lc-step-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+  animation: lcBadgePop 0.4s ease-out;
+}
+
+@keyframes lcBadgePop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Instruction text */
+.lc-instruction-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.lc-instruction {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  animation: lcFadeUp 0.5s ease-out 0.1s both;
+  flex: 1;
+}
+.lc-speak-btn {
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.15s;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.lc-speak-btn:hover {
+  background: rgba(255,255,255,0.15);
+  transform: scale(1.1);
+}
+.lc-speak-btn-active {
+  background: var(--accent-primary);
+  color: #fff;
+  border-color: var(--accent-primary);
+  animation: lcSpeakPulse 1.5s ease-in-out infinite;
+}
+[data-theme="light"] .lc-speak-btn {
+  background: rgba(0,0,0,0.05);
+  border-color: rgba(0,0,0,0.12);
+}
+[data-theme="light"] .lc-speak-btn:hover {
+  background: rgba(0,0,0,0.1);
+}
+@keyframes lcSpeakPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(74,158,255,0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(74,158,255,0); }
+}
+
+@keyframes lcFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Visual container */
+.lc-visual {
+  animation: lcFadeUp 0.5s ease-out 0.2s both;
+}
+
+/* Demo button container */
+.lc-demo {
+  display: flex;
+  justify-content: center;
+  animation: lcFadeUp 0.5s ease-out 0.25s both;
+}
+
+/* Quiz container */
+.lc-quiz {
+  animation: lcFadeUp 0.5s ease-out 0.2s both;
+}
+
+/* Try mode */
+.lc-try {
+  display: flex;
+  justify-content: center;
+  animation: lcFadeUp 0.5s ease-out 0.2s both;
+}
+
+.lc-try-active {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.lc-try-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e74c3c;
+  animation: lcPulse 1s infinite;
+}
+
+@keyframes lcPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* BPM badge */
+.lc-bpm {
+  display: inline-block;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  color: var(--accent-primary);
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+/* Navigation */
+.lc-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-primary);
+}
+
+.lc-nav-btn {
+  background: none;
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.lc-nav-btn:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+.lc-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.lc-nav-btn-next {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+
+.lc-nav-btn-next:hover:not(:disabled) {
+  opacity: 0.9;
+  color: #fff;
+}
+
+.lc-nav-btn-finish {
+  background: var(--status-success);
+  border-color: var(--status-success);
+}
+
+/* Dot navigation */
+.lc-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.lc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #333;
+  border: 1px solid #555;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.lc-dot-active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  transform: scale(1.3);
+}
+
+.lc-dot-done {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  opacity: 0.5;
+}
+
 /* ─── Ear Training ───────────────────────────────────────────────────────── */
 
 .ear-training {
@@ -5279,6 +5793,25 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .ev-chip-milestone { border-color: var(--accent-primary); color: var(--accent-primary); }
 .ev-desc { font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; }
 
+.ev-prereq-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(245, 166, 35, 0.1);
+  border: 1px solid rgba(245, 166, 35, 0.3);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  color: #f5a623;
+  line-height: 1.4;
+}
+
+.ev-prereq-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
 .ev-grid {
   display: grid;
   grid-template-columns: 1fr 260px;
@@ -5337,6 +5870,188 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 }
 
 .ev-roll-body { padding: 8px; }
+
+/* Fret Lab tab glow */
+.ev-roll-tab-fretlab {
+  color: #22d3ee;
+  text-shadow: 0 0 6px rgba(34, 211, 238, 0.5);
+  transition: text-shadow 0.3s, color 0.3s;
+}
+.ev-roll-tab-fretlab:hover {
+  text-shadow: 0 0 12px rgba(34, 211, 238, 0.7), 0 0 24px rgba(34, 211, 238, 0.3);
+}
+.ev-roll-tab-fretlab.ev-roll-tab-active {
+  color: #22d3ee;
+  border-bottom-color: #22d3ee;
+  text-shadow: 0 0 10px rgba(34, 211, 238, 0.7), 0 0 20px rgba(34, 211, 238, 0.3);
+}
+
+/* Fret Lab trigger inside roll panel */
+.ev-fretlab-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 8px;
+}
+.ev-fretlab-desc {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin: 0;
+  text-align: center;
+}
+
+/* ─── Fret Lab Panel (tool modal) ────────────────────────────────────────── */
+.fretlab-panel {
+  padding: 8px 0;
+}
+.fretlab-panel-header {
+  text-align: center;
+  margin-bottom: 8px;
+}
+.fretlab-panel-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #22d3ee;
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.4);
+  margin: 0;
+}
+.fretlab-panel-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.fretlab-pill {
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.fretlab-pill:hover { border-color: #22d3ee; color: #22d3ee; }
+.fretlab-pill-active {
+  background: rgba(34, 211, 238, 0.15);
+  border-color: #22d3ee;
+  color: #22d3ee;
+}
+.fretlab-panel-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+.fretlab-play-btn {
+  padding: 6px 20px;
+  border-radius: 6px;
+  border: none;
+  background: #22d3ee;
+  color: #000;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.3);
+}
+.fretlab-play-btn:hover {
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.5);
+  transform: scale(1.03);
+}
+.fretlab-play-btn-active {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}
+.fretlab-bpm-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fretlab-bpm-adj {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fretlab-bpm-adj:hover { border-color: #22d3ee; color: #22d3ee; }
+.fretlab-bpm-display {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 60px;
+  text-align: center;
+}
+.fretlab-bpm-display small {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.fretlab-presets {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.fretlab-preset {
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+.fretlab-preset:hover { border-color: #22d3ee; color: #22d3ee; }
+.fretlab-preset-active {
+  background: rgba(34, 211, 238, 0.15);
+  border-color: #22d3ee;
+  color: #22d3ee;
+}
+
+/* ─── Skill type badges (Study vs Practice) ────────────────────────────────── */
+.skill-type-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 6px;
+  vertical-align: middle;
+  line-height: 1.4;
+}
+.skill-type-study {
+  background: rgba(124, 77, 255, 0.15);
+  color: #b388ff;
+  border: 1px solid rgba(124, 77, 255, 0.3);
+}
+.skill-type-practice {
+  background: rgba(76, 175, 80, 0.15);
+  color: #81c784;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+/* Light theme overrides */
+[data-theme="light"] .skill-type-study {
+  background: rgba(124, 77, 255, 0.1);
+  color: #7c4dff;
+}
+[data-theme="light"] .skill-type-practice {
+  background: rgba(76, 175, 80, 0.1);
+  color: #43a047;
+}
 
 /* ─── Tools sidebar ───────────────────────────────────────────────────────── */
 

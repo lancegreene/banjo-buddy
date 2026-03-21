@@ -53,10 +53,10 @@ function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill, i
   const record = skillRecords.get(skill.id) ?? null
   const status = evaluateSkillStatus(skill, record, skillRecords, disabled, isTeacher)
 
-  const isPlayable = status !== 'locked'
+  const isLocked = status === 'locked'
 
   // Build unmet prerequisites list for locked skills (skip disabled prereqs — they're auto-met)
-  const unmetPrereqs = !isPlayable
+  const unmetPrereqs = isLocked
     ? skill.prerequisites
         .filter((id) => {
           if (disabled.has(id)) return false
@@ -70,14 +70,18 @@ function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill, i
     if (isCurrent && ref.current) {
       ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
       // Auto-expand prereqs panel when navigated to a locked skill
-      if (!isPlayable && unmetPrereqs.length > 0) {
+      if (isLocked && unmetPrereqs.length > 0) {
         setShowPrereqs(true)
       }
     }
   }, [isCurrent])
 
-  function handleLockedClick() {
+  function handleClick() {
     practiceSkill(skill.id)
+  }
+
+  function handlePrereqToggle(e: React.MouseEvent) {
+    e.stopPropagation()
     setShowPrereqs((prev) => !prev)
   }
 
@@ -93,15 +97,19 @@ function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill, i
     return (
       <div ref={ref} className={`skill-card-compact-wrap ${showPrereqs ? 'skill-card-prereqs-open' : ''}`}>
         <div
-          className={`skill-card-compact skill-card-${status} ${isPlayable ? 'skill-card-clickable' : 'skill-card-locked-clickable'} ${isSelected ? 'skill-card-selected' : ''} ${isDisabledByTeacher ? 'skill-card-teacher-disabled' : ''}`}
-          onClick={isPlayable ? () => practiceSkill(skill.id) : handleLockedClick}
-          title={isPlayable ? `Practice: ${skill.name}` : undefined}
+          className={`skill-card-compact skill-card-${status} skill-card-clickable ${isSelected ? 'skill-card-selected' : ''} ${isDisabledByTeacher ? 'skill-card-teacher-disabled' : ''}`}
+          onClick={handleClick}
+          title={`${isLocked ? '(Prereqs needed) ' : ''}${skill.name}`}
         >
           <span
             className="skill-status-dot"
             style={{ background: STATUS_COLORS[status] }}
           />
           <span className="skill-card-compact-name">{skill.name}</span>
+          {skill.isInformational || skill.category === 'theory' || skill.category === 'setup'
+            ? <span className="skill-type-badge skill-type-study">Study</span>
+            : <span className="skill-type-badge skill-type-practice">Practice</span>
+          }
           {record?.masteryLevel && (() => {
             const isOverdue = record.fsrsState ? (() => { try { return isFsrsDue(JSON.parse(record.fsrsState)); } catch { return false; } })() : false
             const effective = getEffectiveMastery(record.masteryLevel, isOverdue)
@@ -115,8 +123,8 @@ function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill, i
           })()}
           {skill.isMilestone && <span className="skill-milestone-badge">🎯</span>}
           {isDisabledByTeacher && <span className="skill-disabled-badge">disabled</span>}
-          {!isPlayable && unmetPrereqs.length > 0 && (
-            <span className="skill-prereq-toggle">{showPrereqs ? '▾' : '▸'}</span>
+          {isLocked && unmetPrereqs.length > 0 && (
+            <span className="skill-prereq-toggle" onClick={handlePrereqToggle}>{showPrereqs ? '▾' : '▸'}</span>
           )}
         </div>
 
@@ -155,9 +163,9 @@ function SkillCard({ skill, isCurrent, compact, isSelected, onNavigateToSkill, i
   return (
     <div
       ref={ref}
-      className={`skill-card skill-card-${status} ${isPlayable ? 'skill-card-clickable' : 'skill-card-locked-clickable'} ${isCurrent ? 'skill-card-current' : ''}`}
-      onClick={isPlayable ? () => practiceSkill(skill.id) : handleLockedClick}
-      title={isPlayable ? `Practice: ${skill.name}` : undefined}
+      className={`skill-card skill-card-${status} skill-card-clickable ${isCurrent ? 'skill-card-current' : ''}`}
+      onClick={handleClick}
+      title={`${isLocked ? '(Prereqs needed) ' : ''}${skill.name}`}
     >
       {isCurrent && <div className="skill-card-here-badge">← Here</div>}
       <div className="skill-card-header">

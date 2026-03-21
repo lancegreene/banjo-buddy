@@ -13,6 +13,9 @@ import { SECTION_MAP } from '../../data/songLibrary'
 import { ListenButton } from './ListenButton'
 import { BanjoTabDiagram } from '../BanjoTabDiagram/BanjoTabDiagram'
 import { SongTabDiagram } from '../BanjoTabDiagram/SongTabDiagram'
+import { NoteValueVisual } from '../Theory/NoteValueVisual'
+import { QuizExercise } from '../Teaching/QuizExercise'
+import { useSpeech } from '../../hooks/useSpeech'
 
 type StepPhase = 'read' | 'listening' | 'trying' | 'result'
 
@@ -47,6 +50,7 @@ export function InteractiveStep({
 }: InteractiveStepProps) {
   const [phase, setPhase] = useState<StepPhase>('read')
   const [accuracy, setAccuracy] = useState<number | null>(null)
+  const { speak, stop: stopSpeech, speaking } = useSpeech()
 
   const bpm = exercise.bpm ?? defaultBpm ?? 60
   const threshold = exercise.passThreshold ?? 60
@@ -137,11 +141,31 @@ export function InteractiveStep({
       <div className="interactive-step-header">
         <span className="step-num">{stepNumber}</span>
         <span className="step-instruction">{exercise.instruction}</span>
+        <button
+          className={`lc-speak-btn ${speaking ? 'lc-speak-btn-active' : ''}`}
+          onClick={() => speaking ? stopSpeech() : speak(exercise.instruction)}
+          title={speaking ? 'Stop reading' : 'Read aloud'}
+        >
+          {speaking ? '◼' : '🔊'}
+        </button>
         {exercise.bpm && <span className="step-bpm">@ {exercise.bpm} BPM</span>}
       </div>
 
       {/* Phase-specific content */}
       <div className="interactive-step-body">
+        {/* Animated theory visual */}
+        {exercise.visual && (
+          <NoteValueVisual kind={exercise.visual.kind} params={exercise.visual.params} />
+        )}
+
+        {/* Quiz exercise */}
+        {exercise.type === 'quiz' && exercise.quiz && (
+          <QuizExercise
+            questions={[exercise.quiz]}
+            onComplete={() => onPass()}
+          />
+        )}
+
         {/* Listen button for exercises with demos */}
         {exercise.demo && phase !== 'trying' && (
           <ListenButton
@@ -231,12 +255,7 @@ export function InteractiveStep({
           </div>
         )}
 
-        {/* Info-only steps just have a next button */}
-        {exercise.type === 'info' && (
-          <button className="btn btn-primary btn-sm" onClick={onPass}>
-            Got it
-          </button>
-        )}
+        {/* Info-only steps — no button needed, content speaks for itself */}
 
         {/* Listen-only steps advance when demo finishes or user clicks next */}
         {exercise.type === 'listen' && !synth.isPlaying && phase !== 'read' && (

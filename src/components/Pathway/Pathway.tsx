@@ -64,9 +64,6 @@ export function Pathway() {
   })
 
   function handleClick(skill: Skill) {
-    const r = skillRecords.get(skill.id) ?? null
-    const status = evaluateSkillStatus(skill, r, skillRecords, disabled, isTeacher)
-    if (status === 'locked') return
     practiceSkill(skill.id)
   }
 
@@ -163,7 +160,7 @@ function PathwayNode({ skill, status, isPlayable, isFrontier, isSelected, idx, d
   return (
     <div
       ref={ref}
-      className={`pathway-node ${done ? 'pathway-node-done' : ''} ${isFrontier ? 'pathway-node-current' : ''} ${isPlayable ? 'pathway-node-clickable' : 'pathway-node-locked'} ${isSelected ? 'pathway-node-selected' : ''}`}
+      className={`pathway-node ${done ? 'pathway-node-done' : ''} ${isFrontier ? 'pathway-node-current' : ''} pathway-node-clickable ${!isPlayable ? 'pathway-node-locked' : ''} ${isSelected ? 'pathway-node-selected' : ''}`}
       onClick={onClick}
       title={title}
     >
@@ -177,7 +174,13 @@ function PathwayNode({ skill, status, isPlayable, isFrontier, isSelected, idx, d
       </div>
 
       <div className="pathway-node-content">
-        <div className="pathway-node-name">{skill.name}</div>
+        <div className="pathway-node-name">
+          {skill.name}
+          {skill.isInformational || skill.category === 'theory' || skill.category === 'setup'
+            ? <span className="skill-type-badge skill-type-study">Study</span>
+            : <span className="skill-type-badge skill-type-practice">Practice</span>
+          }
+        </div>
         <div className="pathway-node-meta">
           <span className="pathway-node-status" style={{ color: STATUS_COLORS[status] }}>
             {STATUS_LABELS[status]}
