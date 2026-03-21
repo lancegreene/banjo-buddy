@@ -2522,38 +2522,67 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   box-shadow: inset 3px 0 0 var(--accent-primary);
 }
 
-/* Mobile: hide sidebar, show practice full-width */
+/* Mobile back button — hidden on desktop */
+.mobile-back-btn {
+  display: none;
+}
+
+/* Mobile: toggle between sidebar and practice full-width */
 @media (max-width: 639px) {
-  .skill-tree-split {
+  .app-content-split {
     flex-direction: column;
-    height: auto;
   }
 
-  .skill-tree-sidebar {
+  .skill-tree-sidebar,
+  .pathway-sidebar {
     width: 100%;
     min-width: 100%;
-    max-height: 120px;
+    max-height: none;
     border-right: none;
     border-bottom: 1.5px solid var(--border-primary);
-    padding: 8px;
     overflow-y: auto;
-  }
-
-  .skill-tree-sidebar .skill-tree-header {
-    display: none;
-  }
-
-  .skill-tree-sidebar .skill-tree-category {
-    margin-bottom: 2px;
-  }
-
-  .skill-tree-sidebar .skill-category-header {
-    padding: 4px 8px;
   }
 
   .skill-tree-main {
     padding: 12px;
     overflow-y: auto;
+    flex: 1;
+  }
+
+  /* When a skill is selected on mobile, hide sidebar and show practice full-width */
+  .app-content-split.mobile-practice-active .skill-tree-sidebar,
+  .app-content-split.mobile-practice-active .pathway-sidebar {
+    display: none;
+  }
+
+  .app-content-split.mobile-practice-active .skill-tree-main {
+    width: 100%;
+    flex: 1;
+  }
+
+  /* Show the back button on mobile when practice is active */
+  .app-content-split.mobile-practice-active .mobile-back-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .app-content-split.mobile-practice-active .mobile-back-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  /* When no skill selected, hide the empty main panel on mobile */
+  .app-content-split:not(.mobile-practice-active) .skill-tree-main {
+    display: none;
   }
 }
 

@@ -150,6 +150,10 @@ export function Tuner() {
         video: false,
       })
       const audioContext = new AudioContext()
+      // Mobile browsers may create the context in 'suspended' state — resume it
+      if (audioContext.state !== 'running') {
+        await audioContext.resume()
+      }
       const analyser = audioContext.createAnalyser()
       analyser.fftSize = 2048
       audioContext.createMediaStreamSource(stream).connect(analyser)

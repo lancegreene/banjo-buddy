@@ -240,10 +240,20 @@ export default function App() {
       />
 
       {isSplitPage ? (
-        <main className="app-content-split">
+        <main className={`app-content-split ${selectedSkillId ? 'mobile-practice-active' : ''}`}>
           {page === 'skill-tree' ? <SkillTree /> : <Pathway />}
           <div className="skill-tree-main" data-tour="skill-tree-main">
-            {selectedSkillId ? <PracticeSession /> : <BanjoWatermark />}
+            {selectedSkillId ? (
+              <>
+                <button
+                  className="mobile-back-btn"
+                  onClick={() => useStore.getState().clearSelectedSkill()}
+                >
+                  ← Back to {page === 'skill-tree' ? 'Skills' : 'Pathway'}
+                </button>
+                <PracticeSession />
+              </>
+            ) : <BanjoWatermark />}
           </div>
         </main>
       ) : (

@@ -169,7 +169,13 @@ export function Metronome({ controlledBpm }: MetronomeProps = {}) {
   }, [])
 
   const start = useCallback(async () => {
+    // Mobile browsers require AudioContext resume within a user gesture.
+    // Call Tone.start() first, then ensure the underlying context is running.
     await Tone.start()
+    const ctx = Tone.getContext().rawContext
+    if (ctx && ctx.state !== 'running') {
+      await (ctx as AudioContext).resume()
+    }
     Tone.getTransport().bpm.value = bpm
     beatRef.current = 0
 
