@@ -12,10 +12,10 @@
   --bg-input: #2A2E38;
 
   /* ── Accent ───────────────────────────────────────────────────────────── */
-  --accent-primary: #D4A04A;
-  --accent-primary-hover: #E0B060;
-  --accent-primary-muted: rgba(212, 160, 74, 0.15);
-  --accent-primary-glow: rgba(212, 160, 74, 0.4);
+  --accent-primary: #7ed321;
+  --accent-primary-hover: #8edf40;
+  --accent-primary-muted: rgba(126, 211, 33, 0.15);
+  --accent-primary-glow: rgba(126, 211, 33, 0.4);
 
   /* ── Text ──────────────────────────────────────────────────────────────── */
   --text-primary: #E8E6E3;
@@ -59,12 +59,12 @@
   --color-info-bg: rgba(74, 158, 255, 0.1);
 
   /* ── Note highway ─────────────────────────────────────────────────────── */
-  --highway-upcoming: #D4A04A;
+  --highway-upcoming: #7ed321;
   --highway-hit: #4ADE80;
   --highway-miss: #EF4444;
   --highway-current: #FFFFFF;
   --highway-lane: #2A2E38;
-  --highway-strike: #D4A04A;
+  --highway-strike: #7ed321;
 
   /* ── Shadows ──────────────────────────────────────────────────────────── */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -108,10 +108,10 @@
   --bg-hover: #F0F0F0;
   --bg-input: #FFFFFF;
 
-  --accent-primary: #B8860B;
-  --accent-primary-hover: #D4A04A;
-  --accent-primary-muted: rgba(184, 134, 11, 0.1);
-  --accent-primary-glow: rgba(184, 134, 11, 0.3);
+  --accent-primary: #5aad18;
+  --accent-primary-hover: #6ec024;
+  --accent-primary-muted: rgba(90, 173, 24, 0.1);
+  --accent-primary-glow: rgba(90, 173, 24, 0.3);
 
   --text-primary: #222222;
   --text-secondary: #666666;
@@ -148,5 +148,5 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
-  --shadow-glow: 0 0 20px rgba(184, 134, 11, 0.2);
+  --shadow-glow: 0 0 20px rgba(90, 173, 24, 0.2);
 }

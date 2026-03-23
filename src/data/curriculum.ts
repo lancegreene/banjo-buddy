@@ -25,6 +25,7 @@ export interface ExerciseDemo {
   kind: 'string' | 'roll' | 'lick' | 'section'
   id?: string               // patternId, lickId, or sectionId
   strings?: number[]         // for single-string demos
+  beats?: number[]           // custom beat positions (eighth-note units) — if omitted, evenly spaced
   cycles?: number
 }
 
@@ -401,9 +402,20 @@ export const SKILLS: Skill[] = [
         visual: { kind: 'note_tree' },
       },
       {
-        instruction: 'Listen to the difference: first you\'ll hear quarter notes (4 per measure), then half notes (2 per measure). Notice how half notes ring twice as long.',
+        instruction: 'Listen to quarter notes — 4 even picks, one per beat:',
         type: 'listen',
-        demo: { kind: 'string', strings: [3, 3, 3, 3] },
+        demo: { kind: 'string', strings: [3, 3, 3, 3], beats: [0, 2, 4, 6] },
+      },
+      {
+        instruction: 'Now listen to half notes — 2 picks, each ringing for 2 beats. Same measure, half the notes:',
+        type: 'listen',
+        demo: { kind: 'string', strings: [3, 3], beats: [0, 4] },
+      },
+      {
+        instruction: 'Finally, a whole note — 1 pick that rings for the entire measure (4 beats):',
+        type: 'listen',
+        demo: { kind: 'string', strings: [3], beats: [0] },
+        bpm: 60,
       },
       {
         instruction: 'On banjo, you rarely hold a note for 4 full beats — but understanding note values helps you read tab timing and know when the next note should come.',

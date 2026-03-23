@@ -19,6 +19,7 @@ import {
   STRING_5_START_FRET,
   EXAMPLE_CRIPPLE_CREEK,
 } from '../../data/fretboardNotes'
+import { BanjoSynth } from '../../engine/banjoSynth'
 
 // ─── Image & Calibration Constants ───────────────────────────────────────────
 const IMG_W = 3494
@@ -144,7 +145,7 @@ function NoteMarker({ note, state }: { note: FretNote; state: 'active' | 'next' 
 
 // ─── Tab Strip ──────────────────────────────────────────────────────────────
 
-function TabStrip({ notes, activeIdx }: { notes: FretNote[]; activeIdx: number }) {
+function TabStrip({ notes, activeIdx, onNoteClick }: { notes: FretNote[]; activeIdx: number; onNoteClick?: (idx: number) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to keep active note centered
@@ -192,7 +193,8 @@ function TabStrip({ notes, activeIdx }: { notes: FretNote[]; activeIdx: number }
                     } ${isActive && isOnString ? 'fretboard-tab-cell-active' : ''
                     } ${isPlayed && isOnString ? 'fretboard-tab-cell-played' : ''
                     } ${isNext && isOnString ? 'fretboard-tab-cell-next' : ''}`}
-                    style={isOnString ? { color: STRING_COLORS[str] } : undefined}
+                    style={isOnString ? { color: STRING_COLORS[str], cursor: 'pointer' } : undefined}
+                    onClick={isOnString && onNoteClick ? () => onNoteClick(idx) : undefined}
                   >
                     {isOnString ? (note.fret === 0 ? '0' : note.fret) : '—'}
                   </div>
@@ -237,6 +239,28 @@ export function FretboardDiagram({
 }: FretboardDiagramProps) {
   const [activeIdx, setActiveIdx] = useState(currentIndex)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const synthRef = useRef<BanjoSynth | null>(null)
+
+  // Lazily get synth instance
+  function getSynth(): BanjoSynth {
+    if (!synthRef.current) synthRef.current = new BanjoSynth()
+    return synthRef.current
+  }
+
+  // Dispose synth on unmount
+  useEffect(() => {
+    return () => {
+      synthRef.current?.dispose()
+      synthRef.current = null
+    }
+  }, [])
+
+  // Play note audio when activeIdx changes
+  useEffect(() => {
+    if (activeIdx < 0 || activeIdx >= notes.length) return
+    const note = notes[activeIdx]
+    getSynth().playNote(note.string, note.fret)
+  }, [activeIdx, notes])
 
   useEffect(() => {
     if (!autoPlay) setActiveIdx(currentIndex)
@@ -356,7 +380,7 @@ export function FretboardDiagram({
       </div>
 
       {/* Scrolling tab strip */}
-      <TabStrip notes={notes} activeIdx={activeIdx} />
+      <TabStrip notes={notes} activeIdx={activeIdx} onNoteClick={(idx) => setActiveIdx(idx)} />
     </div>
   )
 }

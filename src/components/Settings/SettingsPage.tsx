@@ -18,8 +18,10 @@ import { VideoRecorder } from '../Teaching/VideoRecorder'
 import { AudioRecorderTeacher } from '../Teaching/AudioRecorderTeacher'
 import { ImageUploader } from '../Teaching/ImageUploader'
 import { TabCropper } from '../Teaching/TabCropper'
+import { RecordingStudio } from './RecordingStudio'
+import { BanjoAnatomy } from '../BanjoAnatomy/BanjoAnatomy'
 
-type SettingsView = 'list' | 'create' | 'edit' | 'curriculum' | 'record_video' | 'record_audio' | 'upload_image' | 'upload_tab' | 'edit_clip'
+type SettingsView = 'list' | 'create' | 'edit' | 'curriculum' | 'record_video' | 'record_audio' | 'upload_image' | 'upload_tab' | 'edit_clip' | 'recording_studio' | 'banjo_anatomy'
 
 export function SettingsPage() {
   const user = useStore((s) => s.user)
@@ -187,6 +189,25 @@ export function SettingsPage() {
     )
   }
 
+  if (settingsView === 'recording_studio') {
+    return (
+      <div className="settings-page">
+        <button className="btn btn-sm settings-back-btn" onClick={() => setSettingsView('list')}>
+          &larr; Back to Settings
+        </button>
+        <RecordingStudio />
+      </div>
+    )
+  }
+
+  if (settingsView === 'banjo_anatomy') {
+    return (
+      <div className="settings-page">
+        <BanjoAnatomy onExit={() => setSettingsView('list')} />
+      </div>
+    )
+  }
+
   async function handleAddStudent() {
     const trimmed = newStudentName.trim()
     if (!trimmed) return
@@ -232,6 +253,27 @@ export function SettingsPage() {
         >
           Fretboard Lab
         </button>
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={() => setSettingsView('banjo_anatomy')}
+        >
+          Banjo Anatomy Tour
+        </button>
+      </section>
+
+      {/* Recording Studio */}
+      <section className="settings-section">
+        <div className="settings-section-header">
+          <div>
+            <h2 className="settings-section-title">Recording Studio</h2>
+            <p className="settings-section-desc">
+              Record your playing, import audio files, and build a library of reference tracks.
+            </p>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={() => setSettingsView('recording_studio')}>
+            Open Studio
+          </button>
+        </div>
       </section>
 
       {/* Teacher Tools — only visible when logged in as Teacher */}

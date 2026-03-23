@@ -1,4 +1,5 @@
 import type { PerformanceMetrics } from '../../types/performance'
+import { CoachingCards } from './CoachingCards'
 
 interface Props {
   metrics: PerformanceMetrics
@@ -61,6 +62,9 @@ export function SessionSummary({ metrics, previousMetrics, nextReviewDate, skill
           )
         })}
       </div>
+
+      {/* Coaching tips based on weak metrics */}
+      <CoachingCards metrics={metrics} />
 
       {nextReviewDate && (
         <div className="session-summary-review">

@@ -59,16 +59,16 @@ export function InteractiveStep({
   function playDemo() {
     if (!exercise.demo) return
 
-    const { kind, id, strings, cycles } = exercise.demo
+    const { kind, id, strings, beats, cycles } = exercise.demo
 
     switch (kind) {
       case 'string':
-        // Play each string in sequence
+        // Play each string in sequence, using custom beat positions if provided
         if (strings?.length) {
           const notes = strings.map((s, i) => ({
             string: s,
             fret: 0,
-            beat: i * 2, // space them out
+            beat: beats?.[i] ?? i * 2, // custom timing or evenly spaced
           }))
           synth.playSequence(notes, Math.max(bpm, 40))
         }

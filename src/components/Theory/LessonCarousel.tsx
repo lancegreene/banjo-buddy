@@ -62,12 +62,12 @@ export function LessonCarousel({
 
   function playDemo() {
     if (!exercise.demo) return
-    const { kind, id, strings, cycles } = exercise.demo
+    const { kind, id, strings, beats, cycles } = exercise.demo
     switch (kind) {
       case 'string':
         if (strings?.length) {
           synth.playSequence(
-            strings.map((s, i) => ({ string: s, fret: 0, beat: i * 2 })),
+            strings.map((s, i) => ({ string: s, fret: 0, beat: beats?.[i] ?? i * 2 })),
             Math.max(bpm, 40),
           )
         }

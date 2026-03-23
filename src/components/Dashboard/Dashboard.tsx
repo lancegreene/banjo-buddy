@@ -6,6 +6,7 @@ import { PracticeHeatmap } from '../Progress/PracticeHeatmap'
 import { WarmUpCard } from './WarmUpCard'
 import { PlateauAlert } from '../Dashboard/PlateauAlert'
 import { ChallengeCard } from '../Social/ChallengeCard'
+import { ProgressSnapshot } from './ProgressSnapshot'
 
 const STATUS_COLORS: Record<SkillStatus, string> = {
   locked: '#ccc',
@@ -236,9 +237,10 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Mini 4-week heatmap */}
+      {/* Mini 4-week heatmap + progress sparklines */}
       <div className="dashboard-heatmap-section" data-tour="dashboard-heatmap">
         <PracticeHeatmap weeks={4} mini />
+        <ProgressSnapshot />
         <button className="btn-text" onClick={() => setPage('progress')}>
           View full progress →
         </button>

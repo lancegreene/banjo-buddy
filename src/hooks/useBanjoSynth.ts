@@ -13,6 +13,7 @@ export interface UseBanjoSynthReturn {
   playSection: (measures: { notes: TabNote[] }[], bpm: number) => void
   playSequence: (notes: TabNote[], bpm: number) => void
   stop: () => void
+  setSpatial: (enabled: boolean) => void
   isPlaying: boolean
   currentBeat: number | null
 }
@@ -93,5 +94,9 @@ export function useBanjoSynth(): UseBanjoSynthReturn {
     })
   }, [handleBeat])
 
-  return { playNote, playRoll, playSection, playSequence, stop, isPlaying, currentBeat }
+  const setSpatial = useCallback((enabled: boolean) => {
+    getSynth().setSpatial(enabled)
+  }, [])
+
+  return { playNote, playRoll, playSection, playSequence, stop, setSpatial, isPlaying, currentBeat }
 }

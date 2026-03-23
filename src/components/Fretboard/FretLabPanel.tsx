@@ -2,7 +2,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { FretboardDiagram } from './FretboardDiagram'
 import { ROLL_MAP } from '../../data/rollPatterns'
-import { rollPatternToFretNotes } from '../../engine/rollToFretNotes'
+import { rollPatternToFretNotes, lickToFretNotes } from '../../engine/rollToFretNotes'
+import { LICK_LIBRARY } from '../../data/lickLibrary'
 import {
   EXAMPLE_FORWARD_ROLL,
   EXAMPLE_CRIPPLE_CREEK,
@@ -14,23 +15,28 @@ const BPM_PRESETS = [60, 80, 100, 120, 140]
 
 interface FretLabPanelProps {
   rollPatternId: string | null
+  lickId?: string | null
   bpm: number
 }
 
-export function FretLabPanel({ rollPatternId, bpm: defaultBpm }: FretLabPanelProps) {
+export function FretLabPanel({ rollPatternId, lickId, bpm: defaultBpm }: FretLabPanelProps) {
   const [autoPlay, setAutoPlay] = useState(false)
   const [bpm, setBpm] = useState(defaultBpm)
-  const [selectedSong, setSelectedSong] = useState<string>(rollPatternId ?? 'forward-roll')
+  const defaultSelection = rollPatternId ?? lickId ?? 'forward-roll'
+  const [selectedSong, setSelectedSong] = useState<string>(defaultSelection)
 
   // Sync selection when a different skill's pattern is passed in
   useEffect(() => {
     if (rollPatternId) {
       setSelectedSong(rollPatternId)
       setAutoPlay(false)
+    } else if (lickId) {
+      setSelectedSong(lickId)
+      setAutoPlay(false)
     }
-  }, [rollPatternId])
+  }, [rollPatternId, lickId])
 
-  // Build available songs: current skill pattern + built-in examples
+  // Build available items: current skill pattern/lick + built-in examples
   const songs = useMemo(() => {
     const list: { id: string; label: string; notes: FretNote[] }[] = []
 
@@ -46,6 +52,18 @@ export function FretLabPanel({ rollPatternId, bpm: defaultBpm }: FretLabPanelPro
       }
     }
 
+    // Add current skill's lick if available
+    if (lickId) {
+      const lick = LICK_LIBRARY.find(l => l.id === lickId)
+      if (lick) {
+        list.push({
+          id: lickId,
+          label: lick.name,
+          notes: lickToFretNotes(lick.notes),
+        })
+      }
+    }
+
     // Add built-in examples (skip if same as current pattern)
     if (rollPatternId !== 'forward_roll') {
       list.push({ id: 'forward-roll', label: 'Forward Roll', notes: EXAMPLE_FORWARD_ROLL })
@@ -54,7 +72,7 @@ export function FretLabPanel({ rollPatternId, bpm: defaultBpm }: FretLabPanelPro
     list.push({ id: 'foggy-mountain', label: 'Foggy Mountain', notes: EXAMPLE_FOGGY_MOUNTAIN })
 
     return list
-  }, [rollPatternId])
+  }, [rollPatternId, lickId])
 
   const activeSong = songs.find((s) => s.id === selectedSong) ?? songs[0]
 

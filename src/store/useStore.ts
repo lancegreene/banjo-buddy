@@ -13,14 +13,17 @@ import { computeMasteryLevel } from '../engine/masteryLevels'
 import { computePerformanceMetrics } from '../engine/performanceMetrics'
 import type { PerformanceMetrics } from '../types/performance'
 import { refreshRollMap } from '../data/rollPatterns'
+import { enqueueSync } from '../db/sync'
 
-export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'pathway' | 'progress' | 'achievements' | 'settings' | 'fretboard-lab'
+export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'pathway' | 'progress' | 'achievements' | 'settings' | 'profile' | 'fretboard-lab'
 export type ToolModal = 'metronome' | 'tuner' | 'fretlab'
 
 interface AppState {
   // App shell
   currentPage: Page
+  navMode: 'home' | 'section'
   setPage: (page: Page) => void
+  goHome: () => void
 
   // Tool modals (shared across pages)
   openModal: ToolModal | null
@@ -36,6 +39,9 @@ interface AppState {
   // User
   user: UserProfile | null
   streak: number
+  authUserName: string | null
+  authUserEmail: string | null
+  setAuthUser: (name: string | null, email: string | null) => void
   loadUser: () => Promise<void>
   setUserPath: (path: Path) => void
 
@@ -114,7 +120,9 @@ interface AppState {
 
 export const useStore = create<AppState>((set, get) => ({
   currentPage: 'dashboard',
-  setPage: (page) => set({ currentPage: page }),
+  navMode: 'home',
+  setPage: (page) => set({ currentPage: page, navMode: page === 'dashboard' ? 'home' : 'section' }),
+  goHome: () => set({ currentPage: 'dashboard', navMode: 'home', selectedSkillId: null }),
 
   openModal: null,
   setOpenModal: (modal) => set({ openModal: modal }),
@@ -127,6 +135,9 @@ export const useStore = create<AppState>((set, get) => ({
 
   user: null,
   streak: 0,
+  authUserName: null,
+  authUserEmail: null,
+  setAuthUser: (name, email) => set({ authUserName: name, authUserEmail: email }),
   skillRecords: new Map(),
   sessionPlan: null,
   activeSession: null,
@@ -256,18 +267,21 @@ export const useStore = create<AppState>((set, get) => ({
       createdAt: nowISO(),
     }
     await db.practiceSessions.add(session)
+    enqueueSync('practiceSessions', session.id, 'upsert', session as any)
 
     // Record streak
     const existingStreak = await db.streakRecords
       .where('[userId+date]').equals([user.id, todayDate()]).first()
     if (!existingStreak) {
-      await db.streakRecords.add({
+      const streakRecord = {
         id: newId(),
         userId: user.id,
         date: todayDate(),
         sessionId: session.id,
         createdAt: nowISO(),
-      })
+      }
+      await db.streakRecords.add(streakRecord)
+      enqueueSync('streakRecords', streakRecord.id, 'upsert', streakRecord as any)
     }
 
     const streak = await getCurrentStreak(user.id)
@@ -282,6 +296,7 @@ export const useStore = create<AppState>((set, get) => ({
       (new Date(endedAt).getTime() - new Date(activeSession.startedAt).getTime()) / 60000
     )
     await db.practiceSessions.update(activeSession.id, { endedAt, durationMinutes })
+    enqueueSync('practiceSessions', activeSession.id, 'upsert', { ...activeSession, endedAt, durationMinutes } as any)
     set({ activeSession: null })
   },
 
@@ -320,6 +335,7 @@ export const useStore = create<AppState>((set, get) => ({
       completedAt: nowISO(),
     }
     await db.sessionItems.add(item)
+    enqueueSync('sessionItems', item.id, 'upsert', { ...item, userId: user.id } as any)
 
     // Save recording if provided
     if (audioBlob) {
@@ -343,6 +359,9 @@ export const useStore = create<AppState>((set, get) => ({
         createdAt: now,
       }))
       await db.noteAccuracyRecords.bulkAdd(records)
+      for (const rec of records) {
+        enqueueSync('noteAccuracyRecords', rec.id, 'upsert', { ...rec, userId: user.id } as any)
+      }
     }
 
     // Snapshot records BEFORE the update — getNewlyUnlockedSkills needs the pre-update
@@ -390,7 +409,7 @@ export const useStore = create<AppState>((set, get) => ({
       set({ lastMetrics: metrics })
     }
 
-    await upsertSkillRecord({
+    const skillRecordData = {
       userId: user.id,
       skillId,
       status: newStatus,
@@ -405,19 +424,23 @@ export const useStore = create<AppState>((set, get) => ({
       fsrsState,
       fsrsNextReview,
       masteryLevel,
-    })
+    }
+    await upsertSkillRecord(skillRecordData)
+    enqueueSync('skillRecords', currentRecord?.id ?? skillId, 'upsert', skillRecordData as any)
 
     // Check newly unlocked using the pre-update snapshot so wasLocked is accurate
     const newlyUnlocked = getNewlyUnlockedSkills(skillId, newStatus, prevSkillRecords, user.path, disabledForDerive)
 
     // Mark newly unlocked skills
     for (const unlockedSkill of newlyUnlocked) {
-      await upsertSkillRecord({
+      const unlockData = {
         userId: user.id,
         skillId: unlockedSkill.id,
-        status: 'unlocked',
+        status: 'unlocked' as const,
         unlockedAt: nowISO(),
-      })
+      }
+      await upsertSkillRecord(unlockData)
+      enqueueSync('skillRecords', unlockedSkill.id, 'upsert', unlockData as any)
     }
 
     const finalRecords = await getSkillRecordMap(user.id)
@@ -446,6 +469,15 @@ export const useStore = create<AppState>((set, get) => ({
       const newAchievements = await checkAchievements(user.id, context)
       if (newAchievements.length > 0) {
         set({ newAchievements: newAchievements })
+        // Sync newly earned achievements
+        for (const ach of newAchievements) {
+          const achRecord = await db.achievements
+            .where({ achievementId: ach.id, userId: user.id })
+            .first()
+          if (achRecord) {
+            enqueueSync('achievements', achRecord.id, 'upsert', { ...achRecord, userId: user.id } as any)
+          }
+        }
       }
     } catch {
       // Non-critical: don't block on achievement check failure

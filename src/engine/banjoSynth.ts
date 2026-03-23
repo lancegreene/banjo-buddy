@@ -104,10 +104,24 @@ function makeIRBuffer(ctx: AudioContext, seconds: number = 0.18): AudioBuffer {
 
 // ── BanjoSynth Class ─────────────────────────────────────────────────────────
 
+// ── Spatial Audio — per-string stereo positions ────────────────────────────
+// Pans strings across the stereo field as if the listener is looking down
+// at the banjo: string 4 (low D) = left, string 1 (high D) = right,
+// string 5 (drone) = slightly right of center.
+const STRING_PAN: Record<number, number> = {
+  4: -0.6,   // far left
+  3: -0.2,   // left of center
+  2:  0.2,   // right of center
+  1:  0.6,   // far right
+  5:  0.15,  // slightly right (drone string)
+}
+
 export class BanjoSynth {
   private ctx: AudioContext | null = null
   private stringNodes: Map<number, AudioWorkletNode> = new Map()
   private rawMixNode: GainNode | null = null
+  private stringPanners: Map<number, StereoPannerNode> = new Map()
+  private spatialEnabled = false
   private ready = false
   private initPromise: Promise<void> | null = null
   private isDisposed = false
@@ -228,8 +242,14 @@ export class BanjoSynth {
       const g = ctx.createGain()
       g.gain.value = params?.stringGain ?? 0.88
 
+      // Per-string stereo panner (starts centered, enabled via setSpatial)
+      const panner = ctx.createStereoPanner()
+      panner.pan.value = 0
+      this.stringPanners.set(s.string, panner)
+
       node.connect(g)
-      g.connect(rawMix)
+      g.connect(panner)
+      panner.connect(rawMix)
       this.stringNodes.set(s.string, node)
     }
 
@@ -433,6 +453,19 @@ export class BanjoSynth {
       this.currentPlayback.stop()
       this.currentPlayback = null
     }
+  }
+
+  /** Enable or disable spatial (stereo) panning of strings */
+  setSpatial(enabled: boolean): void {
+    this.spatialEnabled = enabled
+    for (const [stringNum, panner] of this.stringPanners) {
+      panner.pan.value = enabled ? (STRING_PAN[stringNum] ?? 0) : 0
+    }
+  }
+
+  /** Check if spatial mode is active */
+  isSpatial(): boolean {
+    return this.spatialEnabled
   }
 
   /** Clean up all nodes */

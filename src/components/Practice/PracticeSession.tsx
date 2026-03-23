@@ -33,11 +33,19 @@ import { SessionTimer } from './SessionTimer'
 import { ChunkDrillPrompt } from './ChunkDrill'
 import { MentalPractice } from './MentalPractice'
 import { WarmupModal } from './WarmupModal'
+import { FretLabPanel } from '../Fretboard/FretLabPanel'
 import { NoteHighwayRenderer, type HighwayResult } from '../NoteHighway/NoteHighwayRenderer'
 import type { HighwayNote } from '../NoteHighway/noteHighwayTypes'
 import { SECTION_MAP } from '../../data/songLibrary'
 import { identifyWeakChunks, type ChunkDrill } from '../../engine/autoChunker'
 import type { PerformanceMetrics } from '../../types/performance'
+import { FingerBalanceMeter } from './FingerBalanceMeter'
+import { LiveWeakSpots } from './LiveWeakSpots'
+import { TempoModeSelector, type TempoMode } from './TempoModeSelector'
+import { createInterleavedTempoState, nextInterleavedBpm, type InterleavedTempoState } from '../../engine/adaptiveTempo'
+import { RollClock } from './RollClock'
+import { WeakSpotDrills } from './WeakSpotDrills'
+import { JamCircle } from './JamCircle'
 import { TeacherMediaPlayer } from '../Teaching/TeacherMediaPlayer'
 import { VideoRecorder } from '../Teaching/VideoRecorder'
 import { AudioRecorderTeacher } from '../Teaching/AudioRecorderTeacher'
@@ -153,8 +161,8 @@ function ExerciseView({
   }, [skill.id, skill.rollPatternId])
   const [highwayPlaying, setHighwayPlaying] = useState(false)
   const highwayPlayingRef = useRef(false)
-  type RollPanelTab = 'pattern' | 'highway' | 'fretlab'
-  const [rollTab, setRollTab] = useState<RollPanelTab>('pattern')
+  type RollPanelTab = 'fretlab' | 'pattern' | 'highway'
+  const [rollTab, setRollTab] = useState<RollPanelTab>('fretlab')
   const [rollDetectorActive, setRollDetectorActive] = useState(false)
   const rollDetectorRef = useRef(false)
 
@@ -166,9 +174,32 @@ function ExerciseView({
   // Accumulated note evaluations from LiveRollFeedback
   const noteEvalsRef = useRef<NoteEvaluation[]>([])
 
-  // Adaptive tempo state
-  const [autoTempo, setAutoTempo] = useState(false)
+  // Tempo mode state
+  const [tempoMode, setTempoMode] = useState<TempoMode>('fixed')
   const [adaptiveState, setAdaptiveState] = useState<AdaptiveTempoState | null>(null)
+  const [interleavedState, setInterleavedState] = useState<InterleavedTempoState | null>(null)
+
+  // Derive controlled BPM from active tempo mode
+  const controlledBpm = tempoMode === 'adaptive' && adaptiveState
+    ? adaptiveState.currentBpm
+    : tempoMode === 'interleaved' && interleavedState
+    ? interleavedState.currentBpm
+    : undefined
+
+  function handleTempoModeChange(mode: TempoMode) {
+    setTempoMode(mode)
+    const baseBpm = item.suggestedBpm ?? 80
+    if (mode === 'adaptive') {
+      setAdaptiveState(createAdaptiveTempoState(baseBpm))
+      setInterleavedState(null)
+    } else if (mode === 'interleaved') {
+      setInterleavedState(createInterleavedTempoState(baseBpm))
+      setAdaptiveState(null)
+    } else {
+      setAdaptiveState(null)
+      setInterleavedState(null)
+    }
+  }
 
   // Highway notes generated from roll pattern
   const highwayNotes = useMemo(
@@ -372,9 +403,9 @@ function ExerciseView({
             return (
               <div className="ev-roll-panel">
                 <div className="ev-roll-tabs">
+                  <button className={`ev-roll-tab ${rollTab === 'fretlab' ? 'ev-roll-tab-active' : ''}`} onClick={() => { if (rollDetectorActive) { stopListening(); setRollDetectorActive(false); rollDetectorRef.current = false } setRollTab('fretlab') }}>Fret Lab</button>
                   <button className={`ev-roll-tab ${rollTab === 'pattern' ? 'ev-roll-tab-active' : ''}`} onClick={() => { setRollTab('pattern') }}>Pattern</button>
                   <button className={`ev-roll-tab ${rollTab === 'highway' ? 'ev-roll-tab-active' : ''}`} onClick={() => { if (rollDetectorActive) { stopListening(); setRollDetectorActive(false); rollDetectorRef.current = false } setRollTab('highway') }}>Play Along</button>
-                  <button className={`ev-roll-tab ev-roll-tab-fretlab ${rollTab === 'fretlab' ? 'ev-roll-tab-active' : ''}`} onClick={() => { if (rollDetectorActive) { stopListening(); setRollDetectorActive(false); rollDetectorRef.current = false } setRollTab('fretlab') }}>Fret Lab</button>
                 </div>
                 <div className="ev-roll-body">
                   {rollTab === 'pattern' && (
@@ -412,18 +443,22 @@ function ExerciseView({
                           </span>
                         )}
                       </div>
+
+                      {/* Live weak spot + finger balance meters (visible when detector active) */}
+                      {rollDetectorActive && noteEvalsRef.current.length >= 4 && (
+                        <>
+                          <LiveWeakSpots evaluations={noteEvalsRef.current} patternId={skill.rollPatternId!} />
+                          <FingerBalanceMeter evaluations={noteEvalsRef.current} patternId={skill.rollPatternId!} />
+                        </>
+                      )}
                     </>
                   )}
                   {rollTab === 'fretlab' && (
-                    <div className="ev-fretlab-trigger">
-                      <p className="ev-fretlab-desc">Interactive fretboard — see notes light up as you play.</p>
-                      <button
-                        className="fretlab-play-btn"
-                        onClick={() => { useStore.getState().setFretlabPatternId(skill.rollPatternId ?? null); setOpenModal('fretlab') }}
-                      >
-                        🎸 Open Fret Lab
-                      </button>
-                    </div>
+                    <FretLabPanel
+                      rollPatternId={skill.rollPatternId ?? null}
+                      lickId={skill.lickId ?? null}
+                      bpm={controlledBpm}
+                    />
                   )}
                   {rollTab === 'highway' && (
                     <>
@@ -486,6 +521,31 @@ function ExerciseView({
             )
           })()}
 
+          {/* Fret Lab for lick skills (no roll pattern) */}
+          {!skill.rollPatternId && skill.lickId && (
+            <div className="ev-roll-panel">
+              <div className="ev-roll-tabs">
+                <button className="ev-roll-tab ev-roll-tab-active">Fret Lab</button>
+              </div>
+              <div className="ev-roll-body">
+                <FretLabPanel
+                  rollPatternId={null}
+                  lickId={skill.lickId}
+                  bpm={controlledBpm}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Weak spot drills (auto-generated from historical accuracy data) */}
+          {hasLiveRoll && skill.rollPatternId && (
+            <WeakSpotDrills
+              skillId={skill.id}
+              patternId={skill.rollPatternId}
+              currentBpm={item.suggestedBpm ?? 80}
+            />
+          )}
+
           {/* Exercises — carousel for theory lessons, list for others */}
           {hasInteractiveExercises && skill.exercises.every((ex) => ex.type) ? (
             <LessonCarousel
@@ -536,28 +596,49 @@ function ExerciseView({
         {/* ── RIGHT: Tools + Log ── */}
         <div className="ev-col-tools">
 
-          {/* Tools */}
-          <div className="ev-tools">
-            {hasSong && <button className={`tool-btn ${activeTool === 'play_along' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('play_along')}>▶ Along</button>}
-            <button className={`tool-btn ${activeTool === 'metronome' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('metronome')}>♩ Metro</button>
-            {hasPitch && <button className={`tool-btn${skill.id === 'tuning_basic' && openModal !== 'tuner' ? ' tool-btn-pulse' : ''}`} onClick={() => setOpenModal('tuner')}>◎ Tuner</button>}
-            {(hasAnalysis || hasPitch) && <button className={`tool-btn ${activeTool === 'recorder' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('recorder')}>● Rec</button>}
-            <button className={`tool-btn tool-btn-cal ${activeTool === 'calibrate' ? 'tool-btn-active' : ''} ${loadCalibration() ? 'tool-btn-cal-saved' : ''}`} onClick={() => toggleTool('calibrate')} title="Calibrate audio detection">⚙ Cal</button>
-            {activeUserRole === 'teacher' && (
-              <>
-                <button className={`tool-btn ${activeTool === 'video_record' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('video_record')} title="Record video clip">🎥 Video</button>
-                <button className={`tool-btn ${activeTool === 'audio_record' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('audio_record')} title="Record audio clip">🎤 Audio</button>
-                <button className={`tool-btn ${activeTool === 'upload_image' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('upload_image')} title="Upload image">🖼 Img</button>
-                <button className={`tool-btn ${activeTool === 'upload_tab' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('upload_tab')} title="Upload tablature">🎵 Tab</button>
-              </>
-            )}
-          </div>
+          {/* Tools — collapsible panel */}
+          <details className="ev-tools-panel" open={activeTool !== null}>
+            <summary className="ev-tools-summary">
+              <span className="ev-tools-summary-icon">🛠</span>
+              <span>Tools</span>
+              {activeTool && <span className="ev-tools-active-dot" />}
+            </summary>
+            <div className="ev-tools">
+              {hasSong && <button className={`tool-btn ${activeTool === 'play_along' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('play_along')}>▶ Along</button>}
+              <button className={`tool-btn ${activeTool === 'metronome' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('metronome')}>♩ Metro</button>
+              {hasPitch && <button className={`tool-btn${skill.id === 'tuning_basic' && openModal !== 'tuner' ? ' tool-btn-pulse' : ''}`} onClick={() => setOpenModal('tuner')}>◎ Tuner</button>}
+              {(hasAnalysis || hasPitch) && <button className={`tool-btn ${activeTool === 'recorder' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('recorder')}>● Rec</button>}
+              <button className={`tool-btn tool-btn-cal ${activeTool === 'calibrate' ? 'tool-btn-active' : ''} ${loadCalibration() ? 'tool-btn-cal-saved' : ''}`} onClick={() => toggleTool('calibrate')} title="Calibrate audio detection">⚙ Cal</button>
+              <button className={`tool-btn ${activeTool === 'video_record' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('video_record')} title="Record video clip">🎥 Video</button>
+              <button className={`tool-btn ${activeTool === 'audio_record' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('audio_record')} title="Record audio clip">🎤 Audio</button>
+              <button className={`tool-btn ${activeTool === 'upload_image' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('upload_image')} title="Upload image">🖼 Img</button>
+              <button className={`tool-btn ${activeTool === 'upload_tab' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('upload_tab')} title="Upload tablature">🎵 Tab</button>
+            </div>
+          </details>
           {skill.id === 'tuning_basic' && openModal !== 'tuner' && (
             <div className="tool-btn-hint" onClick={() => setOpenModal('tuner')}>↑ Tap the Tuner button to start tuning!</div>
           )}
 
+          {/* Tempo mode selector (only for skills with roll patterns) */}
+          {hasLiveRoll && (
+            <TempoModeSelector
+              mode={tempoMode}
+              onChange={handleTempoModeChange}
+              currentBpm={controlledBpm ?? null}
+            />
+          )}
+
+          {/* Jam Circle — spatial audio toggle */}
+          {hasLiveRoll && (
+            <JamCircle
+              onToggleSpatial={(on) => synth.setSpatial(on)}
+              isPlaying={synth.isPlaying}
+              currentBeat={synth.currentBeat}
+            />
+          )}
+
           {/* Inline tool panels */}
-          {activeTool === 'metronome' && <div className="inline-tool-panel"><Metronome controlledBpm={autoTempo && adaptiveState ? adaptiveState.currentBpm : undefined} /></div>}
+          {activeTool === 'metronome' && <div className="inline-tool-panel"><Metronome controlledBpm={controlledBpm} /></div>}
 
           {activeTool === 'recorder' && <div className="inline-tool-panel"><AudioRecorder skillId={skill.id} bpm={item.suggestedBpm} analyserRef={analyserRef} streamRef={streamRef} /></div>}
           {activeTool === 'calibrate' && <div className="inline-tool-panel"><CalibrationWizard onClose={() => setActiveTool(null)} /></div>}
@@ -615,8 +696,19 @@ function ExerciseView({
             </div>
           )}
 
-          {/* Realtime feedback */}
-          {noteEvalsRef.current.length > 0 && <RealtimeFeedback evaluations={noteEvalsRef.current} />}
+          {/* Realtime feedback + Roll Clock */}
+          {noteEvalsRef.current.length > 0 && (
+            <>
+              <RealtimeFeedback evaluations={noteEvalsRef.current} />
+              {hasLiveRoll && rollDetectorActive && (
+                <RollClock
+                  evaluations={noteEvalsRef.current}
+                  patternId={skill.rollPatternId!}
+                  cursor={noteEvalsRef.current.length > 0 ? noteEvalsRef.current[noteEvalsRef.current.length - 1].position : 0}
+                />
+              )}
+            </>
+          )}
 
           {/* Pending scores */}
           {(pendingRhythm !== null || pendingPitch !== null || pendingTempo !== null) && (

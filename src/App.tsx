@@ -4,7 +4,6 @@ import './App.css'
 import { useStore, type Page, type ToolModal } from './store/useStore'
 import { useTheme } from './hooks/useTheme'
 import { Splash } from './components/Splash/Splash'
-import { Dashboard } from './components/Dashboard/Dashboard'
 import { PracticeSession } from './components/Practice/PracticeSession'
 import { SkillTree } from './components/SkillTree/SkillTree'
 import { Metronome } from './components/Metronome/Metronome'
@@ -24,31 +23,24 @@ import { IntroFlow } from './components/Intro/IntroFlow'
 import { SiteTour } from './components/Tour/SiteTour'
 import { FretboardLab } from './components/Fretboard/FretboardLab'
 import { FretLabPanel } from './components/Fretboard/FretLabPanel'
-
-const NAV_ITEMS: { id: Page | ToolModal; label: string; icon: string; tour: string }[] = [
-  { id: 'dashboard', label: 'Home', icon: '⌂', tour: 'nav-home' },
-  { id: 'pathway', label: 'Pathway', icon: '⟠', tour: 'nav-pathway' },
-  { id: 'skill-tree', label: 'Skills', icon: '◈', tour: 'nav-skills' },
-  { id: 'progress', label: 'Progress', icon: '▦', tour: 'nav-progress' },
-  { id: 'achievements', label: 'Awards', icon: '★', tour: 'nav-awards' },
-  { id: 'settings', label: 'Settings', icon: '⚙', tour: 'nav-settings' },
-  { id: 'metronome', label: 'Metro', icon: '♩', tour: 'nav-metro' },
-  { id: 'tuner', label: 'Tuner', icon: '◎', tour: 'nav-tuner' },
-  { id: 'fretlab', label: 'Fret Lab', icon: '🎸', tour: 'nav-fretlab' },
-]
-
-const MODAL_IDS = new Set<string>(['metronome', 'tuner', 'fretlab'])
+import { HomePage } from './components/Home/HomePage'
+import { TopNavBar } from './components/Home/TopNavBar'
+import { ProfilePage } from './components/Profile/ProfilePage'
+import { AuthScreen } from './components/Auth/AuthScreen'
+import { supabase } from './db/supabase'
+import { startAutoSync, stopAutoSync, uploadLocalData } from './db/sync'
 const SPLIT_PAGES = new Set<Page>(['skill-tree', 'pathway'])
 
 function PageContent({ page }: { page: Page }) {
   switch (page) {
-    case 'dashboard':     return <Dashboard />
+    case 'dashboard':     return <HomePage />
     case 'practice':      return <PracticeSession />
     case 'progress':      return <ProgressPage />
     case 'achievements':  return <AchievementList />
     case 'settings':      return <SettingsPage />
+    case 'profile':       return <ProfilePage />
     case 'fretboard-lab': return <FretboardLab />
-    default:              return <Dashboard />
+    default:              return <HomePage />
   }
 }
 
@@ -110,6 +102,7 @@ function BanjoWatermark() {
 
 export default function App() {
   const page = useStore((s) => s.currentPage)
+  const navMode = useStore((s) => s.navMode)
   const setPage = useStore((s) => s.setPage)
   const loadUser = useStore((s) => s.loadUser)
   const isLoading = useStore((s) => s.isLoading)
@@ -137,6 +130,36 @@ export default function App() {
   const [onboardingDone, setOnboardingDone] = useState(
     () => localStorage.getItem('banjo-buddy-onboarded') === 'true'
   )
+  const [authChecked, setAuthChecked] = useState(false)
+  const [authedUserId, setAuthedUserId] = useState<string | null>(null)
+
+  // Check for existing Supabase session on mount
+  useEffect(() => {
+    const setAuthUser = useStore.getState().setAuthUser
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setAuthedUserId(session.user.id)
+        setAuthUser(session.user.user_metadata?.name ?? null, session.user.email ?? null)
+        startAutoSync(session.user.id)
+      }
+      setAuthChecked(true)
+    })
+
+    // Listen for auth state changes (login/logout/token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setAuthedUserId(session.user.id)
+        setAuthUser(session.user.user_metadata?.name ?? null, session.user.email ?? null)
+        startAutoSync(session.user.id)
+      } else {
+        setAuthedUserId(null)
+        setAuthUser(null, null)
+        stopAutoSync()
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   useEffect(() => {
     loadUser()
@@ -195,15 +218,56 @@ export default function App() {
     )
   }
 
-  // Login screen gate — always shown until a user is selected
+  // Auth gate — show login/signup if not authenticated and no local skip
+  const hasSkippedAuth = localStorage.getItem('banjo-buddy-auth-skipped') === 'true'
+  if (authChecked && !authedUserId && !hasSkippedAuth) {
+    return (
+      <AuthScreen
+        onAuth={async (userId, email) => {
+          setAuthedUserId(userId)
+          useStore.getState().setAuthUser(null, email)
+          // Migrate local data to cloud account if this is first auth
+          const migrated = localStorage.getItem('banjo-buddy-data-migrated')
+          if (!migrated) {
+            await uploadLocalData('local', userId)
+            localStorage.setItem('banjo-buddy-data-migrated', 'true')
+          }
+          startAutoSync(userId)
+          loadUser()
+        }}
+        onSkip={() => {
+          localStorage.setItem('banjo-buddy-auth-skipped', 'true')
+          loadUser()
+        }}
+      />
+    )
+  }
+
+  // Login screen gate — skip if authenticated via Supabase
   if (showLoginScreen) {
+    if (authedUserId || hasSkippedAuth) {
+      // Auto-login as local user — no need for the "who's practicing?" picker
+      const store = useStore.getState()
+      if (!store.activeUserId) {
+        store.loginAsGuest()
+      }
+      return (
+        <div className="app-loading">
+          <div className="loading-spinner" />
+          <p>Loading Banjo Buddy…</p>
+        </div>
+      )
+    }
     return <UserPicker />
   }
 
   const isSplitPage = SPLIT_PAGES.has(page)
 
   return (
-    <div className="app">
+    <div className={`app ${navMode === 'home' ? 'app-home-mode' : ''}`}>
+      {/* Top nav bar (visible when in a section, not on home) */}
+      {navMode === 'section' && <TopNavBar />}
+
       {/* User badge + account menu (top-right) */}
       <UserBadge theme={theme} onToggleTheme={toggleTheme} />
 
@@ -243,7 +307,11 @@ export default function App() {
         onDismiss={clearNewAchievements}
       />
 
-      {isSplitPage ? (
+      {navMode === 'home' ? (
+        <main className="app-content app-content-home">
+          <HomePage />
+        </main>
+      ) : isSplitPage ? (
         <main className={`app-content-split ${selectedSkillId ? 'mobile-practice-active' : ''}`}>
           {page === 'skill-tree' ? <SkillTree /> : <Pathway />}
           <div className="skill-tree-main" data-tour="skill-tree-main">
@@ -271,7 +339,7 @@ export default function App() {
       {/* Tool modals (Metronome / Tuner) */}
       {openModal && (
         <div className="tool-modal-backdrop" onClick={() => setOpenModal(null)}>
-          <div className="tool-modal" onClick={(e) => e.stopPropagation()}>
+          <div className={`tool-modal ${openModal === 'fretlab' ? 'tool-modal-wide' : ''}`} onClick={(e) => e.stopPropagation()}>
             <div className="tool-modal-header">
               <button className="tool-modal-close" onClick={() => setOpenModal(null)}>✕</button>
             </div>
@@ -282,30 +350,7 @@ export default function App() {
         </div>
       )}
 
-      <nav className="bottom-nav">
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.id}
-            data-tour={item.tour}
-            className={`nav-btn ${
-              MODAL_IDS.has(item.id)
-                ? openModal === item.id ? 'nav-btn-active' : ''
-                : page === item.id ? 'nav-btn-active' : ''
-            }`}
-            onClick={() => {
-              if (MODAL_IDS.has(item.id)) {
-                setOpenModal(openModal === item.id ? null : item.id as ToolModal)
-              } else {
-                setOpenModal(null)
-                setPage(item.id as Page)
-              }
-            }}
-          >
-            <span className="nav-icon">{item.icon}</span>
-            <span className="nav-label">{item.label}</span>
-          </button>
-        ))}
-      </nav>
+      {/* Bottom nav removed — navigation is now via home cards + top bar */}
     </div>
   )
 }
