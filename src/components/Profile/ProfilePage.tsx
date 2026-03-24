@@ -16,6 +16,7 @@ export function ProfilePage() {
   const authUserName = useStore((s) => s.authUserName)
   const authUserEmail = useStore((s) => s.authUserEmail)
   const setUserPath = useStore((s) => s.setUserPath)
+  const activeUserRole = useStore((s) => s.activeUserRole)
   const streak = useStore((s) => s.streak)
   const skillRecords = useStore((s) => s.skillRecords)
 
@@ -61,6 +62,30 @@ export function ProfilePage() {
     localStorage.removeItem('banjo-buddy-auth-skipped')
     localStorage.removeItem('banjo-buddy-data-migrated')
     window.location.reload()
+  }
+
+  const isTeacher = activeUserRole === 'teacher'
+
+  async function handleToggleRole() {
+    const store = useStore.getState()
+    if (isTeacher) {
+      await store.loginAsGuest()
+      store.setPage('profile')
+    } else {
+      let teacherId: string | null = null
+      const existingTeachers = store.teachers
+      if (existingTeachers.length > 0) {
+        teacherId = existingTeachers[0].id
+      } else {
+        await store.createTeacher(user?.name ?? 'Teacher')
+        const updated = useStore.getState().teachers
+        if (updated.length > 0) teacherId = updated[0].id
+      }
+      if (teacherId) {
+        await store.loginAsTeacher(teacherId)
+        store.setPage('profile')
+      }
+    }
   }
 
   return (
@@ -131,6 +156,26 @@ export function ProfilePage() {
             <span className="profile-stat-value">{active}</span>
             <span className="profile-stat-label">Active</span>
           </div>
+        </div>
+      </section>
+
+      {/* Role */}
+      <section className="profile-section">
+        <h3 className="profile-section-title">Mode</h3>
+        <div className="settings-role-toggle">
+          <div className="settings-role-info">
+            <span className="settings-role-badge">
+              {isTeacher ? 'Teacher Mode' : activeUserRole === 'student' ? 'Student Mode' : 'Solo Mode'}
+            </span>
+            <p className="settings-role-desc">
+              {isTeacher
+                ? 'Managing students, curriculum, and teaching media.'
+                : 'Switch to Teacher Mode to manage students and customize the curriculum.'}
+            </p>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={handleToggleRole}>
+            {isTeacher ? 'Switch to Solo' : 'Switch to Teacher'}
+          </button>
         </div>
       </section>
 
