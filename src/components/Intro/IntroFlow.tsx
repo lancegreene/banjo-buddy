@@ -98,7 +98,7 @@ const HOW_IT_WORKS = [
       </svg>
     ),
     label: 'Level Up',
-    desc: 'Unlock new skills as you progress',
+    desc: 'Collect skill cards as you progress',
   },
 ]
 
@@ -310,7 +310,7 @@ function StepTourPrompt({ onComplete }: { onComplete: () => void }) {
 
       <h2 className="intro-heading">Want a Quick Tour?</h2>
       <p className="intro-subheading">
-        We can show you around the app — where to find your practice sessions, skills, progress tracking, and more.
+        We'll show you the skill cards, practice area, progress tracking, tools, and how to navigate with the bottom tab bar.
       </p>
 
       <div className="intro-tour-actions">

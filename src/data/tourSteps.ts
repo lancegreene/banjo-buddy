@@ -50,7 +50,7 @@ export const STUDENT_TOUR: TourStep[] = [
   {
     target: 'home-cards',
     title: 'Section Cards',
-    body: 'Each card is a section of the app — Pathway, Skills, Progress, Awards, Settings, and Tools. Click any card to dive in.',
+    body: 'Each card is a section of the app — Pathway, Skills, Progress, Awards, Settings, and Tools. Click any card to dive in. On mobile, use the bottom tab bar for quick navigation.',
     placement: 'left',
     section: 'Home',
   },
@@ -59,7 +59,7 @@ export const STUDENT_TOUR: TourStep[] = [
   {
     target: 'pathway-sidebar',
     title: 'Your Pathway',
-    body: 'The Pathway shows every skill in your learning path in order. It\'s a road map for your banjo journey.',
+    body: 'The Pathway shows every skill in your learning path in order. It\'s a road map from your first roll to full songs.',
     placement: 'right',
     section: 'Pathway',
     navigateTo: 'pathway',
@@ -69,8 +69,8 @@ export const STUDENT_TOUR: TourStep[] = [
   // ── Skills ──
   {
     target: 'skill-tree-sidebar',
-    title: 'Skill Tree',
-    body: 'All skills organized by category — Rolls, Techniques, Licks, and Songs. Click any unlocked skill to start practicing.',
+    title: 'Skill Categories',
+    body: 'Browse skills organized into collectible card categories — Rolls, Techniques, Licks, Songs, and more. Expand the sidebar for a full skill list.',
     placement: 'right',
     section: 'Skills',
     navigateTo: 'skill-tree',
@@ -78,8 +78,8 @@ export const STUDENT_TOUR: TourStep[] = [
   },
   {
     target: 'skill-tree-main',
-    title: 'Practice Area',
-    body: 'Select a skill and this is where you practice. You\'ll see the exercise, BPM controls, real-time audio detection, and roll feedback.',
+    title: 'Skill Cards & Practice',
+    body: 'Click a category to see skill cards with status, BPM, and mastery info. Select any unlocked skill to practice with real-time audio detection.',
     placement: 'left',
     section: 'Skills',
   },
@@ -142,7 +142,7 @@ export const STUDENT_TOUR: TourStep[] = [
   {
     target: 'user-badge',
     title: 'Your Profile',
-    body: 'Click your avatar to access your profile, change themes, or sign out. Your profile page lets you edit your name and choose your learning path.',
+    body: 'Click your avatar to access your profile, change themes, switch between student and teacher mode, or sign out.',
     placement: 'bottom',
     section: 'Profile',
     closeModal: true,
@@ -166,7 +166,7 @@ export const TEACHER_TOUR: TourStep[] = [
   {
     target: 'home-cards',
     title: 'Section Cards',
-    body: 'Navigate the app through these cards. As a teacher, all skills are unlocked — no prerequisites needed.',
+    body: 'Navigate through these cards, or use the bottom tab bar on mobile. As a teacher, all skills are unlocked — no prerequisites needed.',
     placement: 'left',
     section: 'Home',
   },
@@ -174,8 +174,8 @@ export const TEACHER_TOUR: TourStep[] = [
   // ── Skills ──
   {
     target: 'skill-tree-sidebar',
-    title: 'Skill Tree',
-    body: 'Browse all skills by category. When you select one, you\'ll see teacher tools for adding demo videos, audio, images, and tablature.',
+    title: 'Skill Categories',
+    body: 'Browse skills as collectible cards organized by category. Expand the sidebar to see all skills. Select any skill to add demo videos, audio, images, or tablature.',
     placement: 'right',
     section: 'Skills',
     navigateTo: 'skill-tree',
@@ -184,7 +184,7 @@ export const TEACHER_TOUR: TourStep[] = [
   {
     target: 'skill-tree-main',
     title: 'Practice & Teaching',
-    body: 'The practice view with audio detection. As a teacher, you also get media upload controls and can reorder teaching materials.',
+    body: 'Select a skill card to see the practice view with audio detection. As a teacher, you also get media upload controls and can reorder teaching materials.',
     placement: 'left',
     section: 'Skills',
   },
@@ -258,7 +258,7 @@ export const TEACHER_TOUR: TourStep[] = [
   {
     target: 'user-badge',
     title: 'Your Profile',
-    body: 'Access your profile, switch themes, or sign out. Happy teaching!',
+    body: 'Access your profile, switch themes, toggle between teacher and student mode in Settings, or sign out. Happy teaching!',
     placement: 'bottom',
     section: 'Profile',
     closeModal: true,

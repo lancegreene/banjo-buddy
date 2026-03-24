@@ -222,9 +222,50 @@ export function SettingsPage() {
     setConfirmDeleteId(null)
   }
 
+  async function handleToggleRole() {
+    const store = useStore.getState()
+    if (isTeacher) {
+      // Switch back to solo mode
+      await store.loginAsGuest()
+      store.setPage('settings')
+    } else {
+      // Switch to teacher mode — find or create a teacher profile
+      let teacherId: string | null = null
+      const existingTeachers = store.teachers
+      if (existingTeachers.length > 0) {
+        teacherId = existingTeachers[0].id
+      } else {
+        await store.createTeacher(user?.name ?? 'Teacher')
+        const updated = useStore.getState().teachers
+        if (updated.length > 0) teacherId = updated[0].id
+      }
+      if (teacherId) {
+        await store.loginAsTeacher(teacherId)
+        store.setPage('settings')
+      }
+    }
+  }
+
   return (
     <div className="settings-page" data-tour="settings-page">
       <h1 className="settings-title">Settings</h1>
+
+      {/* Role Toggle */}
+      <section className="settings-section">
+        <div className="settings-role-toggle">
+          <div className="settings-role-info">
+            <span className="settings-role-badge">{isTeacher ? 'Teacher Mode' : activeUserRole === 'student' ? 'Student Mode' : 'Solo Mode'}</span>
+            <p className="settings-role-desc">
+              {isTeacher
+                ? 'You can manage students, customize curriculum, and upload teaching media.'
+                : 'Switch to Teacher Mode to manage students and customize the curriculum.'}
+            </p>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={handleToggleRole}>
+            {isTeacher ? 'Switch to Solo' : 'Switch to Teacher'}
+          </button>
+        </div>
+      </section>
 
       {/* Quick Actions */}
       <section className="settings-section">

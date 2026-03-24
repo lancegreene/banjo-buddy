@@ -10,7 +10,7 @@ import { supabase } from '../../db/supabase'
 type AuthMode = 'login' | 'signup' | 'forgot'
 
 interface AuthScreenProps {
-  onAuth: (userId: string, email: string) => void
+  onAuth: (userId: string, email: string, role?: 'student' | 'teacher') => void
   onSkip: () => void
 }
 
@@ -19,6 +19,7 @@ export function AuthScreen({ onAuth, onSkip }: AuthScreenProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
+  const [role, setRole] = useState<'student' | 'teacher'>('student')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -58,7 +59,7 @@ export function AuthScreen({ onAuth, onSkip }: AuthScreenProps) {
       email,
       password,
       options: {
-        data: { name },
+        data: { name, role },
       },
     })
 
@@ -75,7 +76,7 @@ export function AuthScreen({ onAuth, onSkip }: AuthScreenProps) {
 
     if (data.session) {
       // Email confirmation disabled — logged in immediately
-      onAuth(data.user!.id, data.user!.email ?? email)
+      onAuth(data.user!.id, data.user!.email ?? email, role)
     } else {
       // Email confirmation required
       setSuccess('Check your email for a confirmation link!')
@@ -193,6 +194,30 @@ export function AuthScreen({ onAuth, onSkip }: AuthScreenProps) {
                 placeholder="At least 6 characters"
               />
             </label>
+
+            {/* Role selection */}
+            <div className="auth-role-label">I am a...</div>
+            <div className="auth-role-cards">
+              <button
+                type="button"
+                className={`auth-role-card ${role === 'student' ? 'auth-role-card-selected' : ''}`}
+                onClick={() => setRole('student')}
+              >
+                <span className="auth-role-icon">🎵</span>
+                <span className="auth-role-title">Student</span>
+                <span className="auth-role-desc">Learning banjo — track progress and build skills</span>
+              </button>
+              <button
+                type="button"
+                className={`auth-role-card ${role === 'teacher' ? 'auth-role-card-selected' : ''}`}
+                onClick={() => setRole('teacher')}
+              >
+                <span className="auth-role-icon">🎓</span>
+                <span className="auth-role-title">Teacher</span>
+                <span className="auth-role-desc">Manage students, customize curriculum, share media</span>
+              </button>
+            </div>
+
             <button type="submit" className="auth-btn auth-btn-primary" disabled={loading}>
               {loading ? 'Creating account...' : 'Create Account'}
             </button>

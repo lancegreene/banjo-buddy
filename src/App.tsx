@@ -224,7 +224,7 @@ export default function App() {
   if (authChecked && !authedUserId && !hasSkippedAuth) {
     return (
       <AuthScreen
-        onAuth={async (userId, email) => {
+        onAuth={async (userId, email, role) => {
           setAuthedUserId(userId)
           useStore.getState().setAuthUser(null, email)
           // Migrate local data to cloud account if this is first auth
@@ -232,6 +232,9 @@ export default function App() {
           if (!migrated) {
             await uploadLocalData('local', userId)
             localStorage.setItem('banjo-buddy-data-migrated', 'true')
+          }
+          if (role) {
+            localStorage.setItem('banjo-buddy-preferred-role', role)
           }
           startAutoSync(userId)
           loadUser()
@@ -247,10 +250,25 @@ export default function App() {
   // Login screen gate — skip if authenticated via Supabase
   if (showLoginScreen) {
     if (authedUserId || hasSkippedAuth) {
-      // Auto-login as local user — no need for the "who's practicing?" picker
+      // Auto-login — use preferred role if set
       const store = useStore.getState()
       if (!store.activeUserId) {
-        store.loginAsGuest()
+        const preferredRole = localStorage.getItem('banjo-buddy-preferred-role')
+        if (preferredRole === 'teacher') {
+          // Find or create a teacher profile, then log in as teacher
+          const teachers = store.teachers
+          if (teachers.length > 0) {
+            store.loginAsTeacher(teachers[0].id)
+          } else {
+            store.createTeacher(store.authUserName ?? 'Teacher').then(() => {
+              const updated = useStore.getState().teachers
+              if (updated.length > 0) useStore.getState().loginAsTeacher(updated[0].id)
+              else store.loginAsGuest()
+            })
+          }
+        } else {
+          store.loginAsGuest()
+        }
       }
       return (
         <div className="app-loading">
