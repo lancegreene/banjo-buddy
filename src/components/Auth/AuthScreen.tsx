@@ -10,7 +10,7 @@ import { supabase } from '../../db/supabase'
 type AuthMode = 'login' | 'signup' | 'forgot'
 
 interface AuthScreenProps {
-  onAuth: (userId: string, email: string, role?: 'student' | 'teacher') => void
+  onAuth: (userId: string, email: string, role?: 'solo' | 'teacher') => void
   onSkip: () => void
 }
 
@@ -19,7 +19,7 @@ export function AuthScreen({ onAuth, onSkip }: AuthScreenProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
-  const [role, setRole] = useState<'student' | 'teacher'>('student')
+  const [role, setRole] = useState<'solo' | 'teacher'>('solo')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -200,12 +200,12 @@ export function AuthScreen({ onAuth, onSkip }: AuthScreenProps) {
             <div className="auth-role-cards">
               <button
                 type="button"
-                className={`auth-role-card ${role === 'student' ? 'auth-role-card-selected' : ''}`}
-                onClick={() => setRole('student')}
+                className={`auth-role-card ${role === 'solo' ? 'auth-role-card-selected' : ''}`}
+                onClick={() => setRole('solo')}
               >
                 <span className="auth-role-icon">🎵</span>
-                <span className="auth-role-title">Student</span>
-                <span className="auth-role-desc">Learning banjo — track progress and build skills</span>
+                <span className="auth-role-title">Solo</span>
+                <span className="auth-role-desc">Learning on my own — track progress and build skills</span>
               </button>
               <button
                 type="button"
