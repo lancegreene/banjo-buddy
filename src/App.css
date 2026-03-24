@@ -398,10 +398,73 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   color: #22d3ee;
 }
 
+/* ─── Mobile Bottom Tab Bar ────────────────────────────────────────────────── */
+
+.bottom-tabs {
+  display: none;  /* hidden on desktop */
+}
+
 @media (max-width: 640px) {
+  /* Simplify top bar on mobile: logo + tools only */
   .top-nav-brand { display: none; }
-  .top-nav { padding: 0 8px; height: 48px; }
-  .top-nav-item { padding: 6px 10px; font-size: 12px; }
+  .top-nav { padding: 0 8px; height: 44px; }
+  .top-nav-items { display: none; }  /* nav moves to bottom tabs */
+  .top-nav-tools { border-left: none; margin-left: auto; padding-left: 0; }
+
+  /* Show bottom tab bar */
+  .bottom-tabs {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: var(--bg-surface);
+    border-top: 2px solid var(--border-primary);
+    padding: 4px 0;
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .bottom-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 4px 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bottom-tab:active {
+    transform: scale(0.95);
+  }
+
+  .bottom-tab-active {
+    color: var(--accent-primary);
+  }
+
+  .bottom-tab-icon {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .bottom-tab-label {
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  /* Add padding to main content so it doesn't hide behind bottom tabs */
+  .app-content,
+  .app-content-split,
+  .app-content-skills {
+    padding-bottom: 64px;
+  }
 }
 
 /* ─── Home Page Layout ─────────────────────────────────────────────────────── */

@@ -314,7 +314,7 @@ export default function App() {
         </main>
       ) : page === 'skill-tree' ? (
         <main className={`app-content-skills ${selectedSkillId ? 'mobile-practice-active' : ''}`}>
-          <SkillTreeNav activeCategory={skillCategory} onSelect={setSkillCategory} />
+          <SkillTreeNav activeCategory={skillCategory} onSelect={(cat) => { setSkillCategory(cat); useStore.getState().clearSelectedSkill() }} />
           <div className="stc-content-area">
             {selectedSkillId ? (
               <>
