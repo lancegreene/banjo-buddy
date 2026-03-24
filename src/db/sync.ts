@@ -83,6 +83,7 @@ function toCamel(obj: Record<string, unknown>): Record<string, unknown> {
 // ─── Table mapping ──────────────────────────────────────────────────────────
 
 const TABLE_MAP: Record<string, string> = {
+  userProfiles: 'profiles',
   skillRecords: 'skill_records',
   practiceSessions: 'practice_sessions',
   sessionItems: 'session_items',

@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { db, newId, nowISO } from '../../db/db'
 import type { CustomRollPattern } from '../../db/db'
+import { enqueueSync } from '../../db/sync'
 import { refreshRollMap } from '../../data/rollPatterns'
 import { refreshSkillMap } from '../../data/curriculum'
 import { useStore } from '../../store/useStore'
@@ -76,14 +77,16 @@ export function RollPatternEditor({ pattern, onSave, onCancel }: RollPatternEdit
     try {
       const now = nowISO()
       if (pattern) {
-        await db.customRollPatterns.update(pattern.id, {
+        const updates = {
           name: name.trim(),
           description: description.trim(),
           strings,
           fingers,
           addAsSkill,
           updatedAt: now,
-        })
+        }
+        await db.customRollPatterns.update(pattern.id, updates)
+        enqueueSync('customRollPatterns', pattern.id, 'upsert', { ...pattern, ...updates } as any)
       } else {
         const newPattern: CustomRollPattern = {
           id: `custom_${newId().slice(0, 8)}`,
@@ -97,6 +100,7 @@ export function RollPatternEditor({ pattern, onSave, onCancel }: RollPatternEdit
           updatedAt: now,
         }
         await db.customRollPatterns.add(newPattern)
+        enqueueSync('customRollPatterns', newPattern.id, 'upsert', newPattern as any)
       }
 
       await refreshRollMap(user?.id, activeUserRole, user?.teacherId)

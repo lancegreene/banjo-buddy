@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 import { db, nowISO } from '../../db/db'
 import type { CustomRollPattern, TeacherClip, MediaDisplaySettings } from '../../db/db'
 import { updateTeacherConfig } from '../../db/db'
+import { enqueueSync } from '../../db/sync'
 import { refreshRollMap, ROLL_PATTERNS } from '../../data/rollPatterns'
 import { BanjoTabDiagram } from '../BanjoTabDiagram/BanjoTabDiagram'
 import { RollPatternEditor } from './RollPatternEditor'
@@ -92,6 +93,7 @@ export function SettingsPage() {
 
   async function handleDelete(id: string) {
     await db.customRollPatterns.delete(id)
+    enqueueSync('customRollPatterns', id, 'delete', {} as any)
     await refreshRollMap(user?.id, activeUserRole, user?.teacherId)
     loadCustomPatterns()
   }
@@ -596,6 +598,7 @@ function MediaDisplayConfig({ config }: { config: import('../../db/db').TeacherC
       mediaDisplay: { ...ds, ...patch },
     }
     await updateTeacherConfig(updated)
+    enqueueSync('teacherConfigs', updated.id, 'upsert', updated as any)
     useStore.setState({ teacherConfig: updated })
   }
 

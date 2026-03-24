@@ -606,7 +606,7 @@ function ExerciseView({
             <div className="ev-tools">
               {hasSong && <button className={`tool-btn ${activeTool === 'play_along' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('play_along')}>▶ Along</button>}
               <button className={`tool-btn ${activeTool === 'metronome' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('metronome')}>♩ Metro</button>
-              {hasPitch && <button className={`tool-btn${skill.id === 'tuning_basic' && openModal !== 'tuner' ? ' tool-btn-pulse' : ''}`} onClick={() => setOpenModal('tuner')}>◎ Tuner</button>}
+              {hasPitch && <button className={`tool-btn${skill.id === 'setup_strings_and_picking' && openModal !== 'tuner' ? ' tool-btn-pulse' : ''}`} onClick={() => setOpenModal('tuner')}>◎ Tuner</button>}
               {(hasAnalysis || hasPitch) && <button className={`tool-btn ${activeTool === 'recorder' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('recorder')}>● Rec</button>}
               <button className={`tool-btn tool-btn-cal ${activeTool === 'calibrate' ? 'tool-btn-active' : ''} ${loadCalibration() ? 'tool-btn-cal-saved' : ''}`} onClick={() => toggleTool('calibrate')} title="Calibrate audio detection">⚙ Cal</button>
               <button className={`tool-btn ${activeTool === 'video_record' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('video_record')} title="Record video clip">🎥 Video</button>
@@ -615,7 +615,7 @@ function ExerciseView({
               <button className={`tool-btn ${activeTool === 'upload_tab' ? 'tool-btn-active' : ''}`} onClick={() => toggleTool('upload_tab')} title="Upload tablature">🎵 Tab</button>
             </div>
           </details>
-          {skill.id === 'tuning_basic' && openModal !== 'tuner' && (
+          {skill.id === 'setup_strings_and_picking' && openModal !== 'tuner' && (
             <div className="tool-btn-hint" onClick={() => setOpenModal('tuner')}>↑ Tap the Tuner button to start tuning!</div>
           )}
 

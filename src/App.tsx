@@ -5,7 +5,7 @@ import { useStore, type Page, type ToolModal } from './store/useStore'
 import { useTheme } from './hooks/useTheme'
 import { Splash } from './components/Splash/Splash'
 import { PracticeSession } from './components/Practice/PracticeSession'
-import { SkillTree } from './components/SkillTree/SkillTree'
+import { SkillTreeNav, SkillTreeContent } from './components/SkillTree/SkillTree'
 import { Metronome } from './components/Metronome/Metronome'
 import { Tuner } from './components/Tuner/Tuner'
 import { Pathway } from './components/Pathway/Pathway'
@@ -29,7 +29,7 @@ import { ProfilePage } from './components/Profile/ProfilePage'
 import { AuthScreen } from './components/Auth/AuthScreen'
 import { supabase } from './db/supabase'
 import { startAutoSync, stopAutoSync, uploadLocalData } from './db/sync'
-const SPLIT_PAGES = new Set<Page>(['skill-tree', 'pathway'])
+const SPLIT_PAGES = new Set<Page>(['pathway'])
 
 function PageContent({ page }: { page: Page }) {
   switch (page) {
@@ -115,6 +115,7 @@ export default function App() {
   const startTour = useStore((s) => s.startTour)
   const dismissTour = useStore((s) => s.dismissTour)
   const [showTourOffer, setShowTourOffer] = useState(false)
+  const [skillCategory, setSkillCategory] = useState<import('./data/curriculum').SkillCategory | null>(null)
 
   const { theme, toggleTheme } = useTheme()
   const { celebration, dismiss: dismissCelebration } = useCelebration()
@@ -311,9 +312,28 @@ export default function App() {
         <main className="app-content app-content-home">
           <HomePage />
         </main>
+      ) : page === 'skill-tree' ? (
+        <main className={`app-content-skills ${selectedSkillId ? 'mobile-practice-active' : ''}`}>
+          <SkillTreeNav activeCategory={skillCategory} onSelect={setSkillCategory} />
+          <div className="stc-content-area">
+            {selectedSkillId ? (
+              <>
+                <button
+                  className="mobile-back-btn"
+                  onClick={() => useStore.getState().clearSelectedSkill()}
+                >
+                  ← Back to Skills
+                </button>
+                <PracticeSession />
+              </>
+            ) : (
+              <SkillTreeContent activeCategory={skillCategory} onSelectCategory={setSkillCategory} />
+            )}
+          </div>
+        </main>
       ) : isSplitPage ? (
         <main className={`app-content-split ${selectedSkillId ? 'mobile-practice-active' : ''}`}>
-          {page === 'skill-tree' ? <SkillTree /> : <Pathway />}
+          <Pathway />
           <div className="skill-tree-main" data-tour="skill-tree-main">
             {selectedSkillId ? (
               <>
@@ -321,7 +341,7 @@ export default function App() {
                   className="mobile-back-btn"
                   onClick={() => useStore.getState().clearSelectedSkill()}
                 >
-                  ← Back to {page === 'skill-tree' ? 'Skills' : 'Pathway'}
+                  ← Back to Pathway
                 </button>
                 <PracticeSession />
               </>

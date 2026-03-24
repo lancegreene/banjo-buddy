@@ -207,7 +207,9 @@ export const useStore = create<AppState>((set, get) => ({
   setUserPath: async (path) => {
     const { user } = get()
     if (!user) return
-    await db.userProfiles.update(user.id, { path, updatedAt: nowISO() })
+    const updatedAt = nowISO()
+    await db.userProfiles.update(user.id, { path, updatedAt })
+    enqueueSync('userProfiles', user.id, 'upsert', { ...user, path, updatedAt } as any)
     const updated = { ...user, path }
     set({ user: updated })
     get().refreshSessionPlan()
@@ -666,6 +668,7 @@ export const useStore = create<AppState>((set, get) => ({
         studentOverrides: overrides,
       }
       await updateTeacherConfig(updated)
+      enqueueSync('teacherConfigs', updated.id, 'upsert', updated as any)
       set({ teacherConfig: updated })
     } else {
       // Global default
@@ -681,6 +684,7 @@ export const useStore = create<AppState>((set, get) => ({
         disabledSkillIds: [...disabled],
       }
       await updateTeacherConfig(updated)
+      enqueueSync('teacherConfigs', updated.id, 'upsert', updated as any)
 
       // When a skill is disabled, unlock any downstream skills whose prereqs are now all met
       if (!wasDisabled && user) {
@@ -717,6 +721,7 @@ export const useStore = create<AppState>((set, get) => ({
                 updatedAt: now,
               }
               await upsertSkillRecord(newRecord)
+              enqueueSync('skillRecords', newRecord.id, 'upsert', newRecord as any)
               updatedRecords.set(skill.id, newRecord)
               changed = true
             }
