@@ -215,7 +215,9 @@ export const useStore = create<AppState>((set, get) => ({
     const ext = mimeType.split('/')[1] ?? 'jpg'
     const storagePath = `skill-overrides/${skillId}.${ext}`
 
-    // Upload to Supabase Storage
+    let imageUrl: string
+
+    // Try Supabase Storage first, fall back to data URL for local-only
     const { error: uploadError } = await supabase.storage
       .from('skill-images')
       .upload(storagePath, imageBlob, {
@@ -224,17 +226,22 @@ export const useStore = create<AppState>((set, get) => ({
       })
 
     if (uploadError) {
-      console.error('[Admin] Failed to upload skill image:', uploadError)
-      throw new Error(`Upload failed: ${uploadError.message}`)
+      console.warn('[Admin] Supabase Storage upload failed, using local data URL:', uploadError.message)
+      // Fallback: convert blob to data URL (works locally, won't sync across devices)
+      const reader = new FileReader()
+      imageUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(imageBlob)
+      })
+    } else {
+      // Get public URL from Supabase Storage
+      const { data: urlData } = supabase.storage
+        .from('skill-images')
+        .getPublicUrl(storagePath)
+      // Bust cache by appending timestamp
+      imageUrl = `${urlData.publicUrl}?t=${Date.now()}`
     }
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('skill-images')
-      .getPublicUrl(storagePath)
-
-    // Bust cache by appending timestamp
-    const imageUrl = `${urlData.publicUrl}?t=${Date.now()}`
 
     const override: SkillImageOverride = {
       skillId,
@@ -246,7 +253,9 @@ export const useStore = create<AppState>((set, get) => ({
       updatedAt: nowISO(),
     }
     await putSkillImageOverride(override)
-    enqueueSync('skillImageOverrides', skillId, 'upsert', override as any)
+    if (!uploadError) {
+      enqueueSync('skillImageOverrides', skillId, 'upsert', override as any)
+    }
     const overrides = new Map(get().skillImageOverrides)
     overrides.set(skillId, override)
     set({ skillImageOverrides: overrides })

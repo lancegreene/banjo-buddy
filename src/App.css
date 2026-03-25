@@ -5912,6 +5912,16 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   border-color: var(--accent-primary);
 }
 
+.admin-images-error {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  font-size: 13px;
+  margin-bottom: 10px;
+  word-break: break-word;
+}
+
 .admin-images-list {
   display: flex;
   flex-direction: column;

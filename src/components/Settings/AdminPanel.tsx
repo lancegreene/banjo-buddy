@@ -96,25 +96,41 @@ export function AdminPanel() {
   }
 
   // Demo image handlers
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploadingSkillId, setUploadingSkillId] = useState<string | null>(null)
+
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !uploadTargetSkillId) return
-    if (!file.type.startsWith('image/')) return
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Please select an image file')
+      return
+    }
 
     const skill = SKILLS.find((s) => s.id === uploadTargetSkillId)
     const defaultAlt = skill?.image?.alt ?? `${skill?.name ?? 'Skill'} demonstration`
     const defaultCaption = skill?.image?.caption ?? null
 
-    await setSkillImageOverride(
-      uploadTargetSkillId,
-      file,
-      defaultAlt,
-      defaultCaption,
-      file.type,
-    )
-    setUploadTargetSkillId(null)
-    // Reset file input
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    setUploadError(null)
+    setUploadingSkillId(uploadTargetSkillId)
+
+    try {
+      await setSkillImageOverride(
+        uploadTargetSkillId,
+        file,
+        defaultAlt,
+        defaultCaption,
+        file.type,
+      )
+      setUploadError(null)
+    } catch (err: any) {
+      console.error('[Admin] Image upload failed:', err)
+      setUploadError(err?.message ?? 'Upload failed')
+    } finally {
+      setUploadingSkillId(null)
+      setUploadTargetSkillId(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
   }
 
   function startUpload(skillId: string) {
@@ -238,6 +254,9 @@ export function AdminPanel() {
           style={{ display: 'none' }}
           onChange={handleFileUpload}
         />
+        {uploadError && (
+          <div className="admin-images-error">{uploadError}</div>
+        )}
         <div className="admin-images-list">
           {filteredSkills.map((skill) => {
             const override = skillImageOverrides.get(skill.id)
@@ -266,8 +285,12 @@ export function AdminPanel() {
                   </span>
                 </div>
                 <div className="admin-image-actions">
-                  <button className="btn btn-sm" onClick={() => startUpload(skill.id)}>
-                    {hasOverride || hasStatic ? 'Replace' : 'Upload'}
+                  <button
+                    className="btn btn-sm"
+                    onClick={() => startUpload(skill.id)}
+                    disabled={uploadingSkillId === skill.id}
+                  >
+                    {uploadingSkillId === skill.id ? 'Uploading...' : hasOverride || hasStatic ? 'Replace' : 'Upload'}
                   </button>
                   {hasOverride && (
                     <button className="btn btn-sm" onClick={() => startEdit(skill.id)}>
