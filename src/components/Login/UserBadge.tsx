@@ -26,14 +26,13 @@ export function UserBadge({ theme, onToggleTheme }: Props) {
     setOpen(false)
     stopAutoSync()
     // Sign out from Supabase (clears session from localStorage)
-    const { error } = await supabase.auth.signOut({ scope: 'local' })
-    if (error) console.warn('[Auth] signOut error:', error.message)
-    // Clear app state
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
+    // Clear local state so reload lands on the sign-in screen
     useStore.getState().setAuthUser(null, null)
     localStorage.removeItem('banjo-buddy-auth-skipped')
     localStorage.removeItem('banjo-buddy-data-migrated')
-    // Reset store to login screen instead of reloading
-    await useStore.getState().logoutUser()
+    localStorage.removeItem('banjo-buddy-preferred-role')
+    window.location.reload()
   }
 
   return (
