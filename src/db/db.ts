@@ -21,6 +21,7 @@ export interface UserProfile {
   role: UserRole       // 'solo' default, 'teacher' or 'student'
   teacherId: string | null  // for students, points to teacher's user ID
   hasSeenTour?: boolean // false for new students, triggers auto-tour on first login
+  isAdmin?: boolean    // admin flag — grants access to admin panel
   createdAt: string    // ISO
   updatedAt: string
 }
@@ -343,6 +344,25 @@ class BanjoBuddyDB extends Dexie {
         // Existing clips have videoBlob as non-null — keep as-is
       })
     })
+
+    // v11: Admin mode — add isAdmin flag to userProfiles
+    this.version(11).stores({
+      userProfiles:       'id, path, role',
+      skillRecords:       'id, userId, skillId, status, lastPracticed, [userId+skillId], srNextReview, [userId+fsrsNextReview]',
+      practiceSessions:   'id, userId, date, startedAt',
+      sessionItems:       'id, sessionId, skillId, completedAt, [skillId+completedAt]',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, date, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
+      achievements:       '++id, achievementId, userId, earnedAt',
+      customRollPatterns: 'id, name, createdBy, createdAt',
+      teacherConfigs:     'id',
+      teacherClips:       'id, teacherId, skillId, rollPatternId, mediaType, sourceImageId, createdAt',
+    }).upgrade((tx) => {
+      return tx.table('userProfiles').toCollection().modify((profile: any) => {
+        if (profile.isAdmin === undefined) profile.isAdmin = false
+      })
+    })
   }
 }
 
@@ -525,6 +545,83 @@ export async function deleteTeacher(teacherId: string): Promise<void> {
   await db.skillRecords.where('userId').equals(teacherId).delete()
   await db.streakRecords.where('userId').equals(teacherId).delete()
   await db.userProfiles.delete(teacherId)
+}
+
+// ── Admin helpers ─────────────────────────────────────────────────────────────
+
+export async function setAdminStatus(userId: string, isAdmin: boolean): Promise<void> {
+  await db.userProfiles.update(userId, { isAdmin, updatedAt: nowISO() })
+}
+
+export async function getAllUsers(): Promise<UserProfile[]> {
+  return db.userProfiles.toArray()
+}
+
+export async function getDbStats(): Promise<{
+  users: number
+  skillRecords: number
+  sessions: number
+  sessionItems: number
+  recordings: number
+  clips: number
+  patterns: number
+  achievements: number
+}> {
+  const [users, skillRecords, sessions, sessionItems, recordings, clips, patterns, achievements] =
+    await Promise.all([
+      db.userProfiles.count(),
+      db.skillRecords.count(),
+      db.practiceSessions.count(),
+      db.sessionItems.count(),
+      db.recordings.count(),
+      db.teacherClips.count(),
+      db.customRollPatterns.count(),
+      db.achievements.count(),
+    ])
+  return { users, skillRecords, sessions, sessionItems, recordings, clips, patterns, achievements }
+}
+
+export async function clearAllUserData(userId: string): Promise<void> {
+  // Clear all practice data for a specific user (keeps profile)
+  const sessions = await db.practiceSessions.where('userId').equals(userId).toArray()
+  const sessionIds = sessions.map((s) => s.id)
+  if (sessionIds.length > 0) {
+    const items = await db.sessionItems.where('sessionId').anyOf(sessionIds).toArray()
+    const itemIds = items.map((i) => i.id)
+    if (itemIds.length > 0) {
+      await db.noteAccuracyRecords.where('sessionItemId').anyOf(itemIds).delete()
+      await db.recordings.where('sessionItemId').anyOf(itemIds).delete()
+    }
+    await db.sessionItems.where('sessionId').anyOf(sessionIds).delete()
+  }
+  await db.practiceSessions.where('userId').equals(userId).delete()
+  await db.skillRecords.where('userId').equals(userId).delete()
+  await db.streakRecords.where('userId').equals(userId).delete()
+}
+
+export async function exportAllData(): Promise<object> {
+  const [userProfiles, skillRecords, practiceSessions, sessionItems, streakRecords, achievements, customRollPatterns, teacherConfigs] =
+    await Promise.all([
+      db.userProfiles.toArray(),
+      db.skillRecords.toArray(),
+      db.practiceSessions.toArray(),
+      db.sessionItems.toArray(),
+      db.streakRecords.toArray(),
+      db.achievements.toArray(),
+      db.customRollPatterns.toArray(),
+      db.teacherConfigs.toArray(),
+    ])
+  return {
+    exportedAt: nowISO(),
+    userProfiles,
+    skillRecords,
+    practiceSessions,
+    sessionItems,
+    streakRecords,
+    achievements,
+    customRollPatterns,
+    teacherConfigs,
+  }
 }
 
 // Calculate current streak from streak records

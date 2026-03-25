@@ -21,6 +21,7 @@ import { ImageUploader } from '../Teaching/ImageUploader'
 import { TabCropper } from '../Teaching/TabCropper'
 import { RecordingStudio } from './RecordingStudio'
 import { BanjoAnatomy } from '../BanjoAnatomy/BanjoAnatomy'
+import { AdminPanel } from './AdminPanel'
 
 type SettingsView = 'list' | 'create' | 'edit' | 'curriculum' | 'record_video' | 'record_audio' | 'upload_image' | 'upload_tab' | 'edit_clip' | 'recording_studio' | 'banjo_anatomy'
 
@@ -47,7 +48,30 @@ export function SettingsPage() {
   const [clipVideoUrls, setClipVideoUrls] = useState<Map<string, string>>(new Map())
   const [confirmDeleteClipId, setConfirmDeleteClipId] = useState<string | null>(null)
 
+  const isAdmin = useStore((s) => s.isAdmin)
   const isTeacher = activeUserRole === 'teacher'
+  const [adminTapCount, setAdminTapCount] = useState(0)
+  const [adminTapTimer, setAdminTapTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleTitleClick() {
+    const newCount = adminTapCount + 1
+    if (adminTapTimer) clearTimeout(adminTapTimer)
+
+    if (newCount >= 5) {
+      // 5 rapid taps activates admin mode
+      setAdminTapCount(0)
+      const store = useStore.getState()
+      const userId = store.activeUserId ?? store.user?.id
+      if (userId && !store.isAdmin) {
+        store.setAdminStatus(userId, true)
+      }
+      return
+    }
+
+    setAdminTapCount(newCount)
+    const timer = setTimeout(() => setAdminTapCount(0), 1500)
+    setAdminTapTimer(timer)
+  }
 
   async function loadClips() {
     if (!user || !isTeacher) return
@@ -248,7 +272,7 @@ export function SettingsPage() {
 
   return (
     <div className="settings-page" data-tour="settings-page">
-      <h1 className="settings-title">Settings</h1>
+      <h1 className="settings-title" onClick={handleTitleClick} style={{ cursor: 'default', userSelect: 'none' }}>Settings</h1>
 
       {/* Role Toggle */}
       <section className="settings-section">
@@ -621,6 +645,13 @@ export function SettingsPage() {
           })}
         </div>
       </section>
+
+      {/* Admin Panel — only visible to admin users */}
+      {isAdmin && (
+        <section className="settings-section">
+          <AdminPanel />
+        </section>
+      )}
     </div>
   )
 }

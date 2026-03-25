@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { db, getOrCreateUser, getSkillRecordMap, upsertSkillRecord, getCurrentStreak, newId, nowISO, todayDate, getStudents, getStandaloneStudents, createStudent as dbCreateStudent, deleteStudent as dbDeleteStudent, getOrCreateTeacherConfig, updateTeacherConfig, getTeachers, createTeacher as dbCreateTeacher, deleteTeacher as dbDeleteTeacher, markTourSeen } from '../db/db'
+import { db, getOrCreateUser, getSkillRecordMap, upsertSkillRecord, getCurrentStreak, newId, nowISO, todayDate, getStudents, getStandaloneStudents, createStudent as dbCreateStudent, deleteStudent as dbDeleteStudent, getOrCreateTeacherConfig, updateTeacherConfig, getTeachers, createTeacher as dbCreateTeacher, deleteTeacher as dbDeleteTeacher, markTourSeen, setAdminStatus as dbSetAdminStatus, getAllUsers, getDbStats, clearAllUserData, exportAllData } from '../db/db'
 import type { UserProfile, SkillRecord, PracticeSession, SessionItem, SelfRating, NoteAccuracyRecord, TeacherConfig, UserRole } from '../db/db'
 import { SKILL_MAP, refreshSkillMap, type Path } from '../data/curriculum'
 import { buildSessionPlan, deriveNewStatus, getNewlyUnlockedSkills, evaluateSkillStatus, type SessionPlan } from '../engine/recommendationEngine'
@@ -105,6 +105,14 @@ interface AppState {
   toggleSkillEnabled: (skillId: string, studentId?: string) => Promise<void>
   getStudentDisabledSkills: (studentId: string) => Set<string>
 
+  // Admin mode
+  isAdmin: boolean
+  setAdminStatus: (userId: string, isAdmin: boolean) => Promise<void>
+  getAllUsers: () => Promise<UserProfile[]>
+  getDbStats: () => Promise<{ users: number; skillRecords: number; sessions: number; sessionItems: number; recordings: number; clips: number; patterns: number; achievements: number }>
+  clearUserData: (userId: string) => Promise<void>
+  exportData: () => Promise<string>
+
   // Site tour
   tourPending: boolean
   tourActive: boolean
@@ -156,6 +164,39 @@ export const useStore = create<AppState>((set, get) => ({
   students: [],
   standaloneStudents: [],
   showLoginScreen: false,
+  isAdmin: false,
+
+  setAdminStatus: async (userId: string, isAdmin: boolean) => {
+    await dbSetAdminStatus(userId, isAdmin)
+    // If toggling own status, update local state
+    if (userId === get().activeUserId || userId === get().user?.id) {
+      set({ isAdmin })
+    }
+  },
+
+  getAllUsers: async () => {
+    return getAllUsers()
+  },
+
+  getDbStats: async () => {
+    return getDbStats()
+  },
+
+  clearUserData: async (userId: string) => {
+    await clearAllUserData(userId)
+    // If clearing own data, reload skill records
+    if (userId === get().activeUserId) {
+      const skillRecords = await getSkillRecordMap(userId)
+      set({ skillRecords, streak: 0 })
+      get().refreshSessionPlan()
+    }
+  },
+
+  exportData: async () => {
+    const data = await exportAllData()
+    return JSON.stringify(data, null, 2)
+  },
+
   startTour: () => {
     set({ tourActive: true, tourStep: 0, tourPending: false })
     localStorage.removeItem('banjo-buddy-tour-pending')
@@ -510,6 +551,7 @@ export const useStore = create<AppState>((set, get) => ({
       streak,
       disabledSkillIds: new Set(),
       tourPending,
+      isAdmin: user.isAdmin === true,
     })
     get().refreshSessionPlan()
   },
@@ -535,6 +577,7 @@ export const useStore = create<AppState>((set, get) => ({
       skillRecords,
       streak,
       tourPending,
+      isAdmin: teacher.isAdmin === true,
     })
     get().refreshSessionPlan()
   },
@@ -569,6 +612,7 @@ export const useStore = create<AppState>((set, get) => ({
       teacherConfig: config,
       disabledSkillIds: disabled,
       tourPending,
+      isAdmin: student.isAdmin === true,
     })
     get().refreshSessionPlan()
   },
@@ -597,6 +641,7 @@ export const useStore = create<AppState>((set, get) => ({
       standaloneStudents: standalone,
       teacherConfig: null,
       disabledSkillIds: new Set(),
+      isAdmin: false,
     })
   },
 

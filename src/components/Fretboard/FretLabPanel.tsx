@@ -64,12 +64,12 @@ export function FretLabPanel({ rollPatternId, lickId, bpm: defaultBpm }: FretLab
       }
     }
 
-    // Add built-in examples (skip if same as current pattern)
-    if (rollPatternId !== 'forward_roll') {
+    // Only show extra examples if no skill-specific pattern/lick is loaded
+    if (list.length === 0) {
       list.push({ id: 'forward-roll', label: 'Forward Roll', notes: EXAMPLE_FORWARD_ROLL })
+      list.push({ id: 'cripple-creek', label: 'Cripple Creek', notes: EXAMPLE_CRIPPLE_CREEK })
+      list.push({ id: 'foggy-mountain', label: 'Foggy Mountain', notes: EXAMPLE_FOGGY_MOUNTAIN })
     }
-    list.push({ id: 'cripple-creek', label: 'Cripple Creek', notes: EXAMPLE_CRIPPLE_CREEK })
-    list.push({ id: 'foggy-mountain', label: 'Foggy Mountain', notes: EXAMPLE_FOGGY_MOUNTAIN })
 
     return list
   }, [rollPatternId, lickId])
@@ -82,18 +82,20 @@ export function FretLabPanel({ rollPatternId, lickId, bpm: defaultBpm }: FretLab
         <h3 className="fretlab-panel-title">Fret Lab</h3>
       </div>
 
-      {/* Pattern selector pills */}
-      <div className="fretlab-panel-pills">
-        {songs.map((s) => (
-          <button
-            key={s.id}
-            className={`fretlab-pill ${selectedSong === s.id ? 'fretlab-pill-active' : ''}`}
-            onClick={() => { setSelectedSong(s.id); setAutoPlay(false) }}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
+      {/* Pattern selector pills — hide when only one option */}
+      {songs.length > 1 && (
+        <div className="fretlab-panel-pills">
+          {songs.map((s) => (
+            <button
+              key={s.id}
+              className={`fretlab-pill ${selectedSong === s.id ? 'fretlab-pill-active' : ''}`}
+              onClick={() => { setSelectedSong(s.id); setAutoPlay(false) }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Fretboard diagram */}
       <FretboardDiagram

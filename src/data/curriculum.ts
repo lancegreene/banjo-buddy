@@ -545,6 +545,7 @@ export const SKILLS: Skill[] = [
       { instruction: 'With metronome. 16 reps.', bpm: 80 },
     ],
     scoringTypes: ['rhythm', 'pitch', 'tempo', 'self_rate'],
+    rollPatternId: 'forward_roll',
     assessmentPrompt: 'Record 16-rep forward roll on G chord at target BPM.',
   },
   {

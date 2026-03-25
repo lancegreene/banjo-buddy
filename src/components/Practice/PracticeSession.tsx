@@ -387,15 +387,6 @@ function ExerciseView({
             </div>
           )}
 
-          {/* Teacher demo clips */}
-          {teacherClips.length > 0 && (
-            <TeacherMediaPlayer
-              clips={teacherClips}
-              editable={isTeacher}
-              onClipsReordered={() => getClipsForSkillOrPattern(skill.id, skill.rollPatternId ?? null).then(setTeacherClips)}
-            />
-          )}
-
           {/* Unified roll panel (Pattern / Weak Spots / Highway) */}
           {skill.rollPatternId && (() => {
             const pattern = ROLL_MAP.get(skill.rollPatternId!)
@@ -543,6 +534,15 @@ function ExerciseView({
               skillId={skill.id}
               patternId={skill.rollPatternId}
               currentBpm={item.suggestedBpm ?? 80}
+            />
+          )}
+
+          {/* Teacher demo clips */}
+          {teacherClips.length > 0 && (
+            <TeacherMediaPlayer
+              clips={teacherClips}
+              editable={isTeacher}
+              onClipsReordered={() => getClipsForSkillOrPattern(skill.id, skill.rollPatternId ?? null).then(setTeacherClips)}
             />
           )}
 
