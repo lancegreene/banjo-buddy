@@ -122,10 +122,10 @@ export function AdminPanel() {
         defaultCaption,
         file.type,
       )
-      setUploadError('v2: Image saved successfully')
+      setUploadError(null)
     } catch (err: any) {
       console.error('[Admin] Image upload failed:', err)
-      setUploadError('ERROR: ' + (err?.message ?? 'Upload failed'))
+      setUploadError(err?.message ?? 'Upload failed')
     } finally {
       setUploadingSkillId(null)
       setUploadTargetSkillId(null)

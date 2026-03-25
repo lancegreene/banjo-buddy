@@ -257,7 +257,6 @@ export const useStore = create<AppState>((set, get) => ({
     await putSkillImageOverride(override)
     // Always try to sync metadata to Supabase (even if Storage upload failed, for data URL fallback)
     try {
-      console.log('[Admin] Syncing image override to Supabase for skill:', skillId)
       const { error: dbError } = await supabase
         .from('skill_image_overrides')
         .upsert({
@@ -269,13 +268,9 @@ export const useStore = create<AppState>((set, get) => ({
           updated_by: userId,
           updated_at: override.updatedAt,
         }, { onConflict: 'skill_id' })
-      if (dbError) {
-        console.error('[Admin] Supabase upsert failed:', dbError.message, dbError)
-      } else {
-        console.log('[Admin] Image override synced successfully')
-      }
+      if (dbError) console.warn('[Admin] Failed to sync image override:', dbError.message)
     } catch (e) {
-      console.error('[Admin] Supabase upsert exception:', e)
+      console.warn('[Admin] Failed to sync image override:', e)
     }
     const overrides = new Map(get().skillImageOverrides)
     overrides.set(skillId, override)
