@@ -12,6 +12,7 @@ import { parseTab, type ParseResult } from '../../engine/tabParser'
 import { notesToTabText } from '../../engine/tabParser'
 import { extractTabFromImage, type OcrProgress } from '../../engine/tabImageOcr'
 import { TabImageCropper } from './TabImageCropper'
+import { TabOverlayEditor } from './TabOverlayEditor'
 
 interface SongEntry {
   id: string
@@ -52,6 +53,7 @@ export function FretboardLab() {
   const [ocrPreviewUrl, setOcrPreviewUrl] = useState<string | null>(null)
   const [cropperImageUrl, setCropperImageUrl] = useState<string | null>(null)
   const [editingSongId, setEditingSongId] = useState<string | null>(null) // track which imported song we're editing
+  const [overlayBlob, setOverlayBlob] = useState<Blob | null>(null) // image blob for overlay editor
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const song = songs.find((s) => s.id === songId) ?? songs[0]
@@ -152,23 +154,43 @@ export function FretboardLab() {
   }
 
   async function handleCropComplete(croppedBlob: Blob) {
-    // Close cropper, show preview of cropped region
+    // Close cropper, open the overlay editor
     if (cropperImageUrl) URL.revokeObjectURL(cropperImageUrl)
     setCropperImageUrl(null)
+    setOverlayBlob(croppedBlob)
+  }
 
-    const previewUrl = URL.createObjectURL(croppedBlob)
-    setOcrPreviewUrl(previewUrl)
+  function handleOverlayConfirm(notes: FretNote[]) {
+    setOverlayBlob(null)
+    if (notes.length === 0) return
 
-    // Run OCR on cropped image
-    try {
-      const result = await extractTabFromImage(croppedBlob, setOcrProgress)
-      setTabText(result.text)
-      setOcrProgress(null)
-      setTimeout(() => textareaRef.current?.focus(), 100)
-    } catch (err) {
-      setOcrProgress(null)
-      setTabText(`// OCR failed: ${err instanceof Error ? err.message : 'Unknown error'}\n// Try pasting the tab text manually`)
+    // Create song entry directly from confirmed notes
+    const name = tabName.trim() || `Imported Tab ${songs.filter((s) => s.isImported).length + 1}`
+
+    if (editingSongId) {
+      setSongs((prev) => prev.map((s) =>
+        s.id === editingSongId ? { ...s, label: name, notes } : s
+      ))
+      setSongId(editingSongId)
+    } else {
+      const id = `imported-${Date.now()}`
+      setSongs((prev) => [...prev, { id, label: name, notes, isImported: true }])
+      setSongId(id)
     }
+
+    setGroupIdx(0)
+    setAutoPlay(false)
+    setShowImport(false)
+    setTabName('')
+    setEditingSongId(null)
+
+    // Also populate tab text for reference
+    setTabText(notesToTabText(notes))
+    setParseResult({ notes, warnings: [], lineCount: 5 })
+  }
+
+  function handleOverlayCancel() {
+    setOverlayBlob(null)
   }
 
   function handleCropCancel() {
@@ -441,6 +463,15 @@ export function FretboardLab() {
           imageUrl={cropperImageUrl}
           onCrop={handleCropComplete}
           onCancel={handleCropCancel}
+        />
+      )}
+
+      {/* Overlay editor modal */}
+      {overlayBlob && (
+        <TabOverlayEditor
+          imageBlob={overlayBlob}
+          onConfirm={handleOverlayConfirm}
+          onCancel={handleOverlayCancel}
         />
       )}
     </div>

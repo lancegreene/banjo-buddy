@@ -46,7 +46,7 @@ function loadImage(source: File | Blob | string): Promise<HTMLImageElement> {
  * Load image onto a canvas, resized to fit MAX_IMAGE_DIM.
  * Returns the canvas context + dimensions for further processing.
  */
-async function imageToCanvas(source: File | Blob | string): Promise<{
+export async function imageToCanvas(source: File | Blob | string): Promise<{
   ctx: CanvasRenderingContext2D
   w: number
   h: number
@@ -70,7 +70,7 @@ async function imageToCanvas(source: File | Blob | string): Promise<{
   return { ctx, w, h }
 }
 
-function canvasToBase64(ctx: CanvasRenderingContext2D, w: number, h: number): { base64: string; mediaType: string } {
+export function canvasToBase64(ctx: CanvasRenderingContext2D, w: number, h: number): { base64: string; mediaType: string } {
   const canvas = ctx.canvas
   // Ensure canvas dimensions match (they should, but be safe)
   void w; void h
@@ -82,7 +82,7 @@ function canvasToBase64(ctx: CanvasRenderingContext2D, w: number, h: number): { 
 
 // ─── Programmatic staff line + note detection ────────────────────────────────
 
-interface DetectedNote {
+export interface DetectedNote {
   lineNum: number   // 1-5 (which staff line)
   centerX: number   // horizontal center of the note cluster
   clusterWidth: number
@@ -99,7 +99,7 @@ interface DetectedNote {
  *    than artifacts like borders or faint gridlines
  * 4. Validate that the 5 lines are approximately evenly spaced
  */
-function detectStaffLines(ctx: CanvasRenderingContext2D, w: number, h: number): number[] | null {
+export function detectStaffLines(ctx: CanvasRenderingContext2D, w: number, h: number): number[] | null {
   // Sample multiple vertical columns and average brightness per row
   const sampleXs = [0.15, 0.3, 0.5, 0.7].map((p) => Math.round(w * p))
   const brightnesses: number[] = []
@@ -178,7 +178,7 @@ function detectStaffLines(ctx: CanvasRenderingContext2D, w: number, h: number): 
  * 4. For each note cluster, count dark pixels in a band around each line —
  *    the line with the most extra dark pixels has the note
  */
-function detectNotePositions(
+export function detectNotePositions(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
@@ -304,7 +304,7 @@ function detectNotePositions(
 /**
  * Format detected notes (with line assignments and fret numbers) as tab text.
  */
-function fingerForLine(lineNum: number): 'T' | 'I' | 'M' {
+export function fingerForLine(lineNum: number): 'T' | 'I' | 'M' {
   if (lineNum >= 3) return 'T'  // Strings 3, 4, 5 = Thumb
   if (lineNum === 2) return 'I' // String 2 = Index
   return 'M'                    // String 1 = Middle
@@ -357,7 +357,7 @@ function jsonToTab(text: string): string {
 
 // ─── Vision model API call ───────────────────────────────────────────────────
 
-async function callVisionModel(
+export async function callVisionModel(
   base64: string,
   mediaType: string,
   prompt: string,
