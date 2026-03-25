@@ -384,10 +384,9 @@ function ExerciseView({
           {(() => {
             const override = skillImageOverrides.get(skill.id)
             if (override) {
-              const url = URL.createObjectURL(override.imageBlob)
               return (
                 <div className="ev-skill-image">
-                  <img src={url} alt={override.alt} className="ev-skill-img" onLoad={() => URL.revokeObjectURL(url)} />
+                  <img src={override.imageUrl} alt={override.alt} className="ev-skill-img" />
                   {override.caption && <p className="ev-skill-img-caption">{override.caption}</p>}
                 </div>
               )

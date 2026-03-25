@@ -92,6 +92,7 @@ const TABLE_MAP: Record<string, string> = {
   achievements: 'achievements',
   customRollPatterns: 'custom_roll_patterns',
   teacherConfigs: 'teacher_configs',
+  skillImageOverrides: 'skill_image_overrides',
 }
 
 // Fields to exclude from sync (blobs, local-only data)
@@ -128,18 +129,21 @@ export async function pushPendingChanges(): Promise<{ pushed: number; errors: nu
     }
 
     try {
+      // skillImageOverrides uses skill_id as primary key, not id
+      const pkColumn = item.table === 'skillImageOverrides' ? 'skill_id' : 'id'
+
       if (item.operation === 'delete') {
         const { error } = await supabase
           .from(supabaseTable)
           .delete()
-          .eq('id', item.recordId)
+          .eq(pkColumn, item.recordId)
 
         if (error) throw error
       } else {
         const snakeData = toSnake(cleanForSync(item.data))
         const { error } = await supabase
           .from(supabaseTable)
-          .upsert(snakeData, { onConflict: 'id' })
+          .upsert(snakeData, { onConflict: pkColumn })
 
         if (error) throw error
       }
@@ -283,6 +287,23 @@ export async function pullRemoteChanges(userId: string): Promise<{ pulled: numbe
         .first()
       if (!existing) {
         await db.achievements.put(local)
+        pulled++
+      }
+    }
+  }
+
+  // Pull skill image overrides (global, not per-user)
+  const { data: remoteImageOverrides } = await supabase
+    .from('skill_image_overrides')
+    .select('*')
+    .gt('updated_at', lastSynced)
+
+  if (remoteImageOverrides) {
+    for (const remote of remoteImageOverrides) {
+      const local = toCamel(remote) as unknown as any
+      const existing = await db.skillImageOverrides.get(local.skillId)
+      if (!existing || (existing.updatedAt && local.updatedAt && local.updatedAt > existing.updatedAt)) {
+        await db.skillImageOverrides.put(local)
         pulled++
       }
     }

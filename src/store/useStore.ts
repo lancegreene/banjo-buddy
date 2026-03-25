@@ -14,6 +14,7 @@ import { computePerformanceMetrics } from '../engine/performanceMetrics'
 import type { PerformanceMetrics } from '../types/performance'
 import { refreshRollMap } from '../data/rollPatterns'
 import { enqueueSync } from '../db/sync'
+import { supabase } from '../db/supabase'
 
 export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'pathway' | 'progress' | 'achievements' | 'settings' | 'profile' | 'fretboard-lab'
 export type ToolModal = 'metronome' | 'tuner' | 'fretlab'
@@ -211,9 +212,33 @@ export const useStore = create<AppState>((set, get) => ({
 
   setSkillImageOverride: async (skillId, imageBlob, alt, caption, mimeType) => {
     const userId = get().activeUserId ?? get().user?.id ?? 'local'
+    const ext = mimeType.split('/')[1] ?? 'jpg'
+    const storagePath = `skill-overrides/${skillId}.${ext}`
+
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from('skill-images')
+      .upload(storagePath, imageBlob, {
+        contentType: mimeType,
+        upsert: true,
+      })
+
+    if (uploadError) {
+      console.error('[Admin] Failed to upload skill image:', uploadError)
+      throw new Error(`Upload failed: ${uploadError.message}`)
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('skill-images')
+      .getPublicUrl(storagePath)
+
+    // Bust cache by appending timestamp
+    const imageUrl = `${urlData.publicUrl}?t=${Date.now()}`
+
     const override: SkillImageOverride = {
       skillId,
-      imageBlob,
+      imageUrl,
       alt,
       caption,
       mimeType,
@@ -221,13 +246,21 @@ export const useStore = create<AppState>((set, get) => ({
       updatedAt: nowISO(),
     }
     await putSkillImageOverride(override)
+    enqueueSync('skillImageOverrides', skillId, 'upsert', override as any)
     const overrides = new Map(get().skillImageOverrides)
     overrides.set(skillId, override)
     set({ skillImageOverrides: overrides })
   },
 
   removeSkillImageOverride: async (skillId) => {
+    // Try to delete from storage (best-effort, may fail if different extension)
+    const override = get().skillImageOverrides.get(skillId)
+    if (override) {
+      const ext = override.mimeType.split('/')[1] ?? 'jpg'
+      await supabase.storage.from('skill-images').remove([`skill-overrides/${skillId}.${ext}`])
+    }
     await dbDeleteSkillImageOverride(skillId)
+    enqueueSync('skillImageOverrides', skillId, 'delete', {})
     const overrides = new Map(get().skillImageOverrides)
     overrides.delete(skillId)
     set({ skillImageOverrides: overrides })

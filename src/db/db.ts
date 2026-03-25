@@ -173,7 +173,7 @@ export interface TeacherClip {
 
 export interface SkillImageOverride {
   skillId: string        // primary key — one override per skill
-  imageBlob: Blob
+  imageUrl: string       // public URL from Supabase Storage
   alt: string
   caption: string | null
   mimeType: string       // 'image/jpeg', 'image/png', etc.

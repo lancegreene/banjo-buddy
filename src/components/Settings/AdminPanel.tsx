@@ -134,13 +134,15 @@ export function AdminPanel() {
     if (!editingImageSkillId) return
     const override = skillImageOverrides.get(editingImageSkillId)
     if (override) {
-      await setSkillImageOverride(
-        editingImageSkillId,
-        override.imageBlob,
-        editAlt,
-        editCaption || null,
-        override.mimeType,
-      )
+      // Update metadata only — no re-upload needed
+      const { putSkillImageOverride } = await import('../../db/db')
+      const updated = { ...override, alt: editAlt, caption: editCaption || null, updatedAt: new Date().toISOString() }
+      await putSkillImageOverride(updated)
+      const { enqueueSync } = await import('../../db/sync')
+      enqueueSync('skillImageOverrides', editingImageSkillId, 'upsert', updated as any)
+      const overrides = new Map(skillImageOverrides)
+      overrides.set(editingImageSkillId, updated)
+      useStore.setState({ skillImageOverrides: overrides })
     }
     setEditingImageSkillId(null)
   }
@@ -249,7 +251,7 @@ export function AdminPanel() {
               <div key={skill.id} className="admin-image-row">
                 <div className="admin-image-thumb-wrap">
                   {hasOverride ? (
-                    <ImageThumb blob={override.imageBlob} alt={override.alt} />
+                    <img src={override.imageUrl} alt={override.alt} className="admin-image-thumb" />
                   ) : hasStatic ? (
                     <img src={skill.image!.src} alt={skill.image!.alt} className="admin-image-thumb" />
                   ) : (
@@ -414,16 +416,4 @@ export function AdminPanel() {
       </div>
     </div>
   )
-}
-
-// Small helper to render a blob as a thumbnail
-function ImageThumb({ blob, alt }: { blob: Blob; alt: string }) {
-  const [url, setUrl] = useState<string | null>(null)
-  useEffect(() => {
-    const u = URL.createObjectURL(blob)
-    setUrl(u)
-    return () => URL.revokeObjectURL(u)
-  }, [blob])
-  if (!url) return <div className="admin-image-thumb admin-image-thumb-empty" />
-  return <img src={url} alt={alt} className="admin-image-thumb" />
 }
