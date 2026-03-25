@@ -1,11 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Banjo Buddy — Admin Panel
-// Database stats, user management, data export/clear tools.
+// Database stats, user management, demo image overrides, data export/clear.
 // Only visible to users with isAdmin flag.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useStore } from '../../store/useStore'
+import { SKILLS, CATEGORIES } from '../../data/curriculum'
 import type { UserProfile } from '../../db/db'
 
 interface DbStats {
@@ -27,12 +28,24 @@ export function AdminPanel() {
   const clearUserDataAction = useStore((s) => s.clearUserData)
   const exportDataAction = useStore((s) => s.exportData)
   const setAdminStatusAction = useStore((s) => s.setAdminStatus)
+  const skillImageOverrides = useStore((s) => s.skillImageOverrides)
+  const setSkillImageOverride = useStore((s) => s.setSkillImageOverride)
+  const removeSkillImageOverride = useStore((s) => s.removeSkillImageOverride)
 
   const [allUsers, setAllUsers] = useState<UserProfile[]>([])
   const [stats, setStats] = useState<DbStats | null>(null)
   const [confirmClearId, setConfirmClearId] = useState<string | null>(null)
   const [confirmResetDb, setConfirmResetDb] = useState(false)
   const [exportStatus, setExportStatus] = useState<string | null>(null)
+
+  // Demo images state
+  const [imageFilter, setImageFilter] = useState('')
+  const [editingImageSkillId, setEditingImageSkillId] = useState<string | null>(null)
+  const [editAlt, setEditAlt] = useState('')
+  const [editCaption, setEditCaption] = useState('')
+  const [confirmRevertId, setConfirmRevertId] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadTargetSkillId, setUploadTargetSkillId] = useState<string | null>(null)
 
   async function loadData() {
     const [users, dbStats] = await Promise.all([
@@ -81,6 +94,72 @@ export function AdminPanel() {
       await setAdminStatusAction(userId, false)
     }
   }
+
+  // Demo image handlers
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !uploadTargetSkillId) return
+    if (!file.type.startsWith('image/')) return
+
+    const skill = SKILLS.find((s) => s.id === uploadTargetSkillId)
+    const defaultAlt = skill?.image?.alt ?? `${skill?.name ?? 'Skill'} demonstration`
+    const defaultCaption = skill?.image?.caption ?? null
+
+    await setSkillImageOverride(
+      uploadTargetSkillId,
+      file,
+      defaultAlt,
+      defaultCaption,
+      file.type,
+    )
+    setUploadTargetSkillId(null)
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function startUpload(skillId: string) {
+    setUploadTargetSkillId(skillId)
+    fileInputRef.current?.click()
+  }
+
+  function startEdit(skillId: string) {
+    const override = skillImageOverrides.get(skillId)
+    const skill = SKILLS.find((s) => s.id === skillId)
+    setEditingImageSkillId(skillId)
+    setEditAlt(override?.alt ?? skill?.image?.alt ?? '')
+    setEditCaption(override?.caption ?? skill?.image?.caption ?? '')
+  }
+
+  async function saveEdit() {
+    if (!editingImageSkillId) return
+    const override = skillImageOverrides.get(editingImageSkillId)
+    if (override) {
+      await setSkillImageOverride(
+        editingImageSkillId,
+        override.imageBlob,
+        editAlt,
+        editCaption || null,
+        override.mimeType,
+      )
+    }
+    setEditingImageSkillId(null)
+  }
+
+  async function handleRevert(skillId: string) {
+    await removeSkillImageOverride(skillId)
+    setConfirmRevertId(null)
+  }
+
+  // Filter and group skills
+  const filteredSkills = useMemo(() => {
+    const lower = imageFilter.toLowerCase()
+    return SKILLS.filter((s) =>
+      !lower || s.name.toLowerCase().includes(lower) || s.category.toLowerCase().includes(lower)
+    )
+  }, [imageFilter])
+
+  const overrideCount = skillImageOverrides.size
+  const staticCount = SKILLS.filter((s) => s.image).length
 
   return (
     <div className="admin-panel">
@@ -136,6 +215,113 @@ export function AdminPanel() {
           </div>
         </div>
       )}
+
+      {/* Demo Images */}
+      <div className="admin-images">
+        <h3 className="admin-images-title">
+          Demo Images
+          <span className="admin-images-count">{overrideCount} override{overrideCount !== 1 ? 's' : ''} · {staticCount} static</span>
+        </h3>
+        <input
+          type="text"
+          className="admin-images-filter"
+          placeholder="Filter skills..."
+          value={imageFilter}
+          onChange={(e) => setImageFilter(e.target.value)}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleFileUpload}
+        />
+        <div className="admin-images-list">
+          {filteredSkills.map((skill) => {
+            const override = skillImageOverrides.get(skill.id)
+            const hasStatic = !!skill.image
+            const hasOverride = !!override
+            const status = hasOverride ? 'Override' : hasStatic ? 'Static' : 'None'
+            const category = CATEGORIES.find((c) => c.id === skill.category)?.label ?? skill.category
+            const isEditing = editingImageSkillId === skill.id
+
+            return (
+              <div key={skill.id} className="admin-image-row">
+                <div className="admin-image-thumb-wrap">
+                  {hasOverride ? (
+                    <ImageThumb blob={override.imageBlob} alt={override.alt} />
+                  ) : hasStatic ? (
+                    <img src={skill.image!.src} alt={skill.image!.alt} className="admin-image-thumb" />
+                  ) : (
+                    <div className="admin-image-thumb admin-image-thumb-empty" />
+                  )}
+                </div>
+                <div className="admin-image-info">
+                  <span className="admin-image-name">{skill.name}</span>
+                  <span className="admin-image-meta">
+                    {category}
+                    <span className={`admin-image-status admin-image-status-${status.toLowerCase()}`}>{status}</span>
+                  </span>
+                </div>
+                <div className="admin-image-actions">
+                  <button className="btn btn-sm" onClick={() => startUpload(skill.id)}>
+                    {hasOverride || hasStatic ? 'Replace' : 'Upload'}
+                  </button>
+                  {hasOverride && (
+                    <button className="btn btn-sm" onClick={() => startEdit(skill.id)}>
+                      Edit
+                    </button>
+                  )}
+                  {hasOverride && (
+                    confirmRevertId === skill.id ? (
+                      <span className="settings-student-confirm">
+                        <button className="btn btn-sm settings-delete-btn" onClick={() => handleRevert(skill.id)}>
+                          Confirm
+                        </button>
+                        <button className="btn btn-sm" onClick={() => setConfirmRevertId(null)}>
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <button className="btn btn-sm settings-delete-btn" onClick={() => setConfirmRevertId(skill.id)}>
+                        {hasStatic ? 'Revert' : 'Remove'}
+                      </button>
+                    )
+                  )}
+                </div>
+                {isEditing && (
+                  <div className="admin-image-edit-form">
+                    <label className="admin-image-edit-label">
+                      Alt text
+                      <input
+                        type="text"
+                        className="admin-image-edit-input"
+                        value={editAlt}
+                        onChange={(e) => setEditAlt(e.target.value)}
+                        placeholder="Image description"
+                      />
+                    </label>
+                    <label className="admin-image-edit-label">
+                      Caption
+                      <input
+                        type="text"
+                        className="admin-image-edit-input"
+                        value={editCaption}
+                        onChange={(e) => setEditCaption(e.target.value)}
+                        placeholder="Optional caption"
+                      />
+                    </label>
+                    <div className="admin-image-edit-actions">
+                      <button className="btn btn-primary btn-sm" onClick={saveEdit}>Save</button>
+                      <button className="btn btn-sm" onClick={() => setEditingImageSkillId(null)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
       {/* User Management */}
       <div className="admin-users">
@@ -228,4 +414,16 @@ export function AdminPanel() {
       </div>
     </div>
   )
+}
+
+// Small helper to render a blob as a thumbnail
+function ImageThumb({ blob, alt }: { blob: Blob; alt: string }) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    const u = URL.createObjectURL(blob)
+    setUrl(u)
+    return () => URL.revokeObjectURL(u)
+  }, [blob])
+  if (!url) return <div className="admin-image-thumb admin-image-thumb-empty" />
+  return <img src={url} alt={alt} className="admin-image-thumb" />
 }

@@ -147,6 +147,7 @@ function ExerciseView({
   const openModal = useStore((s) => s.openModal)
   const setOpenModal = useStore((s) => s.setOpenModal)
   const activeUserRole = useStore((s) => s.activeUserRole)
+  const skillImageOverrides = useStore((s) => s.skillImageOverrides)
   const isTeacher = activeUserRole === 'teacher'
   const [achievedBpm, setAchievedBpm] = useState<string>(String(item.suggestedBpm ?? ''))
   const [rating, setRating] = useState<SelfRating | null>(null)
@@ -379,13 +380,28 @@ function ExerciseView({
 
           <BpmProgressBar item={item} />
 
-          {/* Skill reference image */}
-          {skill.image && (
-            <div className="ev-skill-image">
-              <img src={skill.image.src} alt={skill.image.alt} className="ev-skill-img" />
-              {skill.image.caption && <p className="ev-skill-img-caption">{skill.image.caption}</p>}
-            </div>
-          )}
+          {/* Skill reference image (admin override takes priority) */}
+          {(() => {
+            const override = skillImageOverrides.get(skill.id)
+            if (override) {
+              const url = URL.createObjectURL(override.imageBlob)
+              return (
+                <div className="ev-skill-image">
+                  <img src={url} alt={override.alt} className="ev-skill-img" onLoad={() => URL.revokeObjectURL(url)} />
+                  {override.caption && <p className="ev-skill-img-caption">{override.caption}</p>}
+                </div>
+              )
+            }
+            if (skill.image) {
+              return (
+                <div className="ev-skill-image">
+                  <img src={skill.image.src} alt={skill.image.alt} className="ev-skill-img" />
+                  {skill.image.caption && <p className="ev-skill-img-caption">{skill.image.caption}</p>}
+                </div>
+              )
+            }
+            return null
+          })()}
 
           {/* Unified roll panel (Pattern / Weak Spots / Highway) */}
           {skill.rollPatternId && (() => {

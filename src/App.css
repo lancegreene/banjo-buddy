@@ -5873,6 +5873,178 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   color: var(--text-secondary);
 }
 
+/* ─── Admin Demo Images ────────────────────────────────────────────────────── */
+
+.admin-images-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.admin-images-count {
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.admin-images-filter {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--bg-surface);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+  margin-bottom: 10px;
+  outline: none;
+}
+
+.admin-images-filter:focus {
+  border-color: var(--accent-primary);
+}
+
+.admin-images-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 500px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #444 transparent;
+}
+
+.admin-image-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-surface);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-image-thumb-wrap {
+  flex-shrink: 0;
+}
+
+.admin-image-thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--bg-surface);
+}
+
+.admin-image-thumb-empty {
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-image-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-image-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-image-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-image-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.admin-image-status-override {
+  background: rgba(34, 211, 238, 0.15);
+  color: #22d3ee;
+}
+
+.admin-image-status-static {
+  background: rgba(100, 200, 100, 0.15);
+  color: #6c6;
+}
+
+.admin-image-status-none {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+}
+
+.admin-image-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.admin-image-edit-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0 4px;
+  border-top: 1px solid var(--bg-surface);
+  margin-top: 4px;
+}
+
+.admin-image-edit-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-image-edit-input {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--bg-surface);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+
+.admin-image-edit-input:focus {
+  border-color: var(--accent-primary);
+}
+
+.admin-image-edit-actions {
+  display: flex;
+  gap: 6px;
+}
+
 /* ─── Roll Pattern Editor ───────────────────────────────────────────────────── */
 
 .roll-editor {

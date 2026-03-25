@@ -171,6 +171,16 @@ export interface TeacherClip {
   updatedAt: string
 }
 
+export interface SkillImageOverride {
+  skillId: string        // primary key — one override per skill
+  imageBlob: Blob
+  alt: string
+  caption: string | null
+  mimeType: string       // 'image/jpeg', 'image/png', etc.
+  updatedBy: string      // userId of admin who set it
+  updatedAt: string      // ISO
+}
+
 // ── Database class ────────────────────────────────────────────────────────────
 
 class BanjoBuddyDB extends Dexie {
@@ -185,6 +195,7 @@ class BanjoBuddyDB extends Dexie {
   customRollPatterns!: Table<CustomRollPattern>
   teacherConfigs!: Table<TeacherConfig>
   teacherClips!: Table<TeacherClip>
+  skillImageOverrides!: Table<SkillImageOverride>
 
   constructor() {
     super('BanjoBuddyDB')
@@ -362,6 +373,22 @@ class BanjoBuddyDB extends Dexie {
       return tx.table('userProfiles').toCollection().modify((profile: any) => {
         if (profile.isAdmin === undefined) profile.isAdmin = false
       })
+    })
+
+    // v12: Skill image overrides (admin demo photos)
+    this.version(12).stores({
+      userProfiles:       'id, path, role',
+      skillRecords:       'id, userId, skillId, status, lastPracticed, [userId+skillId], srNextReview, [userId+fsrsNextReview]',
+      practiceSessions:   'id, userId, date, startedAt',
+      sessionItems:       'id, sessionId, skillId, completedAt, [skillId+completedAt]',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, date, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
+      achievements:       '++id, achievementId, userId, earnedAt',
+      customRollPatterns: 'id, name, createdBy, createdAt',
+      teacherConfigs:     'id',
+      teacherClips:       'id, teacherId, skillId, rollPatternId, mediaType, sourceImageId, createdAt',
+      skillImageOverrides:'skillId',
     })
   }
 }
@@ -545,6 +572,20 @@ export async function deleteTeacher(teacherId: string): Promise<void> {
   await db.skillRecords.where('userId').equals(teacherId).delete()
   await db.streakRecords.where('userId').equals(teacherId).delete()
   await db.userProfiles.delete(teacherId)
+}
+
+// ── Skill image override helpers ──────────────────────────────────────────────
+
+export async function getAllSkillImageOverrides(): Promise<SkillImageOverride[]> {
+  return db.skillImageOverrides.toArray()
+}
+
+export async function putSkillImageOverride(override: SkillImageOverride): Promise<void> {
+  await db.skillImageOverrides.put(override)
+}
+
+export async function deleteSkillImageOverride(skillId: string): Promise<void> {
+  await db.skillImageOverrides.delete(skillId)
 }
 
 // ── Admin helpers ─────────────────────────────────────────────────────────────

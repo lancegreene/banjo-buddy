@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { db, getOrCreateUser, getSkillRecordMap, upsertSkillRecord, getCurrentStreak, newId, nowISO, todayDate, getStudents, getStandaloneStudents, createStudent as dbCreateStudent, deleteStudent as dbDeleteStudent, getOrCreateTeacherConfig, updateTeacherConfig, getTeachers, createTeacher as dbCreateTeacher, deleteTeacher as dbDeleteTeacher, markTourSeen, setAdminStatus as dbSetAdminStatus, getAllUsers, getDbStats, clearAllUserData, exportAllData } from '../db/db'
-import type { UserProfile, SkillRecord, PracticeSession, SessionItem, SelfRating, NoteAccuracyRecord, TeacherConfig, UserRole } from '../db/db'
+import { db, getOrCreateUser, getSkillRecordMap, upsertSkillRecord, getCurrentStreak, newId, nowISO, todayDate, getStudents, getStandaloneStudents, createStudent as dbCreateStudent, deleteStudent as dbDeleteStudent, getOrCreateTeacherConfig, updateTeacherConfig, getTeachers, createTeacher as dbCreateTeacher, deleteTeacher as dbDeleteTeacher, markTourSeen, setAdminStatus as dbSetAdminStatus, getAllUsers, getDbStats, clearAllUserData, exportAllData, getAllSkillImageOverrides, putSkillImageOverride, deleteSkillImageOverride as dbDeleteSkillImageOverride } from '../db/db'
+import type { UserProfile, SkillRecord, PracticeSession, SessionItem, SelfRating, NoteAccuracyRecord, TeacherConfig, UserRole, SkillImageOverride } from '../db/db'
 import { SKILL_MAP, refreshSkillMap, type Path } from '../data/curriculum'
 import { buildSessionPlan, deriveNewStatus, getNewlyUnlockedSkills, evaluateSkillStatus, type SessionPlan } from '../engine/recommendationEngine'
 import type { NoteEvaluation } from '../engine/streamingRollMatcher'
@@ -113,6 +113,12 @@ interface AppState {
   clearUserData: (userId: string) => Promise<void>
   exportData: () => Promise<string>
 
+  // Skill image overrides (admin demo photos)
+  skillImageOverrides: Map<string, SkillImageOverride>
+  loadSkillImageOverrides: () => Promise<void>
+  setSkillImageOverride: (skillId: string, imageBlob: Blob, alt: string, caption: string | null, mimeType: string) => Promise<void>
+  removeSkillImageOverride: (skillId: string) => Promise<void>
+
   // Site tour
   tourPending: boolean
   tourActive: boolean
@@ -165,6 +171,7 @@ export const useStore = create<AppState>((set, get) => ({
   standaloneStudents: [],
   showLoginScreen: false,
   isAdmin: false,
+  skillImageOverrides: new Map(),
 
   setAdminStatus: async (userId: string, isAdmin: boolean) => {
     await dbSetAdminStatus(userId, isAdmin)
@@ -195,6 +202,35 @@ export const useStore = create<AppState>((set, get) => ({
   exportData: async () => {
     const data = await exportAllData()
     return JSON.stringify(data, null, 2)
+  },
+
+  loadSkillImageOverrides: async () => {
+    const overrides = await getAllSkillImageOverrides()
+    set({ skillImageOverrides: new Map(overrides.map((o) => [o.skillId, o])) })
+  },
+
+  setSkillImageOverride: async (skillId, imageBlob, alt, caption, mimeType) => {
+    const userId = get().activeUserId ?? get().user?.id ?? 'local'
+    const override: SkillImageOverride = {
+      skillId,
+      imageBlob,
+      alt,
+      caption,
+      mimeType,
+      updatedBy: userId,
+      updatedAt: nowISO(),
+    }
+    await putSkillImageOverride(override)
+    const overrides = new Map(get().skillImageOverrides)
+    overrides.set(skillId, override)
+    set({ skillImageOverrides: overrides })
+  },
+
+  removeSkillImageOverride: async (skillId) => {
+    await dbDeleteSkillImageOverride(skillId)
+    const overrides = new Map(get().skillImageOverrides)
+    overrides.delete(skillId)
+    set({ skillImageOverrides: overrides })
   },
 
   startTour: () => {
@@ -543,6 +579,7 @@ export const useStore = create<AppState>((set, get) => ({
     const skillRecords = await getSkillRecordMap(user.id)
     const streak = await getCurrentStreak(user.id)
     const tourPending = localStorage.getItem('banjo-buddy-tour-seen') !== 'true'
+    const imgOverrides = await getAllSkillImageOverrides()
     set({
       activeUserId: user.id,
       activeUserRole: 'solo',
@@ -552,6 +589,7 @@ export const useStore = create<AppState>((set, get) => ({
       disabledSkillIds: new Set(),
       tourPending,
       isAdmin: user.isAdmin === true,
+      skillImageOverrides: new Map(imgOverrides.map((o) => [o.skillId, o])),
     })
     get().refreshSessionPlan()
   },
@@ -566,6 +604,7 @@ export const useStore = create<AppState>((set, get) => ({
     const streak = await getCurrentStreak(teacher.id)
     const studentList = await getStudents(teacher.id)
     const tourPending = localStorage.getItem('banjo-buddy-tour-seen') !== 'true'
+    const imgOverrides = await getAllSkillImageOverrides()
     set({
       activeUserId: teacher.id,
       activeUserRole: 'teacher',
@@ -578,6 +617,7 @@ export const useStore = create<AppState>((set, get) => ({
       streak,
       tourPending,
       isAdmin: teacher.isAdmin === true,
+      skillImageOverrides: new Map(imgOverrides.map((o) => [o.skillId, o])),
     })
     get().refreshSessionPlan()
   },
@@ -602,6 +642,7 @@ export const useStore = create<AppState>((set, get) => ({
     const tourPending = localStorage.getItem('banjo-buddy-tour-seen') !== 'true'
       || student.hasSeenTour === false
       || localStorage.getItem('banjo-buddy-tour-pending') === 'true'
+    const imgOverrides = await getAllSkillImageOverrides()
     set({
       activeUserId: student.id,
       activeUserRole: 'student',
@@ -613,6 +654,7 @@ export const useStore = create<AppState>((set, get) => ({
       disabledSkillIds: disabled,
       tourPending,
       isAdmin: student.isAdmin === true,
+      skillImageOverrides: new Map(imgOverrides.map((o) => [o.skillId, o])),
     })
     get().refreshSessionPlan()
   },
