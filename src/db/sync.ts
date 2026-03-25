@@ -292,18 +292,28 @@ export async function pullRemoteChanges(userId: string): Promise<{ pulled: numbe
     }
   }
 
-  // Pull skill image overrides (global, not per-user)
+  // Pull skill image overrides (global, not per-user) — full reconciliation
+  // since this is a small table and deletions can't be detected incrementally
   const { data: remoteImageOverrides } = await supabase
     .from('skill_image_overrides')
     .select('*')
-    .gt('updated_at', lastSynced)
 
   if (remoteImageOverrides) {
+    const remoteSkillIds = new Set<string>()
     for (const remote of remoteImageOverrides) {
       const local = toCamel(remote) as unknown as any
+      remoteSkillIds.add(local.skillId)
       const existing = await db.skillImageOverrides.get(local.skillId)
       if (!existing || (existing.updatedAt && local.updatedAt && local.updatedAt > existing.updatedAt)) {
         await db.skillImageOverrides.put(local)
+        pulled++
+      }
+    }
+    // Remove local overrides deleted on another device
+    const allLocal = await db.skillImageOverrides.toArray()
+    for (const local of allLocal) {
+      if (!remoteSkillIds.has(local.skillId)) {
+        await db.skillImageOverrides.delete(local.skillId)
         pulled++
       }
     }
@@ -377,14 +387,27 @@ export async function pullSkillImageOverrides(): Promise<number> {
     if (error || !data) return 0
 
     let count = 0
+    const remoteSkillIds = new Set<string>()
+
     for (const remote of data) {
       const local = toCamel(remote) as unknown as SkillImageOverride
+      remoteSkillIds.add(local.skillId)
       const existing = await db.skillImageOverrides.get(local.skillId)
       if (!existing || (existing.updatedAt && local.updatedAt && local.updatedAt > existing.updatedAt)) {
         await db.skillImageOverrides.put(local)
         count++
       }
     }
+
+    // Delete local overrides that no longer exist in Supabase (reverted on another device)
+    const allLocal = await db.skillImageOverrides.toArray()
+    for (const local of allLocal) {
+      if (!remoteSkillIds.has(local.skillId)) {
+        await db.skillImageOverrides.delete(local.skillId)
+        count++
+      }
+    }
+
     return count
   } catch {
     return 0
