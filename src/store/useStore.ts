@@ -219,7 +219,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     // Try Supabase Storage first, fall back to data URL for local-only
     const { error: uploadError } = await supabase.storage
-      .from('skill-images')
+      .from('Images')
       .upload(storagePath, imageBlob, {
         contentType: mimeType,
         upsert: true,
@@ -237,7 +237,7 @@ export const useStore = create<AppState>((set, get) => ({
     } else {
       // Get public URL from Supabase Storage
       const { data: urlData } = supabase.storage
-        .from('skill-images')
+        .from('Images')
         .getPublicUrl(storagePath)
       // Bust cache by appending timestamp
       imageUrl = `${urlData.publicUrl}?t=${Date.now()}`
@@ -266,7 +266,7 @@ export const useStore = create<AppState>((set, get) => ({
     const override = get().skillImageOverrides.get(skillId)
     if (override) {
       const ext = override.mimeType.split('/')[1] ?? 'jpg'
-      await supabase.storage.from('skill-images').remove([`skill-overrides/${skillId}.${ext}`])
+      await supabase.storage.from('Images').remove([`skill-overrides/${skillId}.${ext}`])
     }
     await dbDeleteSkillImageOverride(skillId)
     enqueueSync('skillImageOverrides', skillId, 'delete', {})
