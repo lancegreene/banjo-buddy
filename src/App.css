@@ -10742,6 +10742,7 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   overflow: hidden;
   font-family: 'Courier New', monospace;
   min-width: 0;
+  align-self: stretch;
 }
 
 .fretboard-tab-labels {
@@ -10766,7 +10767,7 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   overflow-x: auto;
   flex: 1;
   min-width: 0;
-  padding: 4px 8px 4px 0;
+  padding: 4px 8px;
   scrollbar-width: thin;
   scrollbar-color: #444 transparent;
   -webkit-overflow-scrolling: touch;
