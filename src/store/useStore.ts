@@ -13,7 +13,7 @@ import { computeMasteryLevel } from '../engine/masteryLevels'
 import { computePerformanceMetrics } from '../engine/performanceMetrics'
 import type { PerformanceMetrics } from '../types/performance'
 import { refreshRollMap } from '../data/rollPatterns'
-import { enqueueSync } from '../db/sync'
+import { enqueueSync, pullSkillImageOverrides } from '../db/sync'
 import { supabase } from '../db/supabase'
 
 export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'pathway' | 'progress' | 'achievements' | 'settings' | 'profile' | 'fretboard-lab'
@@ -206,6 +206,8 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   loadSkillImageOverrides: async () => {
+    // Pull latest from Supabase first (best-effort), then load from IndexedDB
+    await pullSkillImageOverrides()
     const overrides = await getAllSkillImageOverrides()
     set({ skillImageOverrides: new Map(overrides.map((o) => [o.skillId, o])) })
   },
@@ -621,6 +623,8 @@ export const useStore = create<AppState>((set, get) => ({
     const skillRecords = await getSkillRecordMap(user.id)
     const streak = await getCurrentStreak(user.id)
     const tourPending = localStorage.getItem('banjo-buddy-tour-seen') !== 'true'
+    // Pull latest image overrides from Supabase, then load from IndexedDB
+    await pullSkillImageOverrides()
     const imgOverrides = await getAllSkillImageOverrides()
     set({
       activeUserId: user.id,
@@ -646,6 +650,7 @@ export const useStore = create<AppState>((set, get) => ({
     const streak = await getCurrentStreak(teacher.id)
     const studentList = await getStudents(teacher.id)
     const tourPending = localStorage.getItem('banjo-buddy-tour-seen') !== 'true'
+    await pullSkillImageOverrides()
     const imgOverrides = await getAllSkillImageOverrides()
     set({
       activeUserId: teacher.id,
@@ -684,6 +689,7 @@ export const useStore = create<AppState>((set, get) => ({
     const tourPending = localStorage.getItem('banjo-buddy-tour-seen') !== 'true'
       || student.hasSeenTour === false
       || localStorage.getItem('banjo-buddy-tour-pending') === 'true'
+    await pullSkillImageOverrides()
     const imgOverrides = await getAllSkillImageOverrides()
     set({
       activeUserId: student.id,

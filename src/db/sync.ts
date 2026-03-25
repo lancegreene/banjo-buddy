@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { supabase } from './supabase'
-import { db, type SkillRecord, type PracticeSession, type SessionItem, type NoteAccuracyRecord } from './db'
+import { db, type SkillRecord, type PracticeSession, type SessionItem, type NoteAccuracyRecord, type SkillImageOverride } from './db'
 import type { User } from '@supabase/supabase-js'
 
 // ─── Sync Queue (persisted in IndexedDB) ────────────────────────────────────
@@ -322,10 +322,21 @@ export async function pullRemoteChanges(userId: string): Promise<{ pulled: numbe
 
 // ─── Full Sync ──────────────────────────────────────────────────────────────
 
+// Optional callback after pull — lets the UI refresh in-memory caches
+let onAfterPull: (() => void) | null = null
+
+/** Register a callback to run after each successful pull */
+export function setOnAfterPull(cb: (() => void) | null) {
+  onAfterPull = cb
+}
+
 /** Run a full bidirectional sync */
 export async function fullSync(userId: string): Promise<{ pushed: number; pulled: number; errors: number }> {
   const { pushed, errors } = await pushPendingChanges()
   const { pulled } = await pullRemoteChanges(userId)
+  if (pulled > 0 && onAfterPull) {
+    try { onAfterPull() } catch { /* non-fatal */ }
+  }
   return { pushed, pulled, errors }
 }
 
@@ -351,6 +362,32 @@ export function stopAutoSync() {
   if (syncInterval) {
     clearInterval(syncInterval)
     syncInterval = null
+  }
+}
+
+// ─── Pull global data (no auth required) ─────────────────────────────────────
+
+/** Pull skill image overrides from Supabase (global, not per-user) */
+export async function pullSkillImageOverrides(): Promise<number> {
+  try {
+    const { data, error } = await supabase
+      .from('skill_image_overrides')
+      .select('*')
+
+    if (error || !data) return 0
+
+    let count = 0
+    for (const remote of data) {
+      const local = toCamel(remote) as unknown as SkillImageOverride
+      const existing = await db.skillImageOverrides.get(local.skillId)
+      if (!existing || (existing.updatedAt && local.updatedAt && local.updatedAt > existing.updatedAt)) {
+        await db.skillImageOverrides.put(local)
+        count++
+      }
+    }
+    return count
+  } catch {
+    return 0
   }
 }
 

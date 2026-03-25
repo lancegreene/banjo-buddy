@@ -28,7 +28,7 @@ import { TopNavBar } from './components/Home/TopNavBar'
 import { ProfilePage } from './components/Profile/ProfilePage'
 import { AuthScreen } from './components/Auth/AuthScreen'
 import { supabase } from './db/supabase'
-import { startAutoSync, stopAutoSync, uploadLocalData } from './db/sync'
+import { startAutoSync, stopAutoSync, uploadLocalData, setOnAfterPull } from './db/sync'
 const SPLIT_PAGES = new Set<Page>(['pathway'])
 
 function PageContent({ page }: { page: Page }) {
@@ -136,6 +136,11 @@ export default function App() {
 
   // Check for existing Supabase session on mount
   useEffect(() => {
+    // Refresh in-memory caches after sync pulls new data
+    setOnAfterPull(() => {
+      useStore.getState().loadSkillImageOverrides()
+    })
+
     const setAuthUser = useStore.getState().setAuthUser
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
