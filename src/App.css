@@ -10776,7 +10776,7 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .fretboard-tab-grid {
   display: flex;
   flex-direction: column;
-  width: max-content;
+  min-width: 100%;
 }
 
 .fretboard-tab-row {
@@ -10792,13 +10792,13 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 
 .fretboard-tab-cell {
   min-width: 28px;
+  flex: 1;
   text-align: center;
   font-size: 12px;
   font-weight: 400;
   color: rgba(255,255,255,0.15);
   padding: 0 2px;
   transition: all 0.15s;
-  flex-shrink: 0;
 }
 
 .fretboard-tab-cell-note {
