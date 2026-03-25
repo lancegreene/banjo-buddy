@@ -13,7 +13,7 @@ import { computeMasteryLevel } from '../engine/masteryLevels'
 import { computePerformanceMetrics } from '../engine/performanceMetrics'
 import type { PerformanceMetrics } from '../types/performance'
 import { refreshRollMap } from '../data/rollPatterns'
-import { enqueueSync, pullSkillImageOverrides } from '../db/sync'
+import { enqueueSync, pullSkillImageOverrides, pushPendingChanges } from '../db/sync'
 import { supabase } from '../db/supabase'
 
 export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'pathway' | 'progress' | 'achievements' | 'settings' | 'profile' | 'fretboard-lab'
@@ -256,7 +256,9 @@ export const useStore = create<AppState>((set, get) => ({
     }
     await putSkillImageOverride(override)
     if (!uploadError) {
-      enqueueSync('skillImageOverrides', skillId, 'upsert', override as any)
+      await enqueueSync('skillImageOverrides', skillId, 'upsert', override as any)
+      // Push immediately so the metadata reaches Supabase even without auto-sync
+      pushPendingChanges().catch(() => {})
     }
     const overrides = new Map(get().skillImageOverrides)
     overrides.set(skillId, override)
@@ -271,7 +273,8 @@ export const useStore = create<AppState>((set, get) => ({
       await supabase.storage.from('Images').remove([`skill-overrides/${skillId}.${ext}`])
     }
     await dbDeleteSkillImageOverride(skillId)
-    enqueueSync('skillImageOverrides', skillId, 'delete', {})
+    await enqueueSync('skillImageOverrides', skillId, 'delete', {})
+    pushPendingChanges().catch(() => {})
     const overrides = new Map(get().skillImageOverrides)
     overrides.delete(skillId)
     set({ skillImageOverrides: overrides })
