@@ -13,7 +13,7 @@ import { computeMasteryLevel } from '../engine/masteryLevels'
 import { computePerformanceMetrics } from '../engine/performanceMetrics'
 import type { PerformanceMetrics } from '../types/performance'
 import { refreshRollMap } from '../data/rollPatterns'
-import { enqueueSync, pullSkillImageOverrides, pushPendingChanges } from '../db/sync'
+import { enqueueSync, pullSkillImageOverrides } from '../db/sync'
 import { supabase } from '../db/supabase'
 
 export type Page = 'dashboard' | 'practice' | 'skill-tree' | 'pathway' | 'progress' | 'achievements' | 'settings' | 'profile' | 'fretboard-lab'
@@ -256,9 +256,23 @@ export const useStore = create<AppState>((set, get) => ({
     }
     await putSkillImageOverride(override)
     if (!uploadError) {
-      await enqueueSync('skillImageOverrides', skillId, 'upsert', override as any)
-      // Push immediately so the metadata reaches Supabase even without auto-sync
-      pushPendingChanges().catch(() => {})
+      // Direct upsert to Supabase (bypass sync queue for reliability)
+      try {
+        const { error: dbError } = await supabase
+          .from('skill_image_overrides')
+          .upsert({
+            skill_id: skillId,
+            image_url: imageUrl,
+            alt,
+            caption,
+            mime_type: mimeType,
+            updated_by: userId,
+            updated_at: override.updatedAt,
+          }, { onConflict: 'skill_id' })
+        if (dbError) console.warn('[Admin] Failed to sync image override:', dbError.message)
+      } catch (e) {
+        console.warn('[Admin] Failed to sync image override:', e)
+      }
     }
     const overrides = new Map(get().skillImageOverrides)
     overrides.set(skillId, override)
@@ -273,8 +287,10 @@ export const useStore = create<AppState>((set, get) => ({
       await supabase.storage.from('Images').remove([`skill-overrides/${skillId}.${ext}`])
     }
     await dbDeleteSkillImageOverride(skillId)
-    await enqueueSync('skillImageOverrides', skillId, 'delete', {})
-    pushPendingChanges().catch(() => {})
+    // Direct delete from Supabase
+    supabase.from('skill_image_overrides').delete().eq('skill_id', skillId).then(({ error }) => {
+      if (error) console.warn('[Admin] Failed to delete image override from Supabase:', error.message)
+    })
     const overrides = new Map(get().skillImageOverrides)
     overrides.delete(skillId)
     set({ skillImageOverrides: overrides })
