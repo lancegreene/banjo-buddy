@@ -255,24 +255,27 @@ export const useStore = create<AppState>((set, get) => ({
       updatedAt: nowISO(),
     }
     await putSkillImageOverride(override)
-    if (!uploadError) {
-      // Direct upsert to Supabase (bypass sync queue for reliability)
-      try {
-        const { error: dbError } = await supabase
-          .from('skill_image_overrides')
-          .upsert({
-            skill_id: skillId,
-            image_url: imageUrl,
-            alt,
-            caption,
-            mime_type: mimeType,
-            updated_by: userId,
-            updated_at: override.updatedAt,
-          }, { onConflict: 'skill_id' })
-        if (dbError) console.warn('[Admin] Failed to sync image override:', dbError.message)
-      } catch (e) {
-        console.warn('[Admin] Failed to sync image override:', e)
+    // Always try to sync metadata to Supabase (even if Storage upload failed, for data URL fallback)
+    try {
+      console.log('[Admin] Syncing image override to Supabase for skill:', skillId)
+      const { error: dbError } = await supabase
+        .from('skill_image_overrides')
+        .upsert({
+          skill_id: skillId,
+          image_url: imageUrl,
+          alt,
+          caption,
+          mime_type: mimeType,
+          updated_by: userId,
+          updated_at: override.updatedAt,
+        }, { onConflict: 'skill_id' })
+      if (dbError) {
+        console.error('[Admin] Supabase upsert failed:', dbError.message, dbError)
+      } else {
+        console.log('[Admin] Image override synced successfully')
       }
+    } catch (e) {
+      console.error('[Admin] Supabase upsert exception:', e)
     }
     const overrides = new Map(get().skillImageOverrides)
     overrides.set(skillId, override)
