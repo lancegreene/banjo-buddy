@@ -5,6 +5,7 @@ import { evaluateSkillStatus } from '../../engine/recommendationEngine'
 import type { SkillStatus } from '../../db/db'
 import { getEffectiveMastery, masteryLevelToLabel, MASTERY_COLORS } from '../../engine/masteryLevels'
 import { isDueForReview as isFsrsDue } from '../../engine/fsrs'
+import { Library } from '../Library/Library'
 
 const STATUS_LABELS: Record<SkillStatus, string> = {
   locked: 'Locked',
@@ -254,11 +255,26 @@ function SkillRow({ skill }: { skill: Skill }) {
   )
 }
 
+// ─── Library Icon ─────────────────────────────────────────────────────────────
+
+function LibraryIcon() {
+  return (
+    <svg viewBox="0 0 40 40" fill="none" className="stc-icon">
+      <rect x="6" y="8" width="6" height="24" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
+      <rect x="14" y="6" width="6" height="26" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
+      <rect x="22" y="10" width="6" height="22" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M30 12 L35 8 L35 32 L30 34 Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+type NavCategory = SkillCategory | 'library'
+
 // ─── Sidebar Nav (slim icons, expandable to full skill list) ─────────────────
 
 export function SkillTreeNav({ activeCategory, onSelect }: {
-  activeCategory: SkillCategory | null
-  onSelect: (cat: SkillCategory | null) => void
+  activeCategory: NavCategory | null
+  onSelect: (cat: NavCategory | null) => void
 }) {
   const user = useStore((s) => s.user)
   const skillRecords = useStore((s) => s.skillRecords)
@@ -333,6 +349,17 @@ export function SkillTreeNav({ activeCategory, onSelect }: {
               </div>
             )
           })}
+          {/* Library section */}
+          <div className="stc-nav-section stc-nav-library-divider">
+            <button
+              className={`stc-nav-section-header ${activeCategory === 'library' ? 'stc-nav-section-active' : ''}`}
+              onClick={() => onSelect('library')}
+              style={{ '--stc-nav-color': '#ab47bc' } as React.CSSProperties}
+            >
+              <div className="stc-nav-icon"><LibraryIcon /></div>
+              <span className="stc-nav-section-label">Library</span>
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -374,6 +401,16 @@ export function SkillTreeNav({ activeCategory, onSelect }: {
           </button>
         )
       })}
+      {/* Library nav item */}
+      <div className="stc-nav-library-divider" />
+      <button
+        className={`stc-nav-item ${activeCategory === 'library' ? 'stc-nav-item-active' : ''}`}
+        style={{ '--stc-nav-color': '#ab47bc' } as React.CSSProperties}
+        onClick={() => onSelect('library')}
+      >
+        <div className="stc-nav-icon"><LibraryIcon /></div>
+        <span className="stc-nav-label">Library</span>
+      </button>
     </div>
   )
 }
@@ -381,8 +418,8 @@ export function SkillTreeNav({ activeCategory, onSelect }: {
 // ─── Main Content (category cards + skill cards) ─────────────────────────────
 
 export function SkillTreeContent({ activeCategory, onSelectCategory }: {
-  activeCategory: SkillCategory | null
-  onSelectCategory: (cat: SkillCategory | null) => void
+  activeCategory: NavCategory | null
+  onSelectCategory: (cat: NavCategory | null) => void
 }) {
   const user = useStore((s) => s.user)
   const skillRecords = useStore((s) => s.skillRecords)
@@ -450,7 +487,18 @@ export function SkillTreeContent({ activeCategory, onSelectCategory }: {
         />
       </div>
 
-      {isSearching ? (
+      {activeCategory === 'library' ? (
+        <div className="stc-expanded">
+          <button className="stc-back-btn" onClick={() => onSelectCategory(null)}>
+            ← All Categories
+          </button>
+          <div className="stc-expanded-header" style={{ '--stc-cat-color': '#ab47bc' } as React.CSSProperties}>
+            <LibraryIcon />
+            <h3>Library</h3>
+          </div>
+          <Library />
+        </div>
+      ) : isSearching ? (
         <div className="stc-skill-grid">
           {categories.flatMap(({ skills }) =>
             skills.filter(s => s.name.toLowerCase().includes(searchLower))
@@ -520,6 +568,19 @@ export function SkillTreeContent({ activeCategory, onSelectCategory }: {
               </button>
             )
           })}
+          {/* Library card in the category grid */}
+          <button
+            className="stc-category-card"
+            style={{ '--card-accent': '#ab47bc' } as React.CSSProperties}
+            onClick={() => onSelectCategory('library')}
+          >
+            <div className="stc-category-shine" />
+            <div className="stc-category-icon-wrap">
+              <LibraryIcon />
+            </div>
+            <div className="stc-category-label">Library</div>
+            <div className="stc-category-count">Browse All</div>
+          </button>
         </div>
       )}
     </div>
@@ -529,7 +590,7 @@ export function SkillTreeContent({ activeCategory, onSelectCategory }: {
 // ─── Legacy export (keeps old import working) ────────────────────────────────
 
 export function SkillTree() {
-  const [activeCategory, setActiveCategory] = useState<SkillCategory | null>(null)
+  const [activeCategory, setActiveCategory] = useState<NavCategory | null>(null)
   return (
     <>
       <SkillTreeNav activeCategory={activeCategory} onSelect={setActiveCategory} />

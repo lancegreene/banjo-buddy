@@ -52,6 +52,27 @@ function findStringAndFret(note: string, octave: number): { string: number; fret
   return best ? { string: best.string, fret: best.fret } : null
 }
 
+/** Convert a song section's measures into FretNote[] for the fretboard diagram. */
+export function sectionToFretNotes(measures: { notes: { string: number; fret: number; finger?: 'T' | 'I' | 'M'; technique?: string; slideToFret?: number }[] }[]): FretNote[] {
+  const result: FretNote[] = []
+  for (const measure of measures) {
+    for (const n of measure.notes) {
+      const open = OPEN_STRINGS[n.string]
+      if (!open) continue
+      const semi = noteToSemitone(open.note, open.octave) + n.fret
+      const noteIdx = semi % 12
+      const octave = Math.floor(semi / 12)
+      result.push({
+        string: n.string,
+        fret: n.fret,
+        note: `${CHROMATIC[noteIdx]}${octave}`,
+        finger: n.finger ?? STRING_TO_FINGER[n.string] ?? 'T',
+      })
+    }
+  }
+  return result
+}
+
 /** Convert lick reference notes into FretNote[] for the fretboard diagram. */
 export function lickToFretNotes(notes: ReferenceNote[]): FretNote[] {
   const result: FretNote[] = []

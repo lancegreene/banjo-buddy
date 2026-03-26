@@ -115,7 +115,7 @@ export default function App() {
   const startTour = useStore((s) => s.startTour)
   const dismissTour = useStore((s) => s.dismissTour)
   const [showTourOffer, setShowTourOffer] = useState(false)
-  const [skillCategory, setSkillCategory] = useState<import('./data/curriculum').SkillCategory | null>(null)
+  const [skillCategory, setSkillCategory] = useState<import('./data/curriculum').SkillCategory | 'library' | null>(null)
 
   const { theme, toggleTheme } = useTheme()
   const { celebration, dismiss: dismissCelebration } = useCelebration()
