@@ -12,15 +12,12 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
-    "@babel/types": "^7.29.0",
     "@supabase/supabase-js": "^2.78.0",
-    "@use-gesture/react": "^10.3.1",
     "dexie": "^4.3.0",
     "framer-motion": "^12.38.0",
     "pitchy": "^4.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "tesseract.js": "^7.0.0",
     "tone": "^15.1.22",
     "ts-fsrs": "^5.2.3",
     "vite-plugin-pwa": "^1.2.0",
