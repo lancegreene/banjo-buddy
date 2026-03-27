@@ -19,6 +19,18 @@ dist
 dist-ssr
 *.local
 
+# Training materials, wireframes, and screenshots
+training_material/
+wireframe/
+COMPETITIVE_ANALYSIS.md
+DESIGN_DOCUMENT.md
+recordedData.txt
+*.png
+!src/**/*.png
+
+# Unused/WIP components not yet integrated
+src/components/Setup/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
