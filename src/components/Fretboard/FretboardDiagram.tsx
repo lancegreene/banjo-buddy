@@ -9,10 +9,11 @@
 //
 // Design choices:
 //   - Color-coded by STRING (not finger) for fast visual scanning
-//   - Only shows current + next note on the fretboard (minimal clutter)
+//   - Only shows current + next note(s) on the fretboard (minimal clutter)
 //   - Scrolling tab strip below gives sequential/timing context
+//   - Simultaneous notes (pinches) share a display step and tab column
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   type FretNote,
   TOTAL_FRETS,
@@ -71,6 +72,35 @@ const STRING_COLORS: Record<number, string> = {
   5: '#C084FC', // String 5 (G4) — purple
 }
 
+// ─── Display Steps — group simultaneous notes (pinches) ─────────────────────
+
+interface DisplayStep {
+  notes: FretNote[]   // 1 = single note, 2+ = pinch
+  startIndex: number  // index into the original FretNote[] array
+}
+
+function buildDisplaySteps(notes: FretNote[]): DisplayStep[] {
+  const steps: DisplayStep[] = []
+  let i = 0
+  while (i < notes.length) {
+    const note = notes[i]
+    if (note.group != null) {
+      const groupNotes = [note]
+      let j = i + 1
+      while (j < notes.length && notes[j].group === note.group) {
+        groupNotes.push(notes[j])
+        j++
+      }
+      steps.push({ notes: groupNotes, startIndex: i })
+      i = j
+    } else {
+      steps.push({ notes: [note], startIndex: i })
+      i++
+    }
+  }
+  return steps
+}
+
 // ─── Component Props ─────────────────────────────────────────────────────────
 
 interface FretboardDiagramProps {
@@ -93,6 +123,10 @@ function NoteMarker({ note, state }: { note: FretNote; state: 'active' | 'next' 
   const r = isActive ? 28 : 22
   const opacity = isActive ? 1 : 0.55
 
+  // Technique destination marker (slides, hammer-ons, pull-offs)
+  const hasDest = note.technique != null && note.slideToFret != null
+  const slideCx = hasDest ? fretCenterX(note.slideToFret!, note.string) : 0
+
   return (
     <g className={`fretboard-note fretboard-note-${state}`} opacity={opacity}>
       {/* Pulse ring for active note */}
@@ -103,6 +137,50 @@ function NoteMarker({ note, state }: { note: FretNote; state: 'active' | 'next' 
           opacity={0.4}
           className="fretboard-note-pulse"
         />
+      )}
+
+      {/* Technique arrow: line from start fret to destination fret */}
+      {hasDest && isActive && (
+        <g>
+          <line
+            x1={cx + r + 4} y1={cy}
+            x2={slideCx - r - 4} y2={cy}
+            stroke={color} strokeWidth={3} opacity={0.7}
+            strokeDasharray="6,4"
+          />
+          {/* Arrowhead */}
+          <polygon
+            points={`${slideCx - r - 4},${cy} ${slideCx - r - 16},${cy - 8} ${slideCx - r - 16},${cy + 8}`}
+            fill={color} opacity={0.7}
+          />
+          {/* Destination fret circle */}
+          <circle
+            cx={slideCx} cy={cy} r={r - 4}
+            fill="none" stroke={color} strokeWidth={2.5}
+            strokeDasharray="6,3" opacity={0.6}
+          />
+          <text
+            x={slideCx} y={cy + 7}
+            textAnchor="middle" fontSize={18} fontWeight={700}
+            fill={color} opacity={0.7}
+            fontFamily="system-ui, sans-serif"
+          >
+            {note.slideToFret}
+          </text>
+        </g>
+      )}
+
+      {/* Technique label below note */}
+      {isActive && note.technique && (
+        <text
+          x={cx} y={cy + r + 22}
+          textAnchor="middle"
+          fontSize={13} fontWeight={700}
+          fill={color} opacity={0.8}
+          fontFamily="system-ui, sans-serif"
+        >
+          {note.technique === 'slide' ? 'SLIDE' : note.technique === 'hammer' ? 'HAMMER' : 'PULL'}
+        </text>
       )}
 
       {/* Note circle */}
@@ -143,22 +221,37 @@ function NoteMarker({ note, state }: { note: FretNote; state: 'active' | 'next' 
   )
 }
 
-// ─── Tab Strip ──────────────────────────────────────────────────────────────
+// ─── Tab Cell Formatting — technique notation (2S4, 0H2, 3P2) ──────────────
 
-function TabStrip({ notes, activeIdx, onNoteClick }: { notes: FretNote[]; activeIdx: number; onNoteClick?: (idx: number) => void }) {
+function formatTabCell(note: FretNote): string {
+  const fret = note.fret === 0 ? '0' : String(note.fret)
+  if (!note.technique || note.slideToFret == null) return fret
+  const dest = note.slideToFret
+  if (note.technique === 'slide') return `${fret}S${dest}`
+  if (note.technique === 'hammer') return `${fret}H${dest}`
+  if (note.technique === 'pull') return `${fret}P${dest}`
+  return fret
+}
+
+// ─── Tab Strip — now operates on DisplayStep[] for pinch support ────────────
+
+function TabStrip({ steps, activeStep, onStepClick }: {
+  steps: DisplayStep[]
+  activeStep: number
+  onStepClick?: (stepIdx: number) => void
+}) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to keep active note centered
+  // Auto-scroll to keep active step centered
   useEffect(() => {
-    if (activeIdx < 0 || !scrollRef.current) return
+    if (activeStep < 0 || !scrollRef.current) return
     const container = scrollRef.current
-    const activeEl = container.querySelector(`[data-tab-idx="${activeIdx}"]`) as HTMLElement
+    const activeEl = container.querySelector(`[data-tab-step="${activeStep}"]`) as HTMLElement
     if (activeEl) {
       activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
     }
-  }, [activeIdx])
+  }, [activeStep])
 
-  // Group notes into strings 1-5 for tab display
   const strings = [1, 2, 3, 4, 5]
 
   return (
@@ -174,29 +267,35 @@ function TabStrip({ notes, activeIdx, onNoteClick }: { notes: FretNote[]; active
           </div>
         ))}
         <div className="fretboard-tab-label fretboard-tab-label-finger">Pick</div>
+        {steps.some(s => s.notes.some(n => n.duration && n.duration !== 'eighth')) && (
+          <div className="fretboard-tab-label fretboard-tab-label-finger">Dur</div>
+        )}
       </div>
       <div className="fretboard-tab-scroll" ref={scrollRef}>
         <div className="fretboard-tab-grid">
           {strings.map((str) => (
             <div key={str} className="fretboard-tab-row">
-              {notes.map((note, idx) => {
-                const isOnString = note.string === str
-                const isActive = idx === activeIdx
-                const isPlayed = activeIdx >= 0 && idx < activeIdx
-                const isNext = idx === activeIdx + 1
+              {steps.map((step, stepIdx) => {
+                const noteOnString = step.notes.find(n => n.string === str)
+                const isActive = stepIdx === activeStep
+                const isPlayed = activeStep >= 0 && stepIdx < activeStep
+                const isNext = stepIdx === activeStep + 1
+                const isPinch = step.notes.length > 1
                 return (
                   <div
-                    key={idx}
-                    data-tab-idx={isOnString ? idx : undefined}
+                    key={stepIdx}
+                    data-tab-step={noteOnString ? stepIdx : undefined}
                     className={`fretboard-tab-cell ${
-                      isOnString ? 'fretboard-tab-cell-note' : ''
-                    } ${isActive && isOnString ? 'fretboard-tab-cell-active' : ''
-                    } ${isPlayed && isOnString ? 'fretboard-tab-cell-played' : ''
-                    } ${isNext && isOnString ? 'fretboard-tab-cell-next' : ''}`}
-                    style={isOnString ? { color: STRING_COLORS[str], cursor: 'pointer' } : undefined}
-                    onClick={isOnString && onNoteClick ? () => onNoteClick(idx) : undefined}
+                      noteOnString ? 'fretboard-tab-cell-note' : ''
+                    } ${isActive && noteOnString ? 'fretboard-tab-cell-active' : ''
+                    } ${isPlayed && noteOnString ? 'fretboard-tab-cell-played' : ''
+                    } ${isNext && noteOnString ? 'fretboard-tab-cell-next' : ''
+                    } ${noteOnString?.technique ? `fretboard-tab-cell-${noteOnString.technique}` : ''
+                    } ${isPinch && noteOnString ? 'fretboard-tab-cell-pinch' : ''}`}
+                    style={noteOnString ? { color: STRING_COLORS[str], cursor: 'pointer' } : undefined}
+                    onClick={noteOnString && onStepClick ? () => onStepClick(stepIdx) : undefined}
                   >
-                    {isOnString ? (note.fret === 0 ? '0' : note.fret) : '—'}
+                    {noteOnString ? formatTabCell(noteOnString) : '—'}
                   </div>
                 )
               })}
@@ -204,29 +303,81 @@ function TabStrip({ notes, activeIdx, onNoteClick }: { notes: FretNote[]; active
           ))}
           {/* Picking finger row */}
           <div className="fretboard-tab-row fretboard-tab-row-finger">
-            {notes.map((note, idx) => {
-              const isActive = idx === activeIdx
-              const isPlayed = activeIdx >= 0 && idx < activeIdx
-              const isNext = idx === activeIdx + 1
-              const label = note.finger === 'T' ? 'T' : note.finger === 'I' ? 'I' : note.finger === 'M' ? 'M' : ''
+            {steps.map((step, stepIdx) => {
+              const isActive = stepIdx === activeStep
+              const isPlayed = activeStep >= 0 && stepIdx < activeStep
+              const isNext = stepIdx === activeStep + 1
+              const fingers = step.notes
+                .map(n => n.finger === 'T' ? 'T' : n.finger === 'I' ? 'I' : n.finger === 'M' ? 'M' : '')
+                .filter(Boolean)
+              const label = fingers.length > 1 ? fingers.join('+') : fingers[0] ?? ''
+              const primaryColor = STRING_COLORS[step.notes[0].string]
               return (
                 <div
-                  key={idx}
+                  key={stepIdx}
                   className={`fretboard-tab-cell fretboard-tab-cell-finger ${
                     isActive ? 'fretboard-tab-cell-active' : ''
                   } ${isPlayed ? 'fretboard-tab-cell-played' : ''
                   } ${isNext ? 'fretboard-tab-cell-next' : ''}`}
-                  style={{ color: STRING_COLORS[note.string] }}
+                  style={{ color: primaryColor }}
                 >
                   {label}
                 </div>
               )
             })}
           </div>
+          {/* Duration row (only if any non-eighth durations present) */}
+          {steps.some(s => s.notes.some(n => n.duration && n.duration !== 'eighth')) && (
+            <div className="fretboard-tab-row fretboard-tab-row-finger">
+              {steps.map((step, stepIdx) => {
+                const isActive = stepIdx === activeStep
+                const isPlayed = activeStep >= 0 && stepIdx < activeStep
+                const isNext = stepIdx === activeStep + 1
+                const dur = step.notes[0]?.duration || 'eighth'
+                const DUR_LABELS: Record<string, string> = {
+                  whole: 'W', half: 'H', quarter: 'Q', eighth: '8', sixteenth: '16',
+                }
+                return (
+                  <div
+                    key={stepIdx}
+                    className={`fretboard-tab-cell fretboard-tab-cell-finger fretboard-tab-cell-dur ${
+                      isActive ? 'fretboard-tab-cell-active' : ''
+                    } ${isPlayed ? 'fretboard-tab-cell-played' : ''
+                    } ${isNext ? 'fretboard-tab-cell-next' : ''}`}
+                  >
+                    {DUR_LABELS[dur] || '8'}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
+}
+
+// ─── Info Bar Helpers ────────────────────────────────────────────────────────
+
+function formatInfoNotes(stepNotes: FretNote[]): { noteNames: string; detail: string } {
+  if (stepNotes.length === 1) {
+    const n = stepNotes[0]
+    let detail = `String ${n.string} • ${n.fret === 0 ? 'Open' : `Fret ${n.fret}`}`
+    if (n.finger) detail += ` • ${n.finger === 'T' ? 'Thumb' : n.finger === 'I' ? 'Index' : 'Middle'}`
+    if (n.technique === 'slide' && n.slideToFret != null) detail += ` • Slide → Fret ${n.slideToFret}`
+    if (n.technique === 'hammer' && n.slideToFret != null) detail += ` • Hammer-on → Fret ${n.slideToFret}`
+    if (n.technique === 'pull' && n.slideToFret != null) detail += ` • Pull-off → Fret ${n.slideToFret}`
+    if (n.duration && n.duration !== 'eighth') {
+      const durNames: Record<string, string> = { whole: 'Whole', half: 'Half', quarter: 'Quarter', sixteenth: '16th' }
+      detail += ` • ${durNames[n.duration] || n.duration} note`
+    }
+    return { noteNames: n.note, detail }
+  }
+  // Pinch: multiple simultaneous notes
+  const noteNames = stepNotes.map(n => n.note).join(' + ')
+  const strings = stepNotes.map(n => `S${n.string}`).join('+')
+  const fingers = stepNotes.map(n => n.finger === 'T' ? 'Thumb' : n.finger === 'I' ? 'Index' : 'Middle').join(' + ')
+  return { noteNames, detail: `${strings} • ${fingers} (pinch)` }
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -237,7 +388,11 @@ export function FretboardDiagram({
   autoPlay = false,
   bpm = 120,
 }: FretboardDiagramProps) {
-  const [activeIdx, setActiveIdx] = useState(currentIndex)
+  const steps = useMemo(() => buildDisplaySteps(notes), [notes])
+  const [activeStep, setActiveStep] = useState(() => {
+    if (currentIndex < 0) return -1
+    return steps.findIndex(s => s.startIndex >= currentIndex)
+  })
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const synthRef = useRef<BanjoSynth | null>(null)
 
@@ -255,53 +410,61 @@ export function FretboardDiagram({
     }
   }, [])
 
-  // Play note audio when activeIdx changes
+  // Play note(s) audio when activeStep changes
   useEffect(() => {
-    if (activeIdx < 0 || activeIdx >= notes.length) return
-    const note = notes[activeIdx]
-    getSynth().playNote(note.string, note.fret)
-  }, [activeIdx, notes])
+    if (activeStep < 0 || activeStep >= steps.length) return
+    const stepNotes = steps[activeStep].notes
+    for (const n of stepNotes) {
+      getSynth().playNote(n.string, n.fret)
+    }
+  }, [activeStep, steps])
 
   useEffect(() => {
-    if (!autoPlay) setActiveIdx(currentIndex)
-  }, [currentIndex, autoPlay])
+    if (!autoPlay) {
+      const stepIdx = currentIndex < 0 ? -1 : steps.findIndex(s => s.startIndex >= currentIndex)
+      setActiveStep(stepIdx)
+    }
+  }, [currentIndex, autoPlay, steps])
 
   useEffect(() => {
-    if (!autoPlay || notes.length === 0) return
+    if (!autoPlay || steps.length === 0) return
     const ms = (60 / bpm) * 1000
-    setActiveIdx(0)
+    setActiveStep(0)
     intervalRef.current = setInterval(() => {
-      setActiveIdx((prev) => (prev + 1 >= notes.length ? 0 : prev + 1))
+      setActiveStep((prev) => (prev + 1 >= steps.length ? 0 : prev + 1))
     }, ms)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [autoPlay, bpm, notes])
+  }, [autoPlay, bpm, steps])
 
   const handleTap = useCallback(() => {
     if (autoPlay) return
-    setActiveIdx((prev) => {
+    setActiveStep((prev) => {
       if (prev < 0) return 0
-      return prev + 1 >= notes.length ? 0 : prev + 1
+      return prev + 1 >= steps.length ? 0 : prev + 1
     })
-  }, [autoPlay, notes.length])
+  }, [autoPlay, steps.length])
 
-  const activeNote = activeIdx >= 0 && activeIdx < notes.length ? notes[activeIdx] : null
-  const nextNote = activeIdx >= 0 && activeIdx + 1 < notes.length ? notes[activeIdx + 1] : null
+  const activeStepData = activeStep >= 0 && activeStep < steps.length ? steps[activeStep] : null
+  const nextStepData = activeStep >= 0 && activeStep + 1 < steps.length ? steps[activeStep + 1] : null
+  const activeNotes = activeStepData?.notes ?? []
+  const nextNotes = nextStepData?.notes ?? []
+
+  const info = activeNotes.length > 0 ? formatInfoNotes(activeNotes) : null
 
   return (
     <div className="fretboard-diagram">
       {/* Info bar */}
       <div className="fretboard-info-bar">
-        {activeNote ? (
+        {info ? (
           <>
-            <span className="fretboard-info-note" style={{ color: STRING_COLORS[activeNote.string] }}>
-              {activeNote.note}
+            <span className="fretboard-info-note" style={{ color: STRING_COLORS[activeNotes[0].string] }}>
+              {info.noteNames}
             </span>
             <span className="fretboard-info-detail">
-              String {activeNote.string} • {activeNote.fret === 0 ? 'Open' : `Fret ${activeNote.fret}`}
-              {activeNote.finger && ` • ${activeNote.finger === 'T' ? 'Thumb' : activeNote.finger === 'I' ? 'Index' : 'Middle'}`}
+              {info.detail}
             </span>
             <span className="fretboard-info-counter">
-              {activeIdx + 1} / {notes.length}
+              {activeStep + 1} / {steps.length}
             </span>
           </>
         ) : (
@@ -352,20 +515,20 @@ export function FretboardDiagram({
             opacity={0.3}
           />
 
-          {/* Next note (ghost) */}
-          {nextNote && <NoteMarker note={nextNote} state="next" />}
+          {/* Next note(s) (ghost) */}
+          {nextNotes.map((n, i) => <NoteMarker key={`next-${i}`} note={n} state="next" />)}
 
-          {/* Active note */}
-          {activeNote && <NoteMarker note={activeNote} state="active" />}
+          {/* Active note(s) */}
+          {activeNotes.map((n, i) => <NoteMarker key={`active-${i}`} note={n} state="active" />)}
 
-          {/* String color overlay when plucked */}
-          {activeNote && (() => {
-            const str = activeNote.string
+          {/* String color overlay when plucked — one per active note */}
+          {activeNotes.map((n, i) => {
+            const str = n.string
             const y = stringY(str)
             const startX = str === 5 ? fretX(STRING_5_START_FRET) : NUT_X
             const color = STRING_COLORS[str]
             return (
-              <g>
+              <g key={`glow-${i}`}>
                 <line x1={startX} y1={y} x2={IMG_W} y2={y}
                   stroke={color} strokeWidth={14} opacity={0.3} />
                 <line x1={startX} y1={y} x2={IMG_W} y2={y}
@@ -375,12 +538,12 @@ export function FretboardDiagram({
                   className="fretboard-string-plucked" />
               </g>
             )
-          })()}
+          })}
         </svg>
       </div>
 
       {/* Scrolling tab strip */}
-      <TabStrip notes={notes} activeIdx={activeIdx} onNoteClick={(idx) => setActiveIdx(idx)} />
+      <TabStrip steps={steps} activeStep={activeStep} onStepClick={(idx) => setActiveStep(idx)} />
     </div>
   )
 }

@@ -15,6 +15,7 @@
     "@supabase/supabase-js": "^2.78.0",
     "dexie": "^4.3.0",
     "framer-motion": "^12.38.0",
+    "onnxruntime-web": "^1.24.3",
     "pitchy": "^4.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

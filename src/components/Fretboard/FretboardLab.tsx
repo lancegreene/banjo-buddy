@@ -7,18 +7,21 @@ import {
   EXAMPLE_CRIPPLE_CREEK,
   EXAMPLE_FOGGY_MOUNTAIN,
   type FretNote,
+  type TabMeta,
 } from '../../data/fretboardNotes'
 import { parseTab, type ParseResult } from '../../engine/tabParser'
 import { notesToTabText } from '../../engine/tabParser'
 import { extractTabFromImage, type OcrProgress } from '../../engine/tabImageOcr'
 import { TabImageCropper } from './TabImageCropper'
 import { TabOverlayEditor } from './TabOverlayEditor'
+import { TabTrainingManager } from './TabTrainingManager'
 
 interface SongEntry {
   id: string
   label: string
   notes: FretNote[]
   isImported?: boolean
+  meta?: TabMeta
 }
 
 const BUILT_IN_SONGS: SongEntry[] = [
@@ -54,6 +57,7 @@ export function FretboardLab() {
   const [cropperImageUrl, setCropperImageUrl] = useState<string | null>(null)
   const [editingSongId, setEditingSongId] = useState<string | null>(null) // track which imported song we're editing
   const [overlayBlob, setOverlayBlob] = useState<Blob | null>(null) // image blob for overlay editor
+  const [showTraining, setShowTraining] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const song = songs.find((s) => s.id === songId) ?? songs[0]
@@ -76,12 +80,12 @@ export function FretboardLab() {
 
   function handleImportTab() {
     if (!parseResult || parseResult.notes.length === 0) return
-    const name = tabName.trim() || `Imported Tab ${songs.filter((s) => s.isImported).length + 1}`
+    const name = tabName.trim() || parseResult.meta?.title || `Imported Tab ${songs.filter((s) => s.isImported).length + 1}`
 
     if (editingSongId) {
       // Update existing song
       setSongs((prev) => prev.map((s) =>
-        s.id === editingSongId ? { ...s, label: name, notes: parseResult.notes } : s
+        s.id === editingSongId ? { ...s, label: name, notes: parseResult.notes, meta: parseResult.meta } : s
       ))
       setSongId(editingSongId)
     } else {
@@ -92,10 +96,14 @@ export function FretboardLab() {
         label: name,
         notes: parseResult.notes,
         isImported: true,
+        meta: parseResult.meta,
       }
       setSongs((prev) => [...prev, newSong])
       setSongId(id)
     }
+
+    // Apply BPM from meta if present
+    if (parseResult.meta?.bpm) setBpm(parseResult.meta.bpm)
 
     setGroupIdx(0)
     setAutoPlay(false)
@@ -146,6 +154,7 @@ export function FretboardLab() {
     if (!file) return
     e.target.value = ''
 
+    console.log('[FretboardLab] Image selected:', file.name, file.size, 'bytes')
     // Open the cropper with this image
     const url = URL.createObjectURL(file)
     setCropperImageUrl(url)
@@ -154,6 +163,7 @@ export function FretboardLab() {
   }
 
   async function handleCropComplete(croppedBlob: Blob) {
+    console.log('[FretboardLab] Crop complete, blob size:', croppedBlob.size, '→ opening overlay editor')
     // Close cropper, open the overlay editor
     if (cropperImageUrl) URL.revokeObjectURL(cropperImageUrl)
     setCropperImageUrl(null)
@@ -179,6 +189,7 @@ export function FretboardLab() {
     }
 
     setGroupIdx(0)
+    setShowAll(notes.length > GROUP_SIZE) // show all notes for imported tabs that exceed one group
     setAutoPlay(false)
     setShowImport(false)
     setTabName('')
@@ -226,7 +237,11 @@ export function FretboardLab() {
                 onClick={() => changeSong(s.id)}
               >
                 {s.label}
-                <span className="fretboard-lab-pill-count">{s.notes.length} notes</span>
+                <span className="fretboard-lab-pill-count">
+                  {s.notes.length} notes
+                  {s.meta?.timeSignature && ` \u00B7 ${s.meta.timeSignature[0]}/${s.meta.timeSignature[1]}`}
+                  {s.meta?.capo ? ` \u00B7 Capo ${s.meta.capo}` : ''}
+                </span>
               </button>
               {s.isImported && (
                 <>
@@ -279,6 +294,9 @@ export function FretboardLab() {
             </label>
             <button className="fretboard-lab-example-btn" onClick={handleLoadExample}>
               Load Example
+            </button>
+            <button className="fretboard-lab-example-btn" onClick={() => setShowTraining(true)}>
+              Training Data
             </button>
           </div>
 
@@ -339,6 +357,9 @@ export function FretboardLab() {
                 <>
                   <div className="fretboard-lab-import-success">
                     Parsed {parseResult.notes.length} notes from {parseResult.lineCount} tab lines
+                    {parseResult.meta?.timeSignature && ` \u00B7 ${parseResult.meta.timeSignature[0]}/${parseResult.meta.timeSignature[1]}`}
+                    {parseResult.meta?.bpm && ` \u00B7 ${parseResult.meta.bpm} BPM`}
+                    {parseResult.meta?.capo ? ` \u00B7 Capo ${parseResult.meta.capo}` : ''}
                   </div>
                   {parseResult.warnings.map((w, i) => (
                     <div key={i} className="fretboard-lab-import-warning">{w}</div>
@@ -472,7 +493,13 @@ export function FretboardLab() {
           imageBlob={overlayBlob}
           onConfirm={handleOverlayConfirm}
           onCancel={handleOverlayCancel}
+          tabLabel={tabName}
         />
+      )}
+
+      {/* Training data manager */}
+      {showTraining && (
+        <TabTrainingManager onClose={() => setShowTraining(false)} />
       )}
     </div>
   )

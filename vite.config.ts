@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
       includeAssets: ['vite.svg', 'icons/*.png'],
       manifest: false, // use public/manifest.json
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,onnx}'],
         runtimeCaching: [
           {
             urlPattern: /\.(?:mp3|wav|ogg|webm)$/,
@@ -28,6 +28,9 @@ export default defineConfig(({ mode }) => {
   ],
   base: '/banjo-buddy/',
   build: { chunkSizeWarningLimit: 2000 },
+  optimizeDeps: {
+    exclude: ['onnxruntime-web'],
+  },
   server: {
     proxy: {
       '/api/anthropic': {

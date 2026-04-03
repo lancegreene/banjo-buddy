@@ -181,6 +181,15 @@ export interface SkillImageOverride {
   updatedAt: string      // ISO
 }
 
+export interface TabTrainingPair {
+  id: string              // UUID
+  imageBlob: Blob         // original cropped tab image
+  correctedNotes: string  // JSON-serialized FretNote[] — the user-verified ground truth
+  noteCount: number       // number of notes (for quick display)
+  label: string           // user-provided name (e.g., "Cripple Creek intro")
+  createdAt: string       // ISO
+}
+
 // ── Database class ────────────────────────────────────────────────────────────
 
 class BanjoBuddyDB extends Dexie {
@@ -196,6 +205,7 @@ class BanjoBuddyDB extends Dexie {
   teacherConfigs!: Table<TeacherConfig>
   teacherClips!: Table<TeacherClip>
   skillImageOverrides!: Table<SkillImageOverride>
+  tabTrainingPairs!: Table<TabTrainingPair>
 
   constructor() {
     super('BanjoBuddyDB')
@@ -389,6 +399,23 @@ class BanjoBuddyDB extends Dexie {
       teacherConfigs:     'id',
       teacherClips:       'id, teacherId, skillId, rollPatternId, mediaType, sourceImageId, createdAt',
       skillImageOverrides:'skillId',
+    })
+
+    // v13: Tab OCR training data — image + corrected notes pairs
+    this.version(13).stores({
+      userProfiles:       'id, path, role',
+      skillRecords:       'id, userId, skillId, status, lastPracticed, [userId+skillId], srNextReview, [userId+fsrsNextReview]',
+      practiceSessions:   'id, userId, date, startedAt',
+      sessionItems:       'id, sessionId, skillId, completedAt, [skillId+completedAt]',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, date, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
+      achievements:       '++id, achievementId, userId, earnedAt',
+      customRollPatterns: 'id, name, createdBy, createdAt',
+      teacherConfigs:     'id',
+      teacherClips:       'id, teacherId, skillId, rollPatternId, mediaType, sourceImageId, createdAt',
+      skillImageOverrides:'skillId',
+      tabTrainingPairs:   'id, createdAt',
     })
   }
 }
@@ -687,4 +714,35 @@ export async function getCurrentStreak(userId: string): Promise<number> {
   }
 
   return streak
+}
+
+// ── Tab training data helpers ─────────────────────────────────────────────────
+
+export async function saveTrainingPair(
+  imageBlob: Blob,
+  correctedNotes: object[],
+  label: string,
+): Promise<string> {
+  const id = newId()
+  await db.tabTrainingPairs.add({
+    id,
+    imageBlob,
+    correctedNotes: JSON.stringify(correctedNotes),
+    noteCount: correctedNotes.length,
+    label,
+    createdAt: nowISO(),
+  })
+  return id
+}
+
+export async function getAllTrainingPairs(): Promise<TabTrainingPair[]> {
+  return db.tabTrainingPairs.orderBy('createdAt').reverse().toArray()
+}
+
+export async function deleteTrainingPair(id: string): Promise<void> {
+  await db.tabTrainingPairs.delete(id)
+}
+
+export async function getTrainingPairCount(): Promise<number> {
+  return db.tabTrainingPairs.count()
 }

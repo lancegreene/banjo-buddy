@@ -10447,6 +10447,23 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   opacity: 0.5;
 }
 
+/* Technique notation cells — wider to fit 2S4, 0H2, etc. */
+.fretboard-tab-cell-slide,
+.fretboard-tab-cell-hammer,
+.fretboard-tab-cell-pull {
+  font-size: 11px;
+  min-width: 36px;
+  letter-spacing: -0.5px;
+}
+.fretboard-tab-cell-slide { border-bottom: 2px solid currentColor; }
+.fretboard-tab-cell-hammer { border-top: 2px solid currentColor; }
+.fretboard-tab-cell-pull { border-top: 2px dashed currentColor; }
+
+/* Pinch indicator — left border marks simultaneous notes */
+.fretboard-tab-cell-pinch {
+  border-left: 2px solid rgba(255,255,255,0.4);
+}
+
 .fretboard-tab-label-finger {
   color: rgba(255,255,255,0.5) !important;
   font-size: 10px;
@@ -11195,6 +11212,307 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   gap: 12px;
   padding: 48px 24px;
   color: var(--text-secondary, #888);
+}
+
+/* Fret + technique editor row */
+.tab-overlay-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tab-overlay-tech-select {
+  width: 40px;
+  height: 30px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 2px solid var(--border, #ddd);
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #222);
+  outline: none;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.tab-overlay-tech-select:focus {
+  border-color: var(--accent-primary, #7ed321);
+}
+
+.tab-overlay-slide-input {
+  width: 40px !important;
+}
+
+.tab-overlay-dur-select,
+.tab-overlay-finger-select {
+  height: 26px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  border: 1px solid var(--border, #ddd);
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #222);
+  outline: none;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.tab-overlay-dur-select {
+  width: 50px;
+}
+
+.tab-overlay-finger-select {
+  width: 56px;
+}
+
+.tab-overlay-dur-select:focus,
+.tab-overlay-finger-select:focus {
+  border-color: var(--accent-primary, #7ed321);
+}
+
+.fretboard-tab-cell-dur {
+  color: var(--text-secondary, #888) !important;
+  font-size: 10px;
+}
+
+/* Technique + group badges in summary strip */
+.tab-overlay-tech-badge {
+  font-size: 9px;
+  color: #FFD700;
+  margin-left: 1px;
+}
+
+.tab-overlay-group-badge {
+  font-size: 8px;
+  color: var(--text-secondary, #888);
+  margin-left: 2px;
+  opacity: 0.7;
+}
+
+/* Training data checkbox in overlay toolbar */
+.tab-overlay-training-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab-overlay-training-check input[type="checkbox"] {
+  accent-color: var(--accent-primary, #7ed321);
+}
+
+/* ─── Tab Training Manager ────────────────────────────────────────────────── */
+
+.tab-training-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.tab-training-modal {
+  background: var(--bg-primary, #fff);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 800px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+}
+
+.tab-training-header {
+  padding: 16px 20px 8px;
+}
+
+.tab-training-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: var(--text-primary, #222);
+}
+
+.tab-training-header p {
+  font-size: 13px;
+  color: var(--text-secondary, #888);
+  margin: 0;
+}
+
+.tab-training-loading,
+.tab-training-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-secondary, #888);
+  font-size: 14px;
+}
+
+.tab-training-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+
+.tab-training-item {
+  border: 1px solid var(--border, #ddd);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.tab-training-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  cursor: pointer;
+  gap: 12px;
+}
+
+.tab-training-item-header:hover {
+  background: var(--bg-secondary, #f5f5f5);
+}
+
+.tab-training-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tab-training-item-info strong {
+  font-size: 14px;
+  color: var(--text-primary, #222);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-training-item-meta {
+  font-size: 11px;
+  color: var(--text-secondary, #888);
+}
+
+.tab-training-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tab-training-expand {
+  font-size: 10px;
+  color: var(--text-secondary, #888);
+}
+
+.tab-training-item-detail {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--border, #ddd);
+}
+
+.tab-training-preview-img {
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  background: #1a1a1a;
+  border-radius: 6px;
+  margin-top: 10px;
+}
+
+.tab-training-notes-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.tab-training-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  gap: 12px;
+  border-top: 1px solid var(--border, #ddd);
+}
+
+.tab-training-gen-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  background: var(--bg-elevated, #f5f5f5);
+  border-bottom: 1px solid var(--border, #ddd);
+}
+
+.tab-training-gen-controls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary, #666);
+}
+
+.tab-training-gen-controls select {
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border, #ccc);
+  font-size: 13px;
+}
+
+.tab-training-progress {
+  position: relative;
+  height: 22px;
+  margin: 0 20px 8px;
+  background: var(--bg-elevated, #eee);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tab-training-progress span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+  z-index: 1;
+}
+
+.tab-training-progress-bar {
+  height: 100%;
+  background: var(--accent, #4a9eff);
+  opacity: 0.3;
+  transition: width 0.2s ease;
+  border-radius: 4px;
+}
+
+.tab-training-model-status {
+  padding: 6px 20px;
+  font-size: 12px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border, #ddd);
+}
+
+.tab-training-model-status.loaded {
+  color: #27ae60;
+}
+
+.tab-training-model-status.not-found {
+  color: var(--text-secondary, #888);
+}
+
+.tab-training-model-status.checking {
+  color: var(--text-secondary, #aaa);
 }
 
 /* Group navigation */

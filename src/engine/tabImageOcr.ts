@@ -10,6 +10,10 @@
 // The API call is proxied through Vite's dev server to keep the API key
 // server-side. In production, this would go through a backend endpoint.
 
+import { db } from '../db/db'
+import { loadDigitModel, loadLabelModel, classifyDigit, classifyLabel, isModelAvailable, isLabelModelAvailable, type LabelPrediction } from './digitClassifier'
+import { cropDigit } from './syntheticTabGenerator'
+
 export interface OcrResult {
   text: string
   confidence: number
@@ -89,82 +93,199 @@ export interface DetectedNote {
 }
 
 /**
- * Detect staff lines by scanning for horizontal dark pixel rows.
+ * Detect staff lines by finding rows with the most horizontal dark pixel coverage.
  * Returns the Y centers of the 5 lines, or null if detection fails.
  *
- * Uses a two-pass approach:
- * 1. Find all dark row clusters (candidate lines)
- * 2. Score each cluster by its peak darkness (minimum brightness)
- * 3. If more than 5 candidates, pick the 5 darkest — real staff lines are darker
- *    than artifacts like borders or faint gridlines
- * 4. Validate that the 5 lines are approximately evenly spaced
+ * Key insight: staff lines span nearly the entire image width. Notes, text, stems
+ * are localized. So the "horizontal dark coverage" of a staff line row is much
+ * higher than any other feature.
+ *
+ * Algorithm:
+ * 1. For each row, count what fraction of columns have dark pixels → "hScore"
+ * 2. Find peaks in the hScore profile (rows with high horizontal coverage)
+ * 3. Pick the best 5 evenly-spaced peaks
  */
 export function detectStaffLines(ctx: CanvasRenderingContext2D, w: number, h: number): number[] | null {
-  // Sample multiple vertical columns and average brightness per row
-  const sampleXs = [0.15, 0.3, 0.5, 0.7].map((p) => Math.round(w * p))
-  const brightnesses: number[] = []
+  const imageData = ctx.getImageData(0, 0, w, h)
+  const px = imageData.data
 
-  for (let y = 0; y < h; y++) {
-    let sum = 0
-    for (const sx of sampleXs) {
-      const d = ctx.getImageData(sx, y, 1, 1).data
-      sum += d[0] * 0.299 + d[1] * 0.587 + d[2] * 0.114
+  const bright = (x: number, y: number) => {
+    const i = (y * w + x) * 4
+    return px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114
+  }
+
+  // Adaptive dark threshold from image
+  const sampleBrightnesses: number[] = []
+  for (let y = 0; y < h; y += 3) {
+    for (let x = 0; x < w; x += 10) {
+      sampleBrightnesses.push(bright(x, y))
     }
-    brightnesses.push(sum / sampleXs.length)
   }
+  sampleBrightnesses.sort((a, b) => a - b)
+  const bgB = sampleBrightnesses[Math.floor(sampleBrightnesses.length * 0.8)]
+  const darkThresh = bgB - 15
 
-  // Adaptive threshold: use a generous threshold to catch all candidates
-  const sorted = [...brightnesses].sort((a, b) => a - b)
-  const bgBrightness = sorted[Math.floor(sorted.length * 0.8)]
-  const threshold = bgBrightness - 15
-
-  const darkRows: number[] = []
+  // For each row, count what fraction of the width is dark (horizontal coverage)
+  const hScore: number[] = []
   for (let y = 0; y < h; y++) {
-    if (brightnesses[y] < threshold) darkRows.push(y)
+    let darkCount = 0
+    // Sample every 2nd pixel for speed
+    for (let x = 0; x < w; x += 2) {
+      if (bright(x, y) < darkThresh) darkCount++
+    }
+    hScore.push(darkCount / (w / 2)) // fraction of sampled pixels that are dark
   }
-  if (darkRows.length === 0) return null
 
-  // Cluster dark rows into line candidates (gap > 6px = new line)
-  interface LineCandidate { center: number; peakDarkness: number; thickness: number }
-  const candidates: LineCandidate[] = []
-  let cs = darkRows[0], ce = darkRows[0]
-  for (let i = 1; i < darkRows.length; i++) {
-    if (darkRows[i] - ce <= 6) {
-      ce = darkRows[i]
+  // Smooth hScore with a small window
+  const smoothR = 2
+  const smoothed: number[] = []
+  for (let y = 0; y < h; y++) {
+    let sum = 0, count = 0
+    for (let dy = -smoothR; dy <= smoothR; dy++) {
+      const yy = y + dy
+      if (yy >= 0 && yy < h) { sum += hScore[yy]; count++ }
+    }
+    smoothed.push(sum / count)
+  }
+
+  // Find peaks: rows where hScore is a local maximum and above a minimum threshold
+  // Staff lines typically cover 50%+ of the image width
+  const minCoverage = 0.3
+  const minSep = Math.max(5, Math.round(h * 0.015))
+
+  interface Peak { y: number; score: number }
+  const peaks: Peak[] = []
+
+  for (let y = minSep; y < h - minSep; y++) {
+    if (smoothed[y] < minCoverage) continue
+
+    // Local maximum within minSep
+    let isMax = true
+    for (let dy = 1; dy <= minSep; dy++) {
+      if (smoothed[y - dy] > smoothed[y] || smoothed[y + dy] > smoothed[y]) {
+        isMax = false
+        break
+      }
+    }
+    if (!isMax) continue
+    peaks.push({ y, score: smoothed[y] })
+  }
+
+  // Merge nearby peaks (within minSep*2) — keep the stronger one
+  const merged: Peak[] = []
+  for (const peak of peaks) {
+    const last = merged[merged.length - 1]
+    if (last && peak.y - last.y < minSep * 2) {
+      if (peak.score > last.score) merged[merged.length - 1] = peak
     } else {
-      let minB = 255
-      for (let y = cs; y <= ce; y++) minB = Math.min(minB, brightnesses[y])
-      candidates.push({ center: Math.round((cs + ce) / 2), peakDarkness: minB, thickness: ce - cs + 1 })
-      cs = ce = darkRows[i]
+      merged.push(peak)
     }
   }
-  let minB = 255
-  for (let y = cs; y <= ce; y++) minB = Math.min(minB, brightnesses[y])
-  candidates.push({ center: Math.round((cs + ce) / 2), peakDarkness: minB, thickness: ce - cs + 1 })
 
-  // Filter out candidates that are too thick — real staff lines are thin (< 5% of image height)
-  // This removes large dark regions like text blocks, borders, or UI elements
-  const maxLineThickness = Math.max(20, Math.round(h * 0.05))
-  const thinCandidates = candidates.filter((c) => c.thickness <= maxLineThickness)
+  console.log(`[staffLines] image=${w}x${h}, bgB=${bgB.toFixed(0)}, darkThresh=${darkThresh.toFixed(0)}`)
+  console.log(`[staffLines] ${peaks.length} raw peaks → ${merged.length} merged`)
+  console.log(`[staffLines] peaks:`, merged.map((p) => `y=${p.y} score=${(p.score * 100).toFixed(1)}%`))
 
-  if (thinCandidates.length < 5) return null
-
-  if (thinCandidates.length === 5) {
-    return thinCandidates.map((c) => c.center)
+  if (merged.length < 5) {
+    console.log(`[staffLines] FAILED: only ${merged.length} peaks (need 5)`)
+    return null
   }
 
-  // More than 5 candidates — pick the 5 darkest (real lines are darker than artifacts)
-  const byDarkness = [...thinCandidates].sort((a, b) => a.peakDarkness - b.peakDarkness)
-  const top5 = byDarkness.slice(0, 5).sort((a, b) => a.center - b.center)
+  if (merged.length === 5) {
+    const ys = merged.map((p) => p.y)
+    if (validateSpacing(ys)) {
+      console.log(`[staffLines] exact 5: [${ys.join(', ')}]`)
+      return ys
+    }
+  }
 
-  // Validate: the 5 lines should be approximately evenly spaced (within 30% tolerance)
-  const gaps = top5.slice(1).map((l, i) => l.center - top5[i].center)
+  // More than 5 peaks — find best group of 5 that are evenly spaced
+  // Try all pairs as adjacent lines, extrapolate to 5
+  const byScore = [...merged].sort((a, b) => b.score - a.score)
+  let bestMatch: number[] | null = null
+  let bestScore = -Infinity
+
+  for (let i = 0; i < Math.min(byScore.length, 12); i++) {
+    for (let j = i + 1; j < Math.min(byScore.length, 12); j++) {
+      const y1 = Math.min(byScore[i].y, byScore[j].y)
+      const y2 = Math.max(byScore[i].y, byScore[j].y)
+      const rawGap = y2 - y1
+
+      // Try this gap as spacing between lines k apart (k=1,2,3,4)
+      for (let k = 1; k <= 4; k++) {
+        const gap = rawGap / k
+
+        // Need reasonable gap size (at least 2% of image height)
+        if (gap < h * 0.02) continue
+
+        // For each possible starting position
+        for (let startIdx = 0; startIdx < 5; startIdx++) {
+          const firstLine = y1 - startIdx * gap
+          if (firstLine < -gap * 0.3) continue
+
+          const expected = Array.from({ length: 5 }, (_, n) => firstLine + n * gap)
+          if (expected[4] >= h + gap * 0.3) continue
+
+          // Score: sum of hScore at matched positions, penalty for missing
+          let score = 0
+          const matched: number[] = []
+          const tolerance = gap * 0.3
+
+          for (const ey of expected) {
+            const closest = merged.reduce((best, p) =>
+              Math.abs(p.y - ey) < Math.abs(best.y - ey) ? p : best
+            )
+            if (Math.abs(closest.y - ey) <= tolerance) {
+              score += closest.score * 100 // reward matched peaks
+              matched.push(closest.y)
+            } else {
+              // Check if there's at least decent hScore at the expected position
+              const ry = Math.round(Math.max(0, Math.min(h - 1, ey)))
+              if (smoothed[ry] > minCoverage * 0.5) {
+                score += smoothed[ry] * 30 // partial credit
+                matched.push(ry)
+              } else {
+                score -= 20 // strong penalty for missing line
+                matched.push(ry)
+              }
+            }
+          }
+
+          // Bonus for how well-matched the actual peaks are
+          const uniqueMatched = new Set(matched).size
+          if (uniqueMatched < 4) continue // at least 4 distinct positions
+
+          if (score > bestScore) {
+            bestScore = score
+            bestMatch = matched
+          }
+        }
+      }
+    }
+  }
+
+  if (bestMatch && validateSpacing(bestMatch)) {
+    console.log(`[staffLines] found: [${bestMatch.join(', ')}], score=${bestScore.toFixed(1)}`)
+    return bestMatch
+  }
+
+  // Fallback: just take the 5 with highest hScore, sorted by Y
+  const top5 = byScore.slice(0, 5).sort((a, b) => a.y - b.y).map((p) => p.y)
+  if (validateSpacing(top5)) {
+    console.log(`[staffLines] fallback top5: [${top5.join(', ')}]`)
+    return top5
+  }
+
+  console.log(`[staffLines] FAILED: could not find 5 evenly-spaced lines among`, merged.map((p) => p.y))
+  return null
+}
+
+/** Check that 5 Y-values are approximately evenly spaced (within 40% tolerance) */
+function validateSpacing(ys: number[]): boolean {
+  const gaps = ys.slice(1).map((y, i) => y - ys[i])
   const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length
-  const allEven = gaps.every((g) => Math.abs(g - avgGap) / avgGap < 0.3)
-
-  if (!allEven) return null
-
-  return top5.map((c) => c.center)
+  if (avgGap < 5) return false
+  return gaps.every((g) => Math.abs(g - avgGap) / avgGap < 0.4)
 }
 
 /**
@@ -222,7 +343,8 @@ export function detectNotePositions(
   // Use the median column dark count as the baseline (most columns have no notes)
   const sortedCols = [...colDark].sort((a, b) => a - b)
   const baselineDark = sortedCols[Math.floor(sortedCols.length * 0.5)]
-  const noteThreshold = baselineDark + 4 // at least 4 extra dark pixels = note present
+  const noteThreshold = baselineDark + 3 // at least 3 extra dark pixels = note present
+  console.log(`[detectNotes] baseline=${baselineDark}, noteThreshold=${noteThreshold}, staffArea=${staffTop}-${staffBottom}`)
 
   // Find note columns
   const noteColumns: number[] = []
@@ -245,15 +367,18 @@ export function detectNotePositions(
   }
   clusters.push([clS, clE])
 
+  console.log(`[detectNotes] ${noteColumns.length} note columns → ${clusters.length} raw clusters`)
+
   // Filter clusters by size:
-  // - Too narrow (< 4px): probably a bar line or artifact
-  // - Too wide (> 1.5 * lineGap): probably a thick bar or bracket
-  const minNoteWidth = 4
-  const maxNoteWidth = lineGap * 1.5
+  // - Too narrow (< 3px): probably a bar line or artifact
+  // - Too wide (> 2 * lineGap): probably a thick bar or bracket
+  const minNoteWidth = 3
+  const maxNoteWidth = lineGap * 2
   const sizedClusters = clusters.filter(([s, e]) => {
     const cw = e - s + 1
     return cw >= minNoteWidth && cw < maxNoteWidth
   })
+  console.log(`[detectNotes] ${sizedClusters.length} clusters after size filter (min=${minNoteWidth}, max=${maxNoteWidth.toFixed(0)})`)
 
   // For each cluster, determine which line has the note
   const notes: DetectedNote[] = []
@@ -281,12 +406,20 @@ export function detectNotePositions(
     const maxExtra = Math.max(...extra)
 
     // Must have meaningful extra darkness
-    if (maxExtra < 5) continue
+    if (maxExtra < 3) {
+      console.log(`[detectNotes] cluster x=${x0}-${x1} rejected: maxExtra=${maxExtra} < 3`)
+      continue
+    }
 
     // Concentration check: the winning line must be clearly dominant
-    // Sort extras descending — winner must be >= 1.5x the runner-up
+    // Sort extras descending — winner must be >= 1.1x the runner-up
+    // (lowered from 1.3 because barlines add dark pixels on ALL lines,
+    //  making it hard for notes near barlines to pass)
     const sortedExtra = [...extra].sort((a, b) => b - a)
-    if (sortedExtra[1] > 0 && sortedExtra[0] < sortedExtra[1] * 1.5) continue
+    if (sortedExtra[1] > 0 && sortedExtra[0] < sortedExtra[1] * 1.1) {
+      console.log(`[detectNotes] cluster x=${x0}-${x1} rejected: concentration ${sortedExtra[0]}/${sortedExtra[1]} < 1.1`)
+      continue
+    }
 
     const lineIdx = extra.indexOf(maxExtra)
     notes.push({
@@ -320,12 +453,15 @@ function formatTab(noteData: { lineNum: number; fret: number }[], fingers?: stri
   for (let i = 0; i < noteData.length; i++) {
     const { lineNum, fret } = noteData[i]
     const fretStr = String(fret)
-    for (let s = 1; s <= 5; s++) {
-      lines[s] += s === lineNum ? fretStr : '-'.repeat(fretStr.length)
-    }
     // Finger: use provided label if available, otherwise auto-assign from string
     const finger = fingers?.[i] ?? fingerForLine(lineNum)
-    fingerRow += finger + '-'.repeat(fretStr.length - 1)
+    // Column width = max of fret string length and finger label length
+    const colWidth = Math.max(fretStr.length, finger.length)
+    for (let s = 1; s <= 5; s++) {
+      const val = s === lineNum ? fretStr : '-'.repeat(fretStr.length)
+      lines[s] += val + '-'.repeat(colWidth - val.length)
+    }
+    fingerRow += finger + '-'.repeat(colWidth - finger.length)
     if (i < noteData.length - 1) {
       for (let s = 1; s <= 5; s++) lines[s] += '-'.repeat(SPACING)
       fingerRow += '-'.repeat(SPACING)
@@ -355,6 +491,79 @@ function jsonToTab(text: string): string {
   }
 }
 
+// ─── Training data types ──────────────────────────────────────────────────────
+
+export interface TrainingExample {
+  imageBase64: string
+  imageMimeType: string
+  frets: number[]
+  noteCount: number
+}
+
+// ─── Local digit classification ──────────────────────────────────────────────
+
+/**
+ * Attempt to classify fret numbers and finger+technique labels locally.
+ * For each detected note:
+ *   - Crops 32x32 at the note position → digit classifier → fret number
+ *   - Crops 32x32 below the staff (label area) → label classifier → finger + technique
+ * Returns null if the digit model is not available.
+ */
+export async function classifyDetectedNotes(
+  ctx: CanvasRenderingContext2D,
+  detectedNotes: DetectedNote[],
+  lineYs: number[],
+): Promise<{
+  frets: number[]
+  labels: LabelPrediction[]
+  confidence: number
+} | null> {
+  const digitSession = await loadDigitModel()
+  if (!digitSession) return null
+
+  const frets: number[] = []
+  const labels: LabelPrediction[] = []
+  let totalConfidence = 0
+
+  // Label area: below the 5th line, offset by ~1 line gap
+  const lineGap = lineYs[1] - lineYs[0]
+  const labelY = lineYs[4] + lineGap * 0.8
+
+  // Try loading label model (optional — digit model is required)
+  const labelSession = await loadLabelModel()
+
+  for (const note of detectedNotes) {
+    const noteY = lineYs[note.lineNum - 1]
+
+    // Classify fret number
+    const digitCrop = cropDigit(ctx, note.centerX, noteY)
+    const digitPred = await classifyDigit(digitSession, digitCrop)
+    // Banjo heuristic: fret 9 is almost always a misread circled-0
+    let fret = digitPred.digit
+    if (fret === 9 && digitPred.confidence < 0.97) fret = 0
+    frets.push(fret)
+    totalConfidence += digitPred.confidence
+
+    // Classify finger+technique label (if model available)
+    if (labelSession) {
+      const labelCrop = cropDigit(ctx, note.centerX, labelY)
+      const labelPred = await classifyLabel(labelSession, labelCrop)
+      labels.push(labelPred)
+    } else {
+      // Default: auto-assign finger from string, no technique
+      labels.push({
+        label: note.lineNum >= 3 ? 'T' : note.lineNum === 2 ? 'I' : 'M',
+        finger: note.lineNum >= 3 ? 'T' : note.lineNum === 2 ? 'I' : 'M',
+        technique: null,
+        confidence: 0,
+      })
+    }
+  }
+
+  const avgConfidence = detectedNotes.length > 0 ? totalConfidence / detectedNotes.length : 0
+  return { frets, labels, confidence: avgConfidence }
+}
+
 // ─── Vision model API call ───────────────────────────────────────────────────
 
 export async function callVisionModel(
@@ -362,19 +571,44 @@ export async function callVisionModel(
   mediaType: string,
   prompt: string,
   onProgress?: (p: OcrProgress) => void,
+  fewShotExamples?: TrainingExample[],
 ): Promise<string> {
+  // Build messages — optionally prepend few-shot examples
+  const messages: object[] = []
+
+  if (fewShotExamples && fewShotExamples.length > 0) {
+    for (const ex of fewShotExamples) {
+      // User turn: show the example image with the same prompt structure
+      messages.push({
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: ex.imageMimeType, data: ex.imageBase64 } },
+          { type: 'text', text: `This tablature image has ${ex.noteCount} notes. Read the fret number for each note from left to right.\n\nOutput a JSON object with:\n- "frets": array of fret numbers in order\n\nOutput ONLY the JSON object.` },
+        ],
+      })
+      // Assistant turn: show the correct answer
+      messages.push({
+        role: 'assistant',
+        content: [
+          { type: 'text', text: JSON.stringify({ frets: ex.frets }) },
+        ],
+      })
+    }
+  }
+
+  // Final user turn: the actual image to process
+  messages.push({
+    role: 'user',
+    content: [
+      { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+      { type: 'text', text: prompt },
+    ],
+  })
+
   const body = {
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-          { type: 'text', text: prompt },
-        ],
-      },
-    ],
+    messages,
   }
 
   const MAX_RETRIES = 2
@@ -419,6 +653,45 @@ export async function callVisionModel(
   throw new Error('Max retries exceeded')
 }
 
+// ─── Load training examples from DB ──────────────────────────────────────────
+
+/**
+ * Load up to `maxExamples` training pairs from the database and convert
+ * their images to base64 for use as few-shot examples in the Vision API call.
+ * Picks the most recent examples.
+ */
+async function loadTrainingExamples(maxExamples: number = 3): Promise<TrainingExample[]> {
+  try {
+    const pairs = await db.tabTrainingPairs.orderBy('createdAt').reverse().limit(maxExamples).toArray()
+    if (pairs.length === 0) return []
+
+    const examples: TrainingExample[] = []
+    for (const pair of pairs) {
+      const notes: { fret: number }[] = JSON.parse(pair.correctedNotes)
+      const frets = notes.map((n) => n.fret ?? 0)
+
+      // Convert blob to base64
+      const arrayBuf = await pair.imageBlob.arrayBuffer()
+      const bytes = new Uint8Array(arrayBuf)
+      let binary = ''
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i])
+      }
+      const base64 = btoa(binary)
+
+      examples.push({
+        imageBase64: base64,
+        imageMimeType: pair.imageBlob.type || 'image/png',
+        frets,
+        noteCount: frets.length,
+      })
+    }
+    return examples
+  } catch {
+    return []
+  }
+}
+
 // ─── Main entry point ────────────────────────────────────────────────────────
 
 /**
@@ -444,9 +717,43 @@ export async function extractTabFromImage(
   const lineYs = detectStaffLines(ctx, w, h)
 
   if (lineYs) {
+    console.log('[tabOcr] Staff lines found at:', lineYs)
     const detectedNotes = detectNotePositions(ctx, w, h, lineYs)
+    console.log('[tabOcr] Detected notes:', detectedNotes.length, detectedNotes)
 
     if (detectedNotes.length > 0) {
+      // Step 1b: Try local digit classification first (fast, free, offline)
+      // Attempt to load the model if not already loaded (lazy init)
+      if (!isModelAvailable()) {
+        console.log('[tabOcr] Loading digit model...')
+        await loadDigitModel()
+      }
+      console.log('[tabOcr] Digit model available:', isModelAvailable())
+      if (isModelAvailable()) {
+        onProgress?.({ status: 'Classifying digits locally...', progress: 0.3, processing: true })
+        const localResult = await classifyDetectedNotes(ctx, detectedNotes, lineYs)
+        console.log('[tabOcr] Local classification result:', localResult ? {
+          frets: localResult.frets,
+          confidence: localResult.confidence.toFixed(3),
+          labels: localResult.labels.map(l => `${l.label}(${l.confidence.toFixed(2)})`),
+        } : 'null')
+        if (localResult && localResult.confidence >= 0.85) {
+          const combined = detectedNotes.map((n, i) => ({
+            lineNum: n.lineNum,
+            fret: localResult.frets[i],
+          }))
+          // Use label predictions for finger annotations if available
+          const fingers = localResult.labels.map((l) => l.label)
+          const hasLabels = localResult.labels.some((l) => l.confidence > 0)
+          return {
+            text: formatTab(combined, hasLabels ? fingers : null),
+            confidence: Math.round(localResult.confidence * 100),
+            processing: false,
+          }
+        }
+        // Low confidence — fall through to Vision API
+      }
+
       // Step 2: Annotate image with arrows ABOVE each note (don't cover the digit!)
       const lineGap = lineYs[1] - lineYs[0]
       const arrowY = Math.max(0, lineYs[0] - lineGap) // above the top line
@@ -482,6 +789,10 @@ export async function extractTabFromImage(
       }
 
       // Step 3: Send annotated image to model for fret number reading only
+      // Load training examples for few-shot prompting
+      onProgress?.({ status: 'Loading training data...', progress: 0.35, processing: true })
+      const trainingExamples = await loadTrainingExamples(3)
+
       onProgress?.({ status: 'Reading fret numbers...', progress: 0.4, processing: true })
       const { base64, mediaType } = canvasToBase64(ctx, w, h)
 
@@ -498,7 +809,7 @@ Output a JSON object with:
 Output ONLY the JSON object, nothing else.`
 
       try {
-        const modelResp = await callVisionModel(base64, mediaType, prompt, onProgress)
+        const modelResp = await callVisionModel(base64, mediaType, prompt, onProgress, trainingExamples)
 
         // Parse response
         const jsonMatch = modelResp.match(/\{[\s\S]*\}/)

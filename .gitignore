@@ -16,6 +16,10 @@ lerna-debug.log*
 
 node_modules
 dist
+
+# ONNX Runtime WASM files (copied from node_modules at install time)
+public/models/*.wasm
+public/models/*.mjs
 dist-ssr
 *.local
 
