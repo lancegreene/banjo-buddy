@@ -53,22 +53,57 @@ function findStringAndFret(note: string, octave: number): { string: number; fret
 }
 
 /** Convert a song section's measures into FretNote[] for the fretboard diagram. */
-export function sectionToFretNotes(measures: { notes: { string: number; fret: number; finger?: 'T' | 'I' | 'M'; technique?: string; slideToFret?: number }[] }[]): FretNote[] {
+export function sectionToFretNotes(measures: { notes: { string: number; fret: number; beat?: number; finger?: 'T' | 'I' | 'M'; technique?: string; slideToFret?: number }[] }[]): FretNote[] {
   const result: FretNote[] = []
+  let groupCounter = 0
+
   for (const measure of measures) {
+    // Track which beat positions have multiple notes (pinches)
+    const beatCounts = new Map<number, number>()
+    for (const n of measure.notes) {
+      if (n.beat != null) beatCounts.set(n.beat, (beatCounts.get(n.beat) ?? 0) + 1)
+    }
+
+    // Assign group IDs to notes sharing the same beat
+    const beatGroupIds = new Map<number, number>()
+    for (const [beat, count] of beatCounts) {
+      if (count > 1) beatGroupIds.set(beat, groupCounter++)
+    }
+
+    const startIdx = result.length
     for (const n of measure.notes) {
       const open = OPEN_STRINGS[n.string]
       if (!open) continue
       const semi = noteToSemitone(open.note, open.octave) + n.fret
       const noteIdx = semi % 12
       const octave = Math.floor(semi / 12)
-      result.push({
+      const fretNote: FretNote = {
         string: n.string,
         fret: n.fret,
         note: `${CHROMATIC[noteIdx]}${octave}`,
         finger: n.finger ?? STRING_TO_FINGER[n.string] ?? 'T',
-      })
+      }
+      if (n.technique === 'hammer' || n.technique === 'pull' || n.technique === 'slide') {
+        fretNote.technique = n.technique
+      }
+      if (n.slideToFret != null) {
+        fretNote.slideToFret = n.slideToFret
+      }
+      if (n.beat != null && beatGroupIds.has(n.beat)) {
+        fretNote.group = beatGroupIds.get(n.beat)
+      }
+      result.push(fretNote)
     }
+
+    // Sort simultaneous notes to be adjacent (same group together)
+    const measureNotes = result.slice(startIdx)
+    measureNotes.sort((a, b) => {
+      const ag = a.group ?? -1
+      const bg = b.group ?? -1
+      if (ag !== bg) return ag - bg
+      return 0  // preserve original order within same group
+    })
+    result.splice(startIdx, measureNotes.length, ...measureNotes)
   }
   return result
 }

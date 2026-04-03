@@ -7,11 +7,26 @@
 //
 // Standard Open G: gDGBD (5-4-3-2-1)
 
+export type NoteDuration = 'whole' | 'half' | 'quarter' | 'eighth' | 'sixteenth'
+
 export interface FretNote {
   string: number   // 1-5
   fret: number     // 0 = open, 1-22
   note: string     // e.g. "D4", "G3"
   finger?: 'T' | 'I' | 'M'
+  technique?: 'hammer' | 'pull' | 'slide'
+  slideToFret?: number   // destination fret for slides, hammer-ons, and pull-offs
+  group?: number         // simultaneous notes share a group ID (pinch = thumb + finger together)
+  duration?: NoteDuration  // note length — default 'eighth' for Scruggs-style
+  rest?: boolean          // true = rest (silence), fret/string are ignored
+}
+
+/** Metadata for a tab sequence — time signature, tempo, etc. */
+export interface TabMeta {
+  timeSignature?: [number, number]  // [beats, beatUnit] e.g. [4, 4] for 4/4
+  bpm?: number                      // suggested tempo
+  title?: string
+  capo?: number
 }
 
 // Open string tuning

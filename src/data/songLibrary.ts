@@ -110,7 +110,7 @@ const CRIPPLE_CREEK_B: SongSection = {
     {
       chord: 'G',
       notes: [
-        { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer' },  // G→A (hammer 0→2)
+        { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer', slideToFret: 2 },  // G→A (hammer 0→2)
         { string: 2, fret: 0, beat: 1, finger: 'I' },   // B
         { string: 1, fret: 0, beat: 2, finger: 'M' },   // D
         { string: 4, fret: 0, beat: 3, finger: 'T' },   // D3
@@ -125,8 +125,8 @@ const CRIPPLE_CREEK_B: SongSection = {
       chord: 'C',
       notes: [
         { string: 4, fret: 2, beat: 0, finger: 'T' },              // E (C chord bass)
-        { string: 2, fret: 0, beat: 1, finger: 'I' },              // B (about to hammer)
-        { string: 2, fret: 1, beat: 2, finger: 'I', technique: 'hammer' }, // C (hammered)
+        { string: 2, fret: 0, beat: 1, finger: 'I', technique: 'hammer', slideToFret: 1 }, // B→C (hammer 0→1)
+        { string: 2, fret: 1, beat: 2, finger: 'I' },              // C (hammered arrival)
         { string: 5, fret: 0, beat: 3, finger: 'T' },              // G drone
         { string: 3, fret: 0, beat: 4, finger: 'T' },              // G
         { string: 2, fret: 1, beat: 5, finger: 'I' },              // C
@@ -182,11 +182,11 @@ const CRIPPLE_CREEK_SCRUGGS_A: SongSection = {
     {
       chord: 'G',
       notes: [
-        { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer' },  // h0→2 (G→A)
+        { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer', slideToFret: 2 },  // h0→2 (G→A)
         { string: 2, fret: 0, beat: 1, finger: 'I' },   // B open
         { string: 5, fret: 0, beat: 2, finger: 'T' },   // G4 drone
         { string: 1, fret: 0, beat: 3, finger: 'M' },   // D4 open
-        { string: 3, fret: 0, beat: 4, finger: 'T', technique: 'hammer' },  // h0→2
+        { string: 3, fret: 0, beat: 4, finger: 'T', technique: 'hammer', slideToFret: 2 },  // h0→2
         { string: 2, fret: 0, beat: 5, finger: 'I' },   // B
         { string: 5, fret: 0, beat: 6, finger: 'T' },   // G4 drone
         { string: 1, fret: 0, beat: 7, finger: 'M' },   // D4
@@ -196,11 +196,11 @@ const CRIPPLE_CREEK_SCRUGGS_A: SongSection = {
     {
       chord: 'G',
       notes: [
-        { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer' },
+        { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer', slideToFret: 2 },
         { string: 2, fret: 0, beat: 1, finger: 'I' },
         { string: 5, fret: 0, beat: 2, finger: 'T' },
         { string: 1, fret: 0, beat: 3, finger: 'M' },
-        { string: 3, fret: 0, beat: 4, finger: 'T', technique: 'hammer' },
+        { string: 3, fret: 0, beat: 4, finger: 'T', technique: 'hammer', slideToFret: 2 },
         { string: 2, fret: 0, beat: 5, finger: 'I' },
         { string: 5, fret: 0, beat: 6, finger: 'T' },
         { string: 1, fret: 0, beat: 7, finger: 'M' },
@@ -210,7 +210,7 @@ const CRIPPLE_CREEK_SCRUGGS_A: SongSection = {
     {
       chord: 'G',
       notes: [
-        { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer' },
+        { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer', slideToFret: 2 },
         { string: 2, fret: 0, beat: 1, finger: 'I' },
         { string: 5, fret: 0, beat: 2, finger: 'T' },
         { string: 1, fret: 0, beat: 3, finger: 'M' },
@@ -228,7 +228,7 @@ const CRIPPLE_CREEK_SCRUGGS_A: SongSection = {
         { string: 2, fret: 0, beat: 1, finger: 'I' },   // B
         { string: 1, fret: 0, beat: 2, finger: 'M' },   // D4
         { string: 5, fret: 0, beat: 3, finger: 'T' },   // G drone
-        { string: 3, fret: 0, beat: 4, finger: 'T', technique: 'hammer' },  // resolve to G: h0→2
+        { string: 3, fret: 0, beat: 4, finger: 'T', technique: 'hammer', slideToFret: 2 },  // resolve to G: h0→2
         { string: 2, fret: 0, beat: 5, finger: 'I' },
         { string: 5, fret: 0, beat: 6, finger: 'T' },
         { string: 1, fret: 0, beat: 7, finger: 'M' },
@@ -277,7 +277,7 @@ const CRIPPLE_CREEK_SCRUGGS_B: SongSection = {
     {
       chord: 'G',
       notes: [
-        { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer' },  // h0→2
+        { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer', slideToFret: 2 },  // h0→2
         { string: 2, fret: 0, beat: 1, finger: 'I' },
         { string: 5, fret: 0, beat: 2, finger: 'T' },
         { string: 1, fret: 0, beat: 3, finger: 'M' },
@@ -295,7 +295,7 @@ const CRIPPLE_CREEK_SCRUGGS_B: SongSection = {
         { string: 2, fret: 0, beat: 1, finger: 'I' },   // B
         { string: 1, fret: 0, beat: 2, finger: 'M' },   // D4
         { string: 5, fret: 0, beat: 3, finger: 'T' },   // G drone
-        { string: 3, fret: 0, beat: 4, finger: 'T', technique: 'hammer' },  // resolve to G
+        { string: 3, fret: 0, beat: 4, finger: 'T', technique: 'hammer', slideToFret: 2 },  // resolve to G
         { string: 2, fret: 0, beat: 5, finger: 'I' },
         { string: 5, fret: 0, beat: 6, finger: 'T' },
         { string: 1, fret: 0, beat: 7, finger: 'M' },
@@ -989,6 +989,251 @@ const GOIN_DOWN_ROAD_VERSE: SongSection = {
   ],
 }
 
+// ── Cripple Creek — Steffens Arrangement (A Part) ───────────────────────────
+// Source: Joerg Steffens tab — melodic arrangement with S1 melody slides (2S5),
+// S3 slides (2S4), and S4 hammer-ons (0H2). A part = 8 measures (4 + varied repeat).
+
+const CRIPPLE_CREEK_STEFFENS_A: SongSection = {
+  id: 'cripple_creek_steffens_a',
+  name: 'A Part (Steffens)',
+  measures: [
+    // ── m1: G — String 1 melody with 2S5 slide ──
+    {
+      chord: 'G',
+      notes: [
+        { string: 1, fret: 2, beat: 0, finger: 'M', technique: 'slide', slideToFret: 5 },  // 2S5 (E→G)
+        { string: 5, fret: 0, beat: 1, finger: 'T' },   // G drone
+        { string: 1, fret: 5, beat: 2, finger: 'M' },    // G4
+        { string: 5, fret: 0, beat: 3, finger: 'T' },    // G drone
+        { string: 1, fret: 0, beat: 4, finger: 'M' },    // D4
+        { string: 5, fret: 0, beat: 5, finger: 'T' },    // G drone
+        { string: 2, fret: 0, beat: 6, finger: 'I' },    // B3
+        { string: 5, fret: 0, beat: 7, finger: 'T' },    // G drone
+      ],
+    },
+    // ── m2: C → G — C chord with string 2 fret 1 ──
+    {
+      chord: 'C',
+      notes: [
+        { string: 5, fret: 0, beat: 0, finger: 'T' },    // G drone
+        { string: 2, fret: 1, beat: 1, finger: 'I' },     // C4 (C chord)
+        { string: 1, fret: 2, beat: 2, finger: 'M' },     // E4
+        { string: 5, fret: 0, beat: 3, finger: 'T' },     // G drone
+        { string: 1, fret: 0, beat: 4, finger: 'M' },     // D4 (G resolution)
+        { string: 5, fret: 0, beat: 5, finger: 'T' },     // G drone
+        { string: 1, fret: 0, beat: 6, finger: 'M' },     // D4
+        { string: 5, fret: 0, beat: 7, finger: 'T' },     // G drone
+      ],
+    },
+    // ── m3: G — Slide on string 3 (2S4) with alternating bass ──
+    {
+      chord: 'G',
+      notes: [
+        { string: 3, fret: 2, beat: 0, finger: 'T', technique: 'slide', slideToFret: 4 },  // 2S4 (A→B)
+        { string: 2, fret: 0, beat: 1, finger: 'I' },     // B3
+        { string: 1, fret: 0, beat: 2, finger: 'M' },     // D4
+        { string: 5, fret: 0, beat: 3, finger: 'T' },     // G drone
+        { string: 3, fret: 0, beat: 4, finger: 'T' },     // G3
+        { string: 1, fret: 0, beat: 5, finger: 'M' },     // D4
+        { string: 4, fret: 2, beat: 6, finger: 'T' },     // E3
+        { string: 3, fret: 0, beat: 7, finger: 'T' },     // G3
+      ],
+    },
+    // ── m4: D7 → G — Hammer-on on string 4 (0H2), G resolution ──
+    {
+      chord: 'D7',
+      notes: [
+        { string: 4, fret: 0, beat: 0, finger: 'T', technique: 'hammer', slideToFret: 2 },  // 0H2 (D→E)
+        { string: 2, fret: 0, beat: 1, finger: 'I' },     // B3
+        { string: 1, fret: 0, beat: 2, finger: 'M' },     // D4
+        { string: 5, fret: 0, beat: 3, finger: 'T' },     // G drone
+        { string: 3, fret: 0, beat: 4, finger: 'T' },     // G3 (resolution)
+        { string: 2, fret: 0, beat: 5, finger: 'I' },     // B3
+        { string: 1, fret: 0, beat: 6, finger: 'M' },     // D4
+        { string: 5, fret: 0, beat: 7, finger: 'T' },     // G drone
+      ],
+    },
+    // ── m5: G — Repeat of m1 (2S5 melody) ──
+    {
+      chord: 'G',
+      notes: [
+        { string: 1, fret: 2, beat: 0, finger: 'M', technique: 'slide', slideToFret: 5 },
+        { string: 5, fret: 0, beat: 1, finger: 'T' },
+        { string: 1, fret: 5, beat: 2, finger: 'M' },
+        { string: 5, fret: 0, beat: 3, finger: 'T' },
+        { string: 1, fret: 0, beat: 4, finger: 'M' },
+        { string: 5, fret: 0, beat: 5, finger: 'T' },
+        { string: 2, fret: 0, beat: 6, finger: 'I' },
+        { string: 5, fret: 0, beat: 7, finger: 'T' },
+      ],
+    },
+    // ── m6: C → G — Repeat of m2 ──
+    {
+      chord: 'C',
+      notes: [
+        { string: 5, fret: 0, beat: 0, finger: 'T' },
+        { string: 2, fret: 1, beat: 1, finger: 'I' },
+        { string: 1, fret: 2, beat: 2, finger: 'M' },
+        { string: 5, fret: 0, beat: 3, finger: 'T' },
+        { string: 1, fret: 0, beat: 4, finger: 'M' },
+        { string: 5, fret: 0, beat: 5, finger: 'T' },
+        { string: 1, fret: 0, beat: 6, finger: 'M' },
+        { string: 5, fret: 0, beat: 7, finger: 'T' },
+      ],
+    },
+    // ── m7: G — Varied repeat of m3 (more S1/S2 fills, no S3 after slide) ──
+    {
+      chord: 'G',
+      notes: [
+        { string: 3, fret: 2, beat: 0, finger: 'T', technique: 'slide', slideToFret: 4 },  // 2S4
+        { string: 2, fret: 0, beat: 1, finger: 'I' },     // B3
+        { string: 1, fret: 0, beat: 2, finger: 'M' },     // D4
+        { string: 5, fret: 0, beat: 3, finger: 'T' },     // G drone
+        { string: 1, fret: 0, beat: 4, finger: 'M' },     // D4
+        { string: 2, fret: 0, beat: 5, finger: 'I' },     // B3
+        { string: 4, fret: 2, beat: 6, finger: 'T' },     // E3
+        { string: 5, fret: 0, beat: 7, finger: 'T' },     // G drone
+      ],
+    },
+    // ── m8: D7 → G — Ending with hammer-on, resolves to G ──
+    {
+      chord: 'D7',
+      notes: [
+        { string: 4, fret: 0, beat: 0, finger: 'T', technique: 'hammer', slideToFret: 2 },  // 0H2
+        { string: 2, fret: 0, beat: 1, finger: 'I' },     // B3
+        { string: 1, fret: 0, beat: 2, finger: 'M' },     // D4
+        { string: 5, fret: 0, beat: 3, finger: 'T' },     // G drone
+        { string: 3, fret: 0, beat: 4, finger: 'T' },     // G3
+        { string: 1, fret: 0, beat: 5, finger: 'M' },     // D4
+        { string: 5, fret: 0, beat: 6, finger: 'T' },     // G drone
+        { string: 5, fret: 0, beat: 7, finger: 'T' },     // G drone (ending)
+      ],
+    },
+  ],
+}
+
+// ── Cripple Creek — Steffens Arrangement (B Part / Verse) ───────────────────
+// Features the distinctive 3P2 pull-off on string 3 and 2S4 slides throughout.
+
+const CRIPPLE_CREEK_STEFFENS_B: SongSection = {
+  id: 'cripple_creek_steffens_b',
+  name: 'B Part (Steffens)',
+  measures: [
+    // ── m9: G — Slide on S3 + pull-off (3P2) ──
+    {
+      chord: 'G',
+      notes: [
+        { string: 3, fret: 2, beat: 0, finger: 'T', technique: 'slide', slideToFret: 4 },  // 2S4
+        { string: 2, fret: 0, beat: 1, finger: 'I' },     // B3
+        { string: 5, fret: 0, beat: 2, finger: 'T' },     // G drone
+        { string: 1, fret: 0, beat: 3, finger: 'M' },     // D4
+        { string: 3, fret: 3, beat: 4, finger: 'T', technique: 'pull', slideToFret: 2 },  // 3P2 (A#→A)
+        { string: 2, fret: 0, beat: 5, finger: 'I' },     // B3
+        { string: 3, fret: 0, beat: 6, finger: 'T' },     // G3
+        { string: 1, fret: 0, beat: 7, finger: 'M' },     // D4
+      ],
+    },
+    // ── m10: G — Slide on S3 with S4 bass note ──
+    {
+      chord: 'G',
+      notes: [
+        { string: 3, fret: 2, beat: 0, finger: 'T', technique: 'slide', slideToFret: 4 },  // 2S4
+        { string: 2, fret: 0, beat: 1, finger: 'I' },     // B3
+        { string: 5, fret: 0, beat: 2, finger: 'T' },     // G drone
+        { string: 1, fret: 0, beat: 3, finger: 'M' },     // D4
+        { string: 4, fret: 0, beat: 4, finger: 'T' },     // D3 bass
+        { string: 5, fret: 0, beat: 5, finger: 'T' },     // G drone
+        { string: 1, fret: 0, beat: 6, finger: 'M' },     // D4
+        { string: 5, fret: 0, beat: 7, finger: 'T' },     // G drone
+      ],
+    },
+    // ── m11: G — Repeat of m9 (slide + pull-off) ──
+    {
+      chord: 'G',
+      notes: [
+        { string: 3, fret: 2, beat: 0, finger: 'T', technique: 'slide', slideToFret: 4 },
+        { string: 2, fret: 0, beat: 1, finger: 'I' },
+        { string: 5, fret: 0, beat: 2, finger: 'T' },
+        { string: 1, fret: 0, beat: 3, finger: 'M' },
+        { string: 3, fret: 3, beat: 4, finger: 'T', technique: 'pull', slideToFret: 2 },
+        { string: 2, fret: 0, beat: 5, finger: 'I' },
+        { string: 3, fret: 0, beat: 6, finger: 'T' },
+        { string: 1, fret: 0, beat: 7, finger: 'M' },
+      ],
+    },
+    // ── m12: D7 → G — Hammer-on turnaround ──
+    {
+      chord: 'D7',
+      notes: [
+        { string: 4, fret: 0, beat: 0, finger: 'T', technique: 'hammer', slideToFret: 2 },  // 0H2
+        { string: 2, fret: 0, beat: 1, finger: 'I' },     // B3
+        { string: 1, fret: 0, beat: 2, finger: 'M' },     // D4
+        { string: 5, fret: 0, beat: 3, finger: 'T' },     // G drone
+        { string: 3, fret: 0, beat: 4, finger: 'T' },     // G3
+        { string: 5, fret: 0, beat: 5, finger: 'T' },     // G drone
+        { string: 1, fret: 0, beat: 6, finger: 'M' },     // D4
+        { string: 5, fret: 0, beat: 7, finger: 'T' },     // G drone
+      ],
+    },
+    // ── m13: G — Repeat of m9 ──
+    {
+      chord: 'G',
+      notes: [
+        { string: 3, fret: 2, beat: 0, finger: 'T', technique: 'slide', slideToFret: 4 },
+        { string: 2, fret: 0, beat: 1, finger: 'I' },
+        { string: 5, fret: 0, beat: 2, finger: 'T' },
+        { string: 1, fret: 0, beat: 3, finger: 'M' },
+        { string: 3, fret: 3, beat: 4, finger: 'T', technique: 'pull', slideToFret: 2 },
+        { string: 2, fret: 0, beat: 5, finger: 'I' },
+        { string: 3, fret: 0, beat: 6, finger: 'T' },
+        { string: 1, fret: 0, beat: 7, finger: 'M' },
+      ],
+    },
+    // ── m14: G — Repeat of m10 ──
+    {
+      chord: 'G',
+      notes: [
+        { string: 3, fret: 2, beat: 0, finger: 'T', technique: 'slide', slideToFret: 4 },
+        { string: 2, fret: 0, beat: 1, finger: 'I' },
+        { string: 5, fret: 0, beat: 2, finger: 'T' },
+        { string: 1, fret: 0, beat: 3, finger: 'M' },
+        { string: 4, fret: 0, beat: 4, finger: 'T' },
+        { string: 5, fret: 0, beat: 5, finger: 'T' },
+        { string: 1, fret: 0, beat: 6, finger: 'M' },
+        { string: 5, fret: 0, beat: 7, finger: 'T' },
+      ],
+    },
+    // ── m15: G — Varied ending with extra S2 fills ──
+    {
+      chord: 'G',
+      notes: [
+        { string: 3, fret: 2, beat: 0, finger: 'T', technique: 'slide', slideToFret: 4 },  // 2S4
+        { string: 2, fret: 0, beat: 1, finger: 'I' },     // B3
+        { string: 1, fret: 0, beat: 2, finger: 'M' },     // D4
+        { string: 2, fret: 0, beat: 3, finger: 'I' },     // B3 (extra fill)
+        { string: 3, fret: 3, beat: 4, finger: 'T', technique: 'pull', slideToFret: 2 },  // 3P2
+        { string: 1, fret: 0, beat: 5, finger: 'M' },     // D4
+        { string: 3, fret: 0, beat: 6, finger: 'T' },     // G3
+        { string: 1, fret: 0, beat: 7, finger: 'M' },     // D4
+      ],
+    },
+    // ── m16: D7 → G — Final hammer-on and resolution ──
+    {
+      chord: 'D7',
+      notes: [
+        { string: 4, fret: 0, beat: 0, finger: 'T', technique: 'hammer', slideToFret: 2 },  // 0H2
+        { string: 2, fret: 0, beat: 1, finger: 'I' },     // B3
+        { string: 1, fret: 0, beat: 2, finger: 'M' },     // D4
+        { string: 5, fret: 0, beat: 3, finger: 'T' },     // G drone
+        { string: 3, fret: 0, beat: 4, finger: 'T' },     // G3 (resolution)
+        { string: 2, fret: 0, beat: 5, finger: 'I' },     // B3
+        { string: 1, fret: 0, beat: 6, finger: 'M' },     // D4
+        { string: 5, fret: 0, beat: 7, finger: 'T' },     // G drone (final)
+      ],
+    },
+  ],
+}
+
 // ── Song Definitions ──────────────────────────────────────────────────────────
 
 export const SONGS: Song[] = [
@@ -1036,6 +1281,19 @@ export const SONGS: Song[] = [
     performanceBpm: 90,
     sections: [GOIN_DOWN_ROAD_VERSE],
     structure: ['goin_down_road_verse', 'goin_down_road_verse'],
+  },
+  // ── Cripple Creek — Steffens Arrangement ─────────────────────────────────
+  // Source: Joerg Steffens tab (training_material/BanjoTabs/crip.txt)
+  // More melodic than simplified version: string 1 melody with slides on S1 & S3,
+  // hammer-ons on S4, and pull-offs on S3 in the B part.
+  {
+    id: 'cripple_creek_steffens',
+    name: 'Cripple Creek (Steffens)',
+    key: 'G',
+    defaultBpm: 80,
+    performanceBpm: 120,
+    sections: [CRIPPLE_CREEK_STEFFENS_A, CRIPPLE_CREEK_STEFFENS_B],
+    structure: ['cripple_creek_steffens_a', 'cripple_creek_steffens_b'],
   },
 ]
 

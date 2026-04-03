@@ -38,9 +38,9 @@ export const CHORD_DIAGRAMS: ChordDiagram[] = [
   {
     id: 'g7',
     name: 'G7',
-    frets: [0, 0, 0, 0, 1],
-    fingers: [0, 0, 0, 0, 1],
-    // s5=fret1(Ab/G#) gives a G7 color
+    frets: [3, 0, 0, 0, 0],
+    fingers: [1, 0, 0, 0, 0],
+    // s1=fret3(F4), s2=open(B3), s3=open(G3), s4=open(D3), s5=open(G4) → G7 (G,B,D,F)
   },
 ]
 

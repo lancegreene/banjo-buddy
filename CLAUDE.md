@@ -4,7 +4,7 @@ A progressive web app that helps 5-string banjo players learn Scruggs-style pick
 
 ## Quick Reference
 
-- **Stack**: React 18 + TypeScript + Vite, Zustand (state), Dexie v4/IndexedDB (persistence), Supabase (auth + sync), Tone.js (synth/metronome), pitchy (pitch detection), ts-fsrs (spaced repetition)
+- **Stack**: React 18 + TypeScript + Vite, Zustand (state), Dexie v4/IndexedDB (persistence), Supabase (auth + sync), Tone.js (synth/metronome), pitchy (pitch detection), ts-fsrs (spaced repetition), ONNX Runtime Web (digit/label classification)
 - **Build**: `npm run dev` (dev server), `npm run build` (tsc + vite build)
 - **Deploy**: `npm run deploy` (gh-pages)
 - **No test suite** — verify changes with `npx tsc --noEmit` and `npx vite build`
@@ -15,9 +15,9 @@ A progressive web app that helps 5-string banjo players learn Scruggs-style pick
 
 ```
 src/
-  engine/          32 pure-function modules — no React, no side effects
+  engine/          34 pure-function modules — no React, no side effects
   hooks/           9 React hooks wrapping engines (useNoteCapture, useBanjoSynth, etc.)
-  components/      40+ feature directories (Practice, SkillTree, Library, Fretboard, etc.)
+  components/      35 feature directories (Practice, SkillTree, Library, Fretboard, etc.)
   data/            Static data: curriculum, roll patterns, lick library, songs, chords, achievements
   store/           Zustand store (useStore.ts) — single source of truth for all app state
   db/              Dexie schema (db.ts), Supabase client (supabase.ts), sync engine (sync.ts)
@@ -25,6 +25,8 @@ src/
   types/           Shared TypeScript types
   utils/           Small utilities (calibration)
   workers/         Web Worker for essentia.js rhythm analysis
+scripts/           Python training pipeline (digit/label CNN → ONNX export)
+public/models/     ONNX models: digit-classifier.onnx, label-classifier.onnx
 ```
 
 ### Key Data Flow
@@ -46,6 +48,38 @@ No React Router — single `<App>` switches on `currentPage` state from the stor
 **Tool modals** (float over any page): Metronome, Tuner, FretLab
 
 **Split pages**: `pathway` uses sidebar + content layout with practice on the right.
+
+## Tab Scanning Pipeline (Fretboard Lab)
+
+Image-to-tab conversion for importing printed/digital banjo tablature. Entry point: `FretboardLab.tsx` → image upload → crop → `TabOverlayEditor.tsx`.
+
+### Pipeline Steps
+
+1. **Staff line detection** (`tabImageOcr.ts:detectStaffLines`) — horizontal coverage scoring: for each row, measures what fraction of the image width is dark. Staff lines score 50%+ coverage (span full width), unlike notes (localized). Finds peaks, then selects best group of 5 evenly-spaced ones using pair-based gap extrapolation.
+2. **Note position detection** (`tabImageOcr.ts:detectNotePositions`) — scans columns between staff lines for dark pixel clusters, applies size/concentration filters to separate notes from stems/beams.
+3. **Local digit classification** (`digitClassifier.ts`) — ONNX Runtime Web loads `digit-classifier.onnx` (LeNet-5 variant, ~200KB). Crops 32x32 grayscale patches at each note position, classifies fret number (0-9). Includes 9→0 heuristic: circled zeros in real tabs misread as "9" — auto-correct when confidence < 97%.
+4. **Local label classification** (`digitClassifier.ts`) — loads `label-classifier.onnx` for finger labels (T/I/M). Low accuracy on real images (~25% confidence) — trained on synthetic data only. Falls back to string-based defaults (lines 3-5→T, 2→I, 1→M).
+5. **Vision API fallback** (`tabImageOcr.ts:callVisionModel`) — Claude claude-sonnet-4-6 reads annotated image with numbered arrows. "Read Tab (AI)" button does frets + labels in one call (~$0.005/scan). "Read Frets" button uses local model only (free).
+6. **Overlay editor** (`TabOverlayEditor.tsx`) — interactive canvas overlay for reviewing/correcting detected notes, adjusting staff lines, setting frets/fingers/techniques/durations/groups.
+7. **Training data collection** — corrected results saved to `tabTrainingPairs` (IndexedDB) for model retraining. Export as JSON with base64 images.
+
+### Synthetic Data Generation
+
+`syntheticTabGenerator.ts` renders thousands of tab images via Canvas with randomized fonts, sizes, noise, rotation, line weights. Generates both full images and 32x32 digit crops with ground truth. Circled zeros render "0" text inside circle to match real tab notation.
+
+### Training Pipeline (`scripts/`)
+
+```bash
+python scripts/train_digit_model.py --data export.json --epochs 30 --output public/models/digit-classifier.onnx
+```
+
+LeNet-5 variant CNN (Conv→ReLU→Pool ×3 → FC). Trains on exported JSON from TabTrainingManager. Outputs ONNX for browser inference.
+
+### Key Heuristics
+
+- **9→0 correction**: `if (fret === 9 && confidence < 0.97) fret = 0` — circled open-string notation reads as "9"
+- **Label crop position**: always at `lineYs[4] + lineGap * 0.8` (below bottom staff line), NOT relative to each note's line
+- **Vision API JSON parsing**: extract from markdown code fences first, then non-greedy `{...}` fallback — the model sometimes repeats JSON with commentary
 
 ## Note Detection Engine (Critical Path)
 
@@ -117,10 +151,11 @@ Decision types: `onset`, `locked`, `no_onset`, `unstable`, `string_cooldown`, `o
 | `chordDiagrams.ts` | `CHORD_DIAGRAMS[]`, `CHORD_MAP` | Chord shapes with fret positions |
 | `fretboardNotes.ts` | `OPEN_STRINGS`, `getNoteAtFret()` | Banjo fretboard pitch reference |
 | `achievements.ts` | `ACHIEVEMENTS[]` | Achievement unlock conditions (streaks, BPM records, skill counts) |
+| `tourSteps.ts` | Tour step definitions | Guided tour sequence for onboarding |
 
 ### Database (Dexie v4 / IndexedDB)
 
-12 tables. Key ones:
+13 tables. Key ones:
 
 | Table | Purpose |
 |-------|---------|
@@ -136,6 +171,7 @@ Decision types: `onset`, `locked`, `no_onset`, `unstable`, `string_cooldown`, `o
 | `teacherConfigs` | Per-class/per-student skill overrides, media display settings |
 | `teacherClips` | Teacher demo media (video/audio/image/tab crops) attached to skills |
 | `skillImageOverrides` | Admin-set override images for skill display (synced via Supabase Storage) |
+| `tabTrainingPairs` | Tab image + corrected notes for digit model training |
 
 ### Sync Engine (src/db/sync.ts)
 
@@ -175,7 +211,7 @@ Supabase email/password auth. Session auto-restored on app load. Users can skip 
 - Skills defined in `src/data/curriculum.ts` with prerequisites forming a DAG
 - Categories: `setup`, `theory`, `rolls`, `chords`, `techniques`, `licks`, `songs`, `performance`
 - Paths: `newby`, `beginner`, `intermediate`
-- Status progression: `locked → unlocked → active → progressed → mastered`
+- Status progression: `locked -> unlocked -> active -> progressed -> mastered`
 - `buildSessionPlan()` allocates: 25% new skills, 50% active work, 25% maintenance/review
 - Factors: BPM gap, recency, practice count, accuracy score, FSRS due date
 - Low accuracy (<70%) triggers: higher priority, lower suggested BPM
@@ -190,7 +226,7 @@ Supabase email/password auth. Session auto-restored on app load. Users can skip 
 
 ### 5-Level Mastery (engine/masteryLevels.ts)
 
-Introduced → Developing → Competent → Mastered → Fluent
+Introduced -> Developing -> Competent -> Mastered -> Fluent
 
 Decays over 30 days of inactivity. Overdue skills show visual indicator in skill tree.
 
@@ -218,12 +254,31 @@ Each item loads a FretLab-style tab viewer (FretboardDiagram + play/stop + BPM c
 | `masteryLevels.ts` | 5-level mastery with decay |
 | `performanceMetrics.ts` | Per-note accuracy, timing, rhythm/pitch/tempo scores |
 | `weakSpotAnalysis.ts` | Per-position accuracy stats from noteAccuracyRecords |
+| `weakSpotDrillGenerator.ts` | Generate targeted drills for weak positions |
 | `banjoSynth.ts` | Karplus-Strong synthesis for demo playback |
 | `adaptiveTempo.ts` | Auto-adjust BPM based on accuracy |
-| `tabParser.ts` | Parse ASCII tablature → FretNote[] |
-| `tabImageOcr.ts` | Extract tab from images (pattern matching + Claude Vision API) |
-| `rollToFretNotes.ts` | Convert rolls/licks/song sections → FretNote[] for fretboard display |
+| `tabParser.ts` | Parse ASCII tablature -> FretNote[] |
+| `tabImageOcr.ts` | Staff line detection, note detection, Vision API integration |
+| `digitClassifier.ts` | ONNX model loading + digit/label inference |
+| `syntheticTabGenerator.ts` | Canvas-rendered synthetic tab images for training |
+| `rollToFretNotes.ts` | Convert rolls/licks/song sections -> FretNote[] for fretboard display |
 | `achievementTracker.ts` | Check unlock conditions after each session |
+| `theoryEngine.ts` | Music theory utilities (scales, intervals, chord construction) |
+| `fingerBalance.ts` | Analyze finger usage distribution across practice |
+| `coachingCards.ts` | Generate practice tips based on performance patterns |
+| `rhythmAnalysis.ts` | Rhythm pattern analysis (uses Web Worker with essentia.js) |
+| `teacherMode.ts` | Teacher curriculum management and student filtering |
+| `challengeEngine.ts` | Practice challenge/goal generation |
+| `focusMode.ts` | Focused practice session management |
+| `warmupEngine.ts` | Generate warmup exercise sequences |
+| `plateauDetector.ts` | Detect when a student plateaus on a skill |
+| `autoChunker.ts` | Auto-segment practice into logical chunks |
+| `tempoRamp.ts` | Gradual tempo increase during practice |
+| `imageCropService.ts` | Image cropping utilities for teacher clips |
+| `teacherClipService.ts` | Teacher demo media management |
+| `recordingService.ts` | Audio recording utilities |
+| `analyticsQueries.ts` | Dexie queries for progress analytics |
+| `spacedRepetition.ts` | Legacy spaced repetition (pre-FSRS) |
 
 ## Conventions
 

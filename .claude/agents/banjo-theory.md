@@ -134,11 +134,17 @@ interface RollPattern {
 
 ## Finger Assignment Rules (Scruggs Style)
 
-- **Thumb (T)**: Strings 3, 4, 5 (and occasionally string 2 in some patterns)
-- **Index (I)**: String 2 (and occasionally string 3)
+**Default assignments:**
+- **Thumb (T)**: Strings 3, 4, 5
+- **Index (I)**: String 2
 - **Middle (M)**: String 1
 
-When assigning fingers, follow the standard Scruggs right-hand assignment unless the tab or context explicitly indicates otherwise.
+**Known exceptions — thumb crossover to string 2:**
+The thumb plays string 2 in several well-known Scruggs patterns. This is NOT an error — it's a defining characteristic of these rolls:
+- **Foggy Mountain Roll**: I-M-**T**-M-T-I-M-T (thumb crosses to string 2 at position 2)
+- **Lick patterns**: Thumb may play string 2 in melodic passages, especially when index is busy on string 3
+
+**When validating finger assignments**: Flag thumb on string 2 as a WARNING (not an error) and check whether it's an intentional crossover pattern before suggesting a change. When in doubt, preserve the original fingering.
 
 ## Tasks You Handle
 
@@ -178,7 +184,7 @@ Explain banjo-specific music theory: why certain rolls work over certain chords,
 - [ ] Fret numbers are non-negative integers
 - [ ] Beat positions are 0-7 within each measure (no gaps, no duplicates)
 - [ ] Each measure has exactly 8 notes (eighth notes in 4/4 time)
-- [ ] Fingers match string: T for 3/4/5, I for 2, M for 1 (unless explicitly overridden)
+- [ ] Fingers match string: T for 3/4/5, I for 2, M for 1 (WARNING not ERROR if thumb plays string 2 — check for intentional crossover)
 - [ ] Slides have `technique: 'slide'` AND `slideToFret` set
 - [ ] Hammer-ons have `technique: 'hammer'`
 - [ ] Pull-offs have `technique: 'pull'`
