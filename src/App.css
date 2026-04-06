@@ -264,7 +264,8 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  height: 100vh;
+  width: 100%;
   gap: 16px;
   color: var(--text-secondary);
 }
@@ -12880,4 +12881,69 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--border-primary);
+}
+
+/* ─── Mode Select ─────────────────────────────────────────────────────────── */
+
+.mode-select {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100%;
+  gap: 32px;
+  padding: 24px;
+}
+
+.mode-select-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.mode-select-cards {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.mode-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 28px;
+  border-radius: 16px;
+  border: 2px solid var(--border-primary);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  width: 240px;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+
+.mode-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+.mode-card-quick:hover { border-color: #26a69a; }
+.mode-card-deep:hover { border-color: #42a5f5; }
+
+.mode-card-icon {
+  font-size: 2.4rem;
+}
+
+.mode-card-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mode-card-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.4;
 }
