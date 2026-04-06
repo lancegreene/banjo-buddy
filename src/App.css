@@ -12967,3 +12967,83 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .mode-switch-btn:hover {
   opacity: 1;
 }
+
+/* ─── Roll Generator ──────────────────────────────────────────────────────── */
+
+.roll-gen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.roll-gen-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.roll-gen-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.roll-gen-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.roll-gen-options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.roll-gen-opt {
+  padding: 4px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.roll-gen-opt:hover {
+  border-color: var(--accent-primary);
+}
+
+.roll-gen-opt-active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+
+.roll-gen-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.roll-gen-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.roll-gen-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.roll-gen-save {
+  align-self: flex-start;
+}
