@@ -23,8 +23,10 @@ interface AppState {
   // App shell
   currentPage: Page
   navMode: 'home' | 'section'
+  appMode: 'quick-pick' | 'deep-dive'
   setPage: (page: Page) => void
   goHome: () => void
+  setAppMode: (mode: 'quick-pick' | 'deep-dive') => void
 
   // Tool modals (shared across pages)
   openModal: ToolModal | null
@@ -136,8 +138,13 @@ interface AppState {
 export const useStore = create<AppState>((set, get) => ({
   currentPage: 'dashboard',
   navMode: 'home',
+  appMode: (localStorage.getItem('banjo-buddy-mode') as 'quick-pick' | 'deep-dive') || 'quick-pick',
   setPage: (page) => set({ currentPage: page, navMode: page === 'dashboard' ? 'home' : 'section' }),
   goHome: () => set({ currentPage: 'dashboard', navMode: 'home', selectedSkillId: null }),
+  setAppMode: (mode) => {
+    localStorage.setItem('banjo-buddy-mode', mode)
+    set({ appMode: mode })
+  },
 
   openModal: null,
   setOpenModal: (modal) => set({ openModal: modal }),
