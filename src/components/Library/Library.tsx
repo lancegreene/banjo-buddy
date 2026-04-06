@@ -1,18 +1,20 @@
 // ─── Library — Browse rolls, licks, and songs with FretLab-style tab viewer ──
 import { useState, useMemo } from 'react'
 import { FretboardDiagram } from '../Fretboard/FretboardDiagram'
+import { RollGenerator } from '../RollGenerator/RollGenerator'
 import { getAllPatterns, type RollPattern } from '../../data/rollPatterns'
 import { LICK_LIBRARY, type LickReference } from '../../data/lickLibrary'
 import { SONGS, type Song } from '../../data/songLibrary'
 import { rollPatternToFretNotes, lickToFretNotes, sectionToFretNotes } from '../../engine/rollToFretNotes'
 import type { FretNote } from '../../data/fretboardNotes'
 
-type LibraryTab = 'rolls' | 'licks' | 'songs'
+type LibraryTab = 'rolls' | 'licks' | 'songs' | 'generate'
 
 const TAB_DEFS: { id: LibraryTab; label: string; color: string }[] = [
   { id: 'rolls', label: 'Roll Repo', color: '#26a69a' },
   { id: 'licks', label: 'Lick Library', color: '#66bb6a' },
   { id: 'songs', label: 'Song Studio', color: '#42a5f5' },
+  { id: 'generate', label: 'Generate', color: '#ab47bc' },
 ]
 
 const BPM_PRESETS = [60, 80, 100, 120, 140]
@@ -99,6 +101,7 @@ export function Library() {
       </div>
 
       {/* Item buttons */}
+      {tab !== 'generate' && (
       <div className="library-items">
         {tab === 'rolls' && rolls.map(r => (
           <button
@@ -136,6 +139,7 @@ export function Library() {
           </button>
         ))}
       </div>
+      )}
 
       {/* Song section selector (only for songs with multiple sections) */}
       {tab === 'songs' && selectedId && (() => {
@@ -158,7 +162,7 @@ export function Library() {
       })()}
 
       {/* FretLab-style tab viewer */}
-      {selectedId && notes.length > 0 && (
+      {tab !== 'generate' && selectedId && notes.length > 0 && (
         <div className="library-viewer">
           <div className="library-viewer-label">{label}</div>
 
@@ -199,10 +203,14 @@ export function Library() {
       )}
 
       {/* Empty state */}
-      {!selectedId && (
+      {tab !== 'generate' && !selectedId && (
         <div className="library-empty">
           Select a {tab === 'rolls' ? 'roll' : tab === 'licks' ? 'lick' : 'song'} above to view its tab
         </div>
+      )}
+
+      {tab === 'generate' && (
+        <RollGenerator />
       )}
     </div>
   )
