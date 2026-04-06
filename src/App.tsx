@@ -27,6 +27,8 @@ import { HomePage } from './components/Home/HomePage'
 import { TopNavBar } from './components/Home/TopNavBar'
 import { ProfilePage } from './components/Profile/ProfilePage'
 import { AuthScreen } from './components/Auth/AuthScreen'
+import { ModeSelect } from './components/ModeSelect/ModeSelect'
+import { Library } from './components/Library/Library'
 import { supabase } from './db/supabase'
 import { startAutoSync, stopAutoSync, uploadLocalData, setOnAfterPull } from './db/sync'
 const SPLIT_PAGES = new Set<Page>(['pathway'])
@@ -119,6 +121,8 @@ export default function App() {
 
   const { theme, toggleTheme } = useTheme()
   const { celebration, dismiss: dismissCelebration } = useCelebration()
+  const appMode = useStore((s) => s.appMode)
+  const setAppMode = useStore((s) => s.setAppMode)
   const openModal = useStore((s) => s.openModal)
   const setOpenModal = useStore((s) => s.setOpenModal)
   const fretlabPatternId = useStore((s) => s.fretlabPatternId)
@@ -285,12 +289,38 @@ export default function App() {
     return <UserPicker />
   }
 
+  // Mode select gate — show choice if user hasn't picked yet
+  const savedMode = localStorage.getItem('banjo-buddy-mode')
+  if (!savedMode) {
+    return <ModeSelect />
+  }
+
+  // Quick Pick route — Library-first layout
+  if (appMode === 'quick-pick') {
+    return (
+      <div className="app">
+        <UserBadge theme={theme} onToggleTheme={toggleTheme} />
+        <main className="app-content app-content-home" style={{ paddingTop: 16 }}>
+          <Library />
+        </main>
+        <button className="mode-switch-btn" onClick={() => setAppMode('deep-dive')}>
+          Switch to Deep Dive
+        </button>
+        {openModal === 'metronome' && <Metronome />}
+        {openModal === 'tuner' && <Tuner />}
+      </div>
+    )
+  }
+
   const isSplitPage = SPLIT_PAGES.has(page)
 
   return (
     <div className={`app ${navMode === 'home' ? 'app-home-mode' : ''}`}>
       {/* Top nav bar (visible when in a section, not on home) */}
       {navMode === 'section' && <TopNavBar />}
+      <button className="mode-switch-btn" onClick={() => setAppMode('quick-pick')}>
+        Switch to Quick Pick
+      </button>
 
       {/* User badge + account menu (top-right) */}
       <UserBadge theme={theme} onToggleTheme={toggleTheme} />
