@@ -45,7 +45,6 @@ import { TempoModeSelector, type TempoMode } from './TempoModeSelector'
 import { createInterleavedTempoState, nextInterleavedBpm, type InterleavedTempoState } from '../../engine/adaptiveTempo'
 import { RollClock } from './RollClock'
 import { WeakSpotDrills } from './WeakSpotDrills'
-import { JamCircle } from './JamCircle'
 import { TeacherMediaPlayer } from '../Teaching/TeacherMediaPlayer'
 import { VideoRecorder } from '../Teaching/VideoRecorder'
 import { AudioRecorderTeacher } from '../Teaching/AudioRecorderTeacher'
@@ -643,14 +642,6 @@ function ExerciseView({
             />
           )}
 
-          {/* Jam Circle — spatial audio toggle */}
-          {hasLiveRoll && (
-            <JamCircle
-              onToggleSpatial={(on) => synth.setSpatial(on)}
-              isPlaying={synth.isPlaying}
-              currentBeat={synth.currentBeat}
-            />
-          )}
 
           {/* Inline tool panels */}
           {activeTool === 'metronome' && <div className="inline-tool-panel"><Metronome controlledBpm={controlledBpm} /></div>}

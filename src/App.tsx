@@ -290,8 +290,7 @@ export default function App() {
   }
 
   // Mode select gate — show choice if user hasn't picked yet
-  const savedMode = localStorage.getItem('banjo-buddy-mode')
-  if (!savedMode) {
+  if (!appMode) {
     return <ModeSelect />
   }
 

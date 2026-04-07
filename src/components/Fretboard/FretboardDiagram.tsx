@@ -233,7 +233,12 @@ function formatTabCell(note: FretNote): string {
   return fret
 }
 
-// ─── Tab Strip — now operates on DisplayStep[] for pinch support ────────────
+// ─── ASCII Tab Strip — real tablature look with 5 string lines ──────────────
+
+const STRING_LABELS: Record<number, string> = {
+  1: 'D4', 2: 'B3', 3: 'G3', 4: 'D3', 5: 'G4',
+}
+const NOTES_PER_MEASURE = 8
 
 function TabStrip({ steps, activeStep, onStepClick }: {
   steps: DisplayStep[]
@@ -241,117 +246,139 @@ function TabStrip({ steps, activeStep, onStepClick }: {
   onStepClick?: (stepIdx: number) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
-
-  // Auto-scroll to keep active step centered
-  useEffect(() => {
-    if (activeStep < 0 || !scrollRef.current) return
-    const container = scrollRef.current
-    const activeEl = container.querySelector(`[data-tab-step="${activeStep}"]`) as HTMLElement
-    if (activeEl) {
-      activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
-    }
-  }, [activeStep])
-
   const strings = [1, 2, 3, 4, 5]
 
+  // Auto-scroll to keep active step visible
+  useEffect(() => {
+    if (activeStep < 0 || !scrollRef.current) return
+    const el = scrollRef.current.querySelector(`[data-tab-step="${activeStep}"]`) as HTMLElement
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+  }, [activeStep])
+
+  // Group steps into measures of 8
+  const measures: DisplayStep[][] = []
+  for (let i = 0; i < steps.length; i += NOTES_PER_MEASURE) {
+    measures.push(steps.slice(i, i + NOTES_PER_MEASURE))
+  }
+
+  // Compute max cell width per step (technique notation like 2S5 is wider)
+  function cellWidth(step: DisplayStep): number {
+    let max = 1
+    for (const n of step.notes) {
+      max = Math.max(max, formatTabCell(n).length)
+    }
+    return max
+  }
+
+  // Render dashes to fill a given character width
+  function dashes(count: number): string {
+    return '-'.repeat(count)
+  }
+
   return (
-    <div className="fretboard-tab-strip">
-      <div className="fretboard-tab-labels">
-        {strings.map((str) => (
-          <div
-            key={str}
-            className="fretboard-tab-label"
-            style={{ color: STRING_COLORS[str] }}
-          >
-            {str === 1 ? 'D4' : str === 2 ? 'B3' : str === 3 ? 'G3' : str === 4 ? 'D3' : 'G4'}
+    <div className="ascii-tab">
+      {/* Fixed string labels */}
+      <div className="ascii-tab-labels">
+        {strings.map(str => (
+          <div key={str} className="ascii-tab-label" style={{ color: STRING_COLORS[str] }}>
+            {STRING_LABELS[str]}
           </div>
         ))}
-        <div className="fretboard-tab-label fretboard-tab-label-finger">Pick</div>
-        {steps.some(s => s.notes.some(n => n.duration && n.duration !== 'eighth')) && (
-          <div className="fretboard-tab-label fretboard-tab-label-finger">Dur</div>
-        )}
+        <div className="ascii-tab-label ascii-tab-label-finger">Pick</div>
       </div>
-      <div className="fretboard-tab-scroll" ref={scrollRef}>
-        <div className="fretboard-tab-grid">
-          {strings.map((str) => (
-            <div key={str} className="fretboard-tab-row">
-              {steps.map((step, stepIdx) => {
-                const noteOnString = step.notes.find(n => n.string === str)
-                const isActive = stepIdx === activeStep
-                const isPlayed = activeStep >= 0 && stepIdx < activeStep
-                const isNext = stepIdx === activeStep + 1
-                const isPinch = step.notes.length > 1
-                return (
-                  <div
-                    key={stepIdx}
-                    data-tab-step={noteOnString ? stepIdx : undefined}
-                    className={`fretboard-tab-cell ${
-                      noteOnString ? 'fretboard-tab-cell-note' : ''
-                    } ${isActive && noteOnString ? 'fretboard-tab-cell-active' : ''
-                    } ${isPlayed && noteOnString ? 'fretboard-tab-cell-played' : ''
-                    } ${isNext && noteOnString ? 'fretboard-tab-cell-next' : ''
-                    } ${noteOnString?.technique ? `fretboard-tab-cell-${noteOnString.technique}` : ''
-                    } ${isPinch && noteOnString ? 'fretboard-tab-cell-pinch' : ''}`}
-                    style={noteOnString ? { color: STRING_COLORS[str], cursor: 'pointer' } : undefined}
-                    onClick={noteOnString && onStepClick ? () => onStepClick(stepIdx) : undefined}
-                  >
-                    {noteOnString ? formatTabCell(noteOnString) : '—'}
+
+      {/* Scrollable tab body */}
+      <div className="ascii-tab-scroll" ref={scrollRef}>
+        {measures.map((measure, mIdx) => {
+          const baseIdx = mIdx * NOTES_PER_MEASURE
+          return (
+            <div key={mIdx} className="ascii-tab-measure">
+              {/* Opening bar line */}
+              <div className="ascii-tab-col ascii-tab-bar">
+                {strings.map(str => (
+                  <div key={str} className="ascii-tab-cell">|</div>
+                ))}
+                <div className="ascii-tab-cell ascii-tab-cell-finger">&nbsp;</div>
+              </div>
+
+              {measure.map((step, noteIdx) => {
+                const globalIdx = baseIdx + noteIdx
+                const isActive = globalIdx === activeStep
+                const isPlayed = activeStep >= 0 && globalIdx < activeStep
+                const isNext = globalIdx === activeStep + 1
+                const w = cellWidth(step)
+
+                // Dash separator before each note (1 char wide)
+                const dashCol = (
+                  <div className="ascii-tab-col ascii-tab-dash" key={`d${noteIdx}`}>
+                    {strings.map(str => (
+                      <div key={str} className="ascii-tab-cell" style={{ color: 'rgba(255,255,255,0.2)' }}>-</div>
+                    ))}
+                    <div className="ascii-tab-cell ascii-tab-cell-finger">&nbsp;</div>
                   </div>
                 )
+
+                // Finger label
+                const fingers = step.notes
+                  .map(n => n.finger || '')
+                  .filter(Boolean)
+                const fingerLabel = fingers.length > 1 ? fingers.join('+') : fingers[0] ?? ''
+
+                // Note column
+                const noteCol = (
+                  <div
+                    key={`n${noteIdx}`}
+                    data-tab-step={globalIdx}
+                    className={`ascii-tab-col ascii-tab-note ${isActive ? 'ascii-tab-active' : ''} ${isPlayed ? 'ascii-tab-played' : ''} ${isNext ? 'ascii-tab-next' : ''}`}
+                    style={{ cursor: onStepClick ? 'pointer' : undefined }}
+                    onClick={onStepClick ? () => onStepClick(globalIdx) : undefined}
+                  >
+                    {strings.map(str => {
+                      const noteOnString = step.notes.find(n => n.string === str)
+                      if (noteOnString) {
+                        const text = formatTabCell(noteOnString)
+                        const padded = w > text.length
+                          ? text + dashes(w - text.length)
+                          : text
+                        return (
+                          <div key={str} className="ascii-tab-cell ascii-tab-cell-fret" style={{ color: STRING_COLORS[str] }}>
+                            {padded}
+                          </div>
+                        )
+                      }
+                      return (
+                        <div key={str} className="ascii-tab-cell" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                          {dashes(w)}
+                        </div>
+                      )
+                    })}
+                    <div className="ascii-tab-cell ascii-tab-cell-finger" style={{ color: STRING_COLORS[step.notes[0]?.string] }}>
+                      {fingerLabel}
+                    </div>
+                  </div>
+                )
+
+                return [dashCol, noteCol]
               })}
-            </div>
-          ))}
-          {/* Picking finger row */}
-          <div className="fretboard-tab-row fretboard-tab-row-finger">
-            {steps.map((step, stepIdx) => {
-              const isActive = stepIdx === activeStep
-              const isPlayed = activeStep >= 0 && stepIdx < activeStep
-              const isNext = stepIdx === activeStep + 1
-              const fingers = step.notes
-                .map(n => n.finger === 'T' ? 'T' : n.finger === 'I' ? 'I' : n.finger === 'M' ? 'M' : '')
-                .filter(Boolean)
-              const label = fingers.length > 1 ? fingers.join('+') : fingers[0] ?? ''
-              const primaryColor = STRING_COLORS[step.notes[0].string]
-              return (
-                <div
-                  key={stepIdx}
-                  className={`fretboard-tab-cell fretboard-tab-cell-finger ${
-                    isActive ? 'fretboard-tab-cell-active' : ''
-                  } ${isPlayed ? 'fretboard-tab-cell-played' : ''
-                  } ${isNext ? 'fretboard-tab-cell-next' : ''}`}
-                  style={{ color: primaryColor }}
-                >
-                  {label}
+
+              {/* Trailing dash + closing bar for last measure */}
+              <div className="ascii-tab-col ascii-tab-dash">
+                {strings.map(str => (
+                  <div key={str} className="ascii-tab-cell" style={{ color: 'rgba(255,255,255,0.2)' }}>-</div>
+                ))}
+                <div className="ascii-tab-cell ascii-tab-cell-finger">&nbsp;</div>
+              </div>
+              {mIdx === measures.length - 1 && (
+                <div className="ascii-tab-col ascii-tab-bar">
+                  {strings.map(str => (
+                    <div key={str} className="ascii-tab-cell">|</div>
+                  ))}
+                  <div className="ascii-tab-cell ascii-tab-cell-finger">&nbsp;</div>
                 </div>
-              )
-            })}
-          </div>
-          {/* Duration row (only if any non-eighth durations present) */}
-          {steps.some(s => s.notes.some(n => n.duration && n.duration !== 'eighth')) && (
-            <div className="fretboard-tab-row fretboard-tab-row-finger">
-              {steps.map((step, stepIdx) => {
-                const isActive = stepIdx === activeStep
-                const isPlayed = activeStep >= 0 && stepIdx < activeStep
-                const isNext = stepIdx === activeStep + 1
-                const dur = step.notes[0]?.duration || 'eighth'
-                const DUR_LABELS: Record<string, string> = {
-                  whole: 'W', half: 'H', quarter: 'Q', eighth: '8', sixteenth: '16',
-                }
-                return (
-                  <div
-                    key={stepIdx}
-                    className={`fretboard-tab-cell fretboard-tab-cell-finger fretboard-tab-cell-dur ${
-                      isActive ? 'fretboard-tab-cell-active' : ''
-                    } ${isPlayed ? 'fretboard-tab-cell-played' : ''
-                    } ${isNext ? 'fretboard-tab-cell-next' : ''}`}
-                  >
-                    {DUR_LABELS[dur] || '8'}
-                  </div>
-                )
-              })}
+              )}
             </div>
-          )}
-        </div>
+          )
+        })}
       </div>
     </div>
   )

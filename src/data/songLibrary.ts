@@ -1002,9 +1002,9 @@ const CRIPPLE_CREEK_STEFFENS_A: SongSection = {
       chord: 'G',
       notes: [
         { string: 1, fret: 2, beat: 0, finger: 'M', technique: 'slide', slideToFret: 5 },  // 2S5 (E→G)
-        { string: 5, fret: 0, beat: 1, finger: 'T' },   // G drone
+        { string: 5, fret: 0, beat: 0, finger: 'T' },   // G drone (pinch with S1)
         { string: 1, fret: 5, beat: 2, finger: 'M' },    // G4
-        { string: 5, fret: 0, beat: 3, finger: 'T' },    // G drone
+        { string: 5, fret: 0, beat: 2, finger: 'T' },    // G drone (pinch with S1)
         { string: 1, fret: 0, beat: 4, finger: 'M' },    // D4
         { string: 5, fret: 0, beat: 5, finger: 'T' },    // G drone
         { string: 2, fret: 0, beat: 6, finger: 'I' },    // B3
@@ -1022,7 +1022,7 @@ const CRIPPLE_CREEK_STEFFENS_A: SongSection = {
         { string: 1, fret: 0, beat: 4, finger: 'M' },     // D4 (G resolution)
         { string: 5, fret: 0, beat: 5, finger: 'T' },     // G drone
         { string: 1, fret: 0, beat: 6, finger: 'M' },     // D4
-        { string: 5, fret: 0, beat: 7, finger: 'T' },     // G drone
+        { string: 5, fret: 0, beat: 6, finger: 'T' },     // G drone (pinch with S1)
       ],
     },
     // ── m3: G — Slide on string 3 (2S4) with alternating bass ──
@@ -1058,9 +1058,9 @@ const CRIPPLE_CREEK_STEFFENS_A: SongSection = {
       chord: 'G',
       notes: [
         { string: 1, fret: 2, beat: 0, finger: 'M', technique: 'slide', slideToFret: 5 },
-        { string: 5, fret: 0, beat: 1, finger: 'T' },
+        { string: 5, fret: 0, beat: 0, finger: 'T' },  // pinch with S1
         { string: 1, fret: 5, beat: 2, finger: 'M' },
-        { string: 5, fret: 0, beat: 3, finger: 'T' },
+        { string: 5, fret: 0, beat: 2, finger: 'T' },  // pinch with S1
         { string: 1, fret: 0, beat: 4, finger: 'M' },
         { string: 5, fret: 0, beat: 5, finger: 'T' },
         { string: 2, fret: 0, beat: 6, finger: 'I' },
@@ -1078,7 +1078,7 @@ const CRIPPLE_CREEK_STEFFENS_A: SongSection = {
         { string: 1, fret: 0, beat: 4, finger: 'M' },
         { string: 5, fret: 0, beat: 5, finger: 'T' },
         { string: 1, fret: 0, beat: 6, finger: 'M' },
-        { string: 5, fret: 0, beat: 7, finger: 'T' },
+        { string: 5, fret: 0, beat: 6, finger: 'T' },  // pinch with S1
       ],
     },
     // ── m7: G — Varied repeat of m3 (more S1/S2 fills, no S3 after slide) ──
@@ -1104,8 +1104,8 @@ const CRIPPLE_CREEK_STEFFENS_A: SongSection = {
         { string: 1, fret: 0, beat: 2, finger: 'M' },     // D4
         { string: 5, fret: 0, beat: 3, finger: 'T' },     // G drone
         { string: 3, fret: 0, beat: 4, finger: 'T' },     // G3
-        { string: 1, fret: 0, beat: 5, finger: 'M' },     // D4
-        { string: 5, fret: 0, beat: 6, finger: 'T' },     // G drone
+        { string: 1, fret: 0, beat: 6, finger: 'M' },     // D4 (pinch with S5)
+        { string: 5, fret: 0, beat: 6, finger: 'T' },     // G drone (pinch with S1)
         { string: 5, fret: 0, beat: 7, finger: 'T' },     // G drone (ending)
       ],
     },
@@ -1144,7 +1144,7 @@ const CRIPPLE_CREEK_STEFFENS_B: SongSection = {
         { string: 4, fret: 0, beat: 4, finger: 'T' },     // D3 bass
         { string: 5, fret: 0, beat: 5, finger: 'T' },     // G drone
         { string: 1, fret: 0, beat: 6, finger: 'M' },     // D4
-        { string: 5, fret: 0, beat: 7, finger: 'T' },     // G drone
+        { string: 5, fret: 0, beat: 6, finger: 'T' },     // G drone (pinch with S1)
       ],
     },
     // ── m11: G — Repeat of m9 (slide + pull-off) ──
@@ -1172,7 +1172,7 @@ const CRIPPLE_CREEK_STEFFENS_B: SongSection = {
         { string: 3, fret: 0, beat: 4, finger: 'T' },     // G3
         { string: 5, fret: 0, beat: 5, finger: 'T' },     // G drone
         { string: 1, fret: 0, beat: 6, finger: 'M' },     // D4
-        { string: 5, fret: 0, beat: 7, finger: 'T' },     // G drone
+        { string: 5, fret: 0, beat: 6, finger: 'T' },     // G drone (pinch with S1)
       ],
     },
     // ── m13: G — Repeat of m9 ──
@@ -1200,7 +1200,7 @@ const CRIPPLE_CREEK_STEFFENS_B: SongSection = {
         { string: 4, fret: 0, beat: 4, finger: 'T' },
         { string: 5, fret: 0, beat: 5, finger: 'T' },
         { string: 1, fret: 0, beat: 6, finger: 'M' },
-        { string: 5, fret: 0, beat: 7, finger: 'T' },
+        { string: 5, fret: 0, beat: 6, finger: 'T' },  // pinch with S1
       ],
     },
     // ── m15: G — Varied ending with extra S2 fills ──
@@ -1229,6 +1229,140 @@ const CRIPPLE_CREEK_STEFFENS_B: SongSection = {
         { string: 2, fret: 0, beat: 5, finger: 'I' },     // B3
         { string: 1, fret: 0, beat: 6, finger: 'M' },     // D4
         { string: 5, fret: 0, beat: 7, finger: 'T' },     // G drone (final)
+      ],
+    },
+  ],
+}
+
+// ── Blackberry Blossom — Scruggs-Style Arrangement ──────────────────────────
+// Source: training_material/BanjoTabs/black1.txt
+// Standard Blackberry Blossom fiddle tune adapted for banjo.
+// A Part: G-D (repeated 4x), B Part: C-G / C-G with 1st and 2nd endings.
+// Features slide 4→5 on string 4 (F#→G approach), melodic passages on strings
+// 1-2 up the neck (frets 7-10 over D chord), and pinch notes.
+
+// A Part: 2 measures — G with slide + D with melodic run
+// The signature opening is the 4→5 slide on string 4 (F#3→G3 approach into G chord).
+// Over D chord, melody ascends on strings 2 (fret 10=A4) and 1 (fret 9=B4),
+// then descends through fret 7 (F#4/A4) with string 5 drone throughout.
+
+const BLACKBERRY_BLOSSOM_A: SongSection = {
+  id: 'blackberry_blossom_a',
+  name: 'A Part',
+  measures: [
+    // Measure 1: G — slide 4→5 on S4, open strings, pinch at end
+    {
+      chord: 'G',
+      notes: [
+        { string: 4, fret: 4, beat: 0, finger: 'T', technique: 'slide', slideToFret: 5 },  // F#3→G3 approach
+        { string: 3, fret: 0, beat: 1, finger: 'T' },   // G3
+        { string: 1, fret: 0, beat: 2, finger: 'M' },   // D4
+        { string: 5, fret: 0, beat: 3, finger: 'T' },   // G4 drone
+        { string: 3, fret: 0, beat: 4, finger: 'T' },   // G3
+        { string: 3, fret: 0, beat: 5, finger: 'T' },   // G3 (muted ghost stroke)
+        { string: 1, fret: 0, beat: 6, finger: 'M' },   // D4 — pinch with S5
+        { string: 5, fret: 0, beat: 6, finger: 'T' },   // G4 — pinch with S1
+      ],
+    },
+    // Measure 2: D — melodic run up the neck: A4, B4, F#4, A4 with G4 drone
+    {
+      chord: 'D',
+      notes: [
+        { string: 5, fret: 0, beat: 0, finger: 'T' },    // G4 drone
+        { string: 2, fret: 10, beat: 1, finger: 'I' },   // A4 (D chord 5th)
+        { string: 1, fret: 9, beat: 2, finger: 'M' },    // B4 (scale tone — 6th of D)
+        { string: 5, fret: 0, beat: 3, finger: 'T' },    // G4 drone
+        { string: 2, fret: 7, beat: 4, finger: 'I' },    // F#4 (D chord 3rd)
+        { string: 1, fret: 7, beat: 5, finger: 'M' },    // A4 (D chord 5th)
+        { string: 5, fret: 0, beat: 6, finger: 'T' },    // G4 drone
+        { string: 2, fret: 7, beat: 7, finger: 'I' },    // F#4 (D chord 3rd)
+      ],
+    },
+  ],
+}
+
+// B Part: 2 measures — C→G half-measure changes, with melodic passages
+// Measure 3: C position (frets 9/7 on S3/S2 = E4/F#4) into G open strings.
+// Measure 4: C position with hammer-on 0→2 on S4 (D3→E3), then G resolution.
+
+const BLACKBERRY_BLOSSOM_B: SongSection = {
+  id: 'blackberry_blossom_b',
+  name: 'B Part',
+  measures: [
+    // Measure 3: C (beats 0-3) → G (beats 4-7)
+    {
+      chord: 'C',
+      notes: [
+        { string: 3, fret: 9, beat: 0, finger: 'T' },    // E4 (C chord 3rd)
+        { string: 2, fret: 7, beat: 1, finger: 'I' },    // F#4 (passing tone → G)
+        { string: 5, fret: 0, beat: 2, finger: 'T' },    // G4 (C chord 5th)
+        { string: 3, fret: 9, beat: 3, finger: 'T' },    // E4 (C chord 3rd)
+        { string: 1, fret: 0, beat: 4, finger: 'M' },    // D4 (G chord context)
+        { string: 2, fret: 0, beat: 5, finger: 'I' },    // B3 (G chord 3rd)
+        { string: 3, fret: 0, beat: 6, finger: 'T' },    // G3 (G chord root)
+        { string: 1, fret: 0, beat: 7, finger: 'M' },    // D4 (G chord 5th)
+      ],
+    },
+    // Measure 4: C (beats 0-3) → G (beats 4-7) — hammer-on on S4
+    {
+      chord: 'C',
+      notes: [
+        { string: 4, fret: 0, beat: 0, finger: 'T', technique: 'hammer', slideToFret: 2 },  // D3→E3 (C chord 3rd)
+        { string: 2, fret: 1, beat: 1, finger: 'I' },    // C4 (C chord root)
+        { string: 3, fret: 0, beat: 2, finger: 'T' },    // G3 (C chord 5th)
+        { string: 1, fret: 2, beat: 3, finger: 'M' },    // E4 (C chord 3rd)
+        { string: 4, fret: 0, beat: 4, finger: 'T' },    // D3 (G chord context)
+        { string: 4, fret: 0, beat: 5, finger: 'T' },    // D3 (muted ghost stroke)
+        { string: 4, fret: 5, beat: 6, finger: 'T' },    // G3 (G chord root)
+        { string: 3, fret: 2, beat: 7, finger: 'T' },    // A3 (scale tone — 2nd of G)
+      ],
+    },
+  ],
+}
+
+// 1st Ending: A→D (1 measure) — descending melody through A chord into D resolution
+// Walk-down: B3→G3→A3→B3→A3 then D4 with ghost notes.
+
+const BLACKBERRY_BLOSSOM_END1: SongSection = {
+  id: 'blackberry_blossom_end1',
+  name: '1st Ending',
+  measures: [
+    // A (beats 0-3) → D (beats 4-7)
+    {
+      chord: 'A',
+      notes: [
+        { string: 2, fret: 0, beat: 0, finger: 'I' },    // B3 (passing tone)
+        { string: 4, fret: 5, beat: 1, finger: 'T' },    // G3 (passing tone)
+        { string: 3, fret: 2, beat: 2, finger: 'T' },    // A3 (A chord root)
+        { string: 2, fret: 0, beat: 3, finger: 'I' },    // B3 (passing tone)
+        { string: 3, fret: 2, beat: 4, finger: 'T' },    // A3 (D chord 5th)
+        { string: 3, fret: 0, beat: 5, finger: 'T' },    // G3 (muted ghost stroke)
+        { string: 1, fret: 0, beat: 6, finger: 'M' },    // D4 (D chord root)
+        { string: 1, fret: 0, beat: 7, finger: 'M' },    // D4 (muted ghost stroke)
+      ],
+    },
+  ],
+}
+
+// 2nd Ending: D→G (1 measure) — descending through D chord into G resolution
+// Walk-down: B3→G3→A3→F#3→G3 then chromatic D#3 approach.
+
+const BLACKBERRY_BLOSSOM_END2: SongSection = {
+  id: 'blackberry_blossom_end2',
+  name: '2nd Ending',
+  measures: [
+    // D (beats 0-3) → G (beats 4-7)
+    {
+      chord: 'D',
+      notes: [
+        { string: 2, fret: 0, beat: 0, finger: 'I' },    // B3 (passing tone)
+        { string: 4, fret: 5, beat: 1, finger: 'T' },    // G3 (passing tone)
+        { string: 3, fret: 2, beat: 2, finger: 'T' },    // A3 (D chord 5th)
+        { string: 4, fret: 4, beat: 3, finger: 'T' },    // F#3 (D chord 3rd)
+        { string: 3, fret: 0, beat: 4, finger: 'T' },    // G3 (G chord root)
+        { string: 3, fret: 0, beat: 5, finger: 'T' },    // G3 (muted ghost stroke)
+        { string: 4, fret: 1, beat: 6, finger: 'T' },    // D#3 (chromatic approach → D)
+        { string: 4, fret: 0, beat: 7, finger: 'T' },    // D3 (muted ghost stroke)
       ],
     },
   ],
@@ -1294,6 +1428,27 @@ export const SONGS: Song[] = [
     performanceBpm: 120,
     sections: [CRIPPLE_CREEK_STEFFENS_A, CRIPPLE_CREEK_STEFFENS_B],
     structure: ['cripple_creek_steffens_a', 'cripple_creek_steffens_b'],
+  },
+  // ── Blackberry Blossom — Scruggs-style arrangement ─────────────────────────
+  // Source: training_material/BanjoTabs/black1.txt (Joerg Steffens tab)
+  // Key of G, A part (G-D repeated 4x) + B part (C-G, C-G, endings).
+  // Features melodic passages up the neck on strings 1-2, slide on string 4,
+  // and pinch notes. Half-measure chord changes in B part.
+  {
+    id: 'blackberry_blossom',
+    name: 'Blackberry Blossom',
+    key: 'G',
+    defaultBpm: 80,
+    performanceBpm: 130,
+    sections: [BLACKBERRY_BLOSSOM_A, BLACKBERRY_BLOSSOM_B, BLACKBERRY_BLOSSOM_END1, BLACKBERRY_BLOSSOM_END2],
+    structure: [
+      'blackberry_blossom_a', 'blackberry_blossom_a', 'blackberry_blossom_a', 'blackberry_blossom_a',
+      'blackberry_blossom_b',
+      'blackberry_blossom_end1',
+      'blackberry_blossom_a', 'blackberry_blossom_a', 'blackberry_blossom_a', 'blackberry_blossom_a',
+      'blackberry_blossom_b',
+      'blackberry_blossom_end2',
+    ],
   },
 ]
 

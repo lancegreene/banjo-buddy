@@ -1,26 +1,28 @@
-// ─── Library — Browse rolls, licks, and songs with FretLab-style tab viewer ──
+// ─── Library — Browse rolls, licks, songs, scales with FretLab-style tab viewer ──
 import { useState, useMemo } from 'react'
 import { FretboardDiagram } from '../Fretboard/FretboardDiagram'
 import { RollGenerator } from '../RollGenerator/RollGenerator'
-import { getAllPatterns, type RollPattern } from '../../data/rollPatterns'
-import { LICK_LIBRARY, type LickReference } from '../../data/lickLibrary'
-import { SONGS, type Song } from '../../data/songLibrary'
+import { getAllPatterns } from '../../data/rollPatterns'
+import { LICK_LIBRARY } from '../../data/lickLibrary'
+import { SONGS } from '../../data/songLibrary'
+import { SCALE_LIBRARY } from '../../data/scaleLibrary'
 import { rollPatternToFretNotes, lickToFretNotes, sectionToFretNotes } from '../../engine/rollToFretNotes'
 import type { FretNote } from '../../data/fretboardNotes'
 
-type LibraryTab = 'rolls' | 'licks' | 'songs' | 'generate'
+type LibraryCategory = 'rolls' | 'licks' | 'songs' | 'scales' | 'generate'
 
-const TAB_DEFS: { id: LibraryTab; label: string; color: string }[] = [
-  { id: 'rolls', label: 'Roll Repo', color: '#26a69a' },
-  { id: 'licks', label: 'Lick Library', color: '#66bb6a' },
-  { id: 'songs', label: 'Song Studio', color: '#42a5f5' },
-  { id: 'generate', label: 'Generate', color: '#ab47bc' },
+const CATEGORIES: { id: LibraryCategory; label: string; icon: string; desc: string; color: string }[] = [
+  { id: 'rolls',    label: 'Roll Repo',    icon: '🔄', desc: 'Scruggs picking patterns',          color: '#26a69a' },
+  { id: 'licks',    label: 'Lick Library',  icon: '🎵', desc: 'Classic bluegrass licks',           color: '#66bb6a' },
+  { id: 'songs',    label: 'Song Studio',   icon: '🎶', desc: 'Full song arrangements',            color: '#42a5f5' },
+  { id: 'scales',   label: 'Scales',        icon: '🎼', desc: 'Major, melodic, pentatonic & blues', color: '#ef5350' },
+  { id: 'generate', label: 'Roll Generator', icon: '🎲', desc: 'Create custom roll patterns',      color: '#ab47bc' },
 ]
 
 const BPM_PRESETS = [60, 80, 100, 120, 140]
 
 export function Library() {
-  const [tab, setTab] = useState<LibraryTab>('rolls')
+  const [category, setCategory] = useState<LibraryCategory | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [autoPlay, setAutoPlay] = useState(false)
@@ -30,24 +32,25 @@ export function Library() {
   const rolls = useMemo(() => getAllPatterns(), [])
   const licks = LICK_LIBRARY
   const songs = SONGS
+  const scales = SCALE_LIBRARY
 
   // ── Resolve selected item to FretNote[] ──
   const { notes, label } = useMemo((): { notes: FretNote[]; label: string } => {
-    if (!selectedId) return { notes: [], label: '' }
+    if (!selectedId || !category) return { notes: [], label: '' }
 
-    if (tab === 'rolls') {
+    if (category === 'rolls') {
       const pattern = rolls.find(r => r.id === selectedId)
       if (!pattern) return { notes: [], label: '' }
       return { notes: rollPatternToFretNotes(pattern), label: pattern.name }
     }
 
-    if (tab === 'licks') {
+    if (category === 'licks') {
       const lick = licks.find(l => l.id === selectedId)
       if (!lick) return { notes: [], label: '' }
       return { notes: lickToFretNotes(lick.notes), label: lick.name }
     }
 
-    if (tab === 'songs') {
+    if (category === 'songs') {
       const song = songs.find(s => s.id === selectedId)
       if (!song) return { notes: [], label: '' }
       const section = selectedSectionId
@@ -57,92 +60,134 @@ export function Library() {
       return { notes: sectionToFretNotes(section.measures), label: `${song.name} — ${section.name}` }
     }
 
-    return { notes: [], label: '' }
-  }, [tab, selectedId, selectedSectionId, rolls, licks, songs])
-
-  // When switching tabs, clear selection
-  function handleTabChange(newTab: LibraryTab) {
-    if (newTab !== tab) {
-      setTab(newTab)
-      setSelectedId(null)
-      setSelectedSectionId(null)
-      setAutoPlay(false)
+    if (category === 'scales') {
+      const scale = scales.find(s => s.id === selectedId)
+      if (!scale) return { notes: [], label: '' }
+      return { notes: scale.notes, label: scale.name }
     }
+
+    return { notes: [], label: '' }
+  }, [category, selectedId, selectedSectionId, rolls, licks, songs, scales])
+
+  function handleBack() {
+    setCategory(null)
+    setSelectedId(null)
+    setSelectedSectionId(null)
+    setAutoPlay(false)
   }
 
   function handleSelect(id: string) {
     setSelectedId(id)
     setSelectedSectionId(null)
     setAutoPlay(false)
-    // Set default BPM for licks/songs
-    if (tab === 'licks') {
+    if (category === 'licks') {
       const lick = licks.find(l => l.id === id)
       if (lick) setBpm(lick.referenceBpm)
-    } else if (tab === 'songs') {
+    } else if (category === 'songs') {
       const song = songs.find(s => s.id === id)
       if (song) setBpm(song.defaultBpm)
+    } else if (category === 'scales') {
+      const scale = scales.find(s => s.id === id)
+      if (scale) setBpm(scale.defaultBpm)
     }
   }
 
+  const activeCat = CATEGORIES.find(c => c.id === category)
+
+  // ── Main menu: category cards ──
+  if (!category) {
+    return (
+      <div className="library">
+        <div className="library-menu">
+          <div className="library-menu-title">Quick Pick</div>
+          <div className="library-menu-cards">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.id}
+                className="library-menu-card"
+                style={{ '--cat-color': cat.color } as React.CSSProperties}
+                onClick={() => setCategory(cat.id)}
+              >
+                <span className="library-menu-card-icon">{cat.icon}</span>
+                <span className="library-menu-card-label">{cat.label}</span>
+                <span className="library-menu-card-desc">{cat.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Sub-level: items within a category ──
   return (
     <div className="library">
-      {/* Tab selector */}
-      <div className="library-tabs">
-        {TAB_DEFS.map(t => (
-          <button
-            key={t.id}
-            className={`library-tab ${tab === t.id ? 'library-tab-active' : ''}`}
-            style={{ '--lib-tab-color': t.color } as React.CSSProperties}
-            onClick={() => handleTabChange(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* Back button + category title */}
+      <div className="library-header">
+        <button className="library-back-btn" onClick={handleBack}>← Back</button>
+        <span className="library-header-title" style={{ color: activeCat?.color }}>
+          {activeCat?.icon} {activeCat?.label}
+        </span>
       </div>
+
+      {/* Generate tab — standalone */}
+      {category === 'generate' && <RollGenerator />}
 
       {/* Item buttons */}
-      {tab !== 'generate' && (
-      <div className="library-items">
-        {tab === 'rolls' && rolls.map(r => (
-          <button
-            key={r.id}
-            className={`library-item ${selectedId === r.id ? 'library-item-active' : ''}`}
-            onClick={() => handleSelect(r.id)}
-            title={r.description}
-          >
-            <span className="library-item-name">{r.name}</span>
-            <span className="library-item-meta">{r.strings.length} notes</span>
-          </button>
-        ))}
+      {category !== 'generate' && (
+        <div className="library-items">
+          {category === 'rolls' && rolls.map(r => (
+            <button
+              key={r.id}
+              className={`library-item ${selectedId === r.id ? 'library-item-active' : ''}`}
+              onClick={() => handleSelect(r.id)}
+              title={r.description}
+            >
+              <span className="library-item-name">{r.name}</span>
+              <span className="library-item-meta">{r.strings.length} notes</span>
+            </button>
+          ))}
 
-        {tab === 'licks' && licks.map(l => (
-          <button
-            key={l.id}
-            className={`library-item ${selectedId === l.id ? 'library-item-active' : ''}`}
-            onClick={() => handleSelect(l.id)}
-            title={l.description}
-          >
-            <span className="library-item-name">{l.name}</span>
-            <span className="library-item-meta">{l.referenceBpm} BPM</span>
-          </button>
-        ))}
+          {category === 'licks' && licks.map(l => (
+            <button
+              key={l.id}
+              className={`library-item ${selectedId === l.id ? 'library-item-active' : ''}`}
+              onClick={() => handleSelect(l.id)}
+              title={l.description}
+            >
+              <span className="library-item-name">{l.name}</span>
+              <span className="library-item-meta">{l.referenceBpm} BPM</span>
+            </button>
+          ))}
 
-        {tab === 'songs' && songs.map(s => (
-          <button
-            key={s.id}
-            className={`library-item ${selectedId === s.id ? 'library-item-active' : ''}`}
-            onClick={() => handleSelect(s.id)}
-            title={`Key of ${s.key} — ${s.defaultBpm}-${s.performanceBpm} BPM`}
-          >
-            <span className="library-item-name">{s.name}</span>
-            <span className="library-item-meta">Key of {s.key}</span>
-          </button>
-        ))}
-      </div>
+          {category === 'songs' && songs.map(s => (
+            <button
+              key={s.id}
+              className={`library-item ${selectedId === s.id ? 'library-item-active' : ''}`}
+              onClick={() => handleSelect(s.id)}
+              title={`Key of ${s.key} — ${s.defaultBpm}-${s.performanceBpm} BPM`}
+            >
+              <span className="library-item-name">{s.name}</span>
+              <span className="library-item-meta">Key of {s.key}</span>
+            </button>
+          ))}
+
+          {category === 'scales' && scales.map(s => (
+            <button
+              key={s.id}
+              className={`library-item ${selectedId === s.id ? 'library-item-active' : ''}`}
+              onClick={() => handleSelect(s.id)}
+              title={s.description}
+            >
+              <span className="library-item-name">{s.name}</span>
+              <span className="library-item-meta">{s.category} • {s.key}</span>
+            </button>
+          ))}
+        </div>
       )}
 
-      {/* Song section selector (only for songs with multiple sections) */}
-      {tab === 'songs' && selectedId && (() => {
+      {/* Song section selector */}
+      {category === 'songs' && selectedId && (() => {
         const song = songs.find(s => s.id === selectedId)
         if (!song || song.sections.length <= 1) return null
         const activeSectionId = selectedSectionId ?? song.sections[0]?.id
@@ -162,7 +207,7 @@ export function Library() {
       })()}
 
       {/* FretLab-style tab viewer */}
-      {tab !== 'generate' && selectedId && notes.length > 0 && (
+      {category !== 'generate' && selectedId && notes.length > 0 && (
         <div className="library-viewer">
           <div className="library-viewer-label">{label}</div>
 
@@ -203,14 +248,10 @@ export function Library() {
       )}
 
       {/* Empty state */}
-      {tab !== 'generate' && !selectedId && (
+      {category !== 'generate' && !selectedId && (
         <div className="library-empty">
-          Select a {tab === 'rolls' ? 'roll' : tab === 'licks' ? 'lick' : 'song'} above to view its tab
+          Select a {category === 'rolls' ? 'roll' : category === 'licks' ? 'lick' : category === 'scales' ? 'scale' : 'song'} above to view its tab
         </div>
-      )}
-
-      {tab === 'generate' && (
-        <RollGenerator />
       )}
     </div>
   )

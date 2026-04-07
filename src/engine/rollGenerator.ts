@@ -28,14 +28,7 @@ export const DEFAULT_CONSTRAINTS: RollConstraints = {
   directionalBias: 'none',
 }
 
-// Scruggs finger-to-string mapping
-const FINGER_STRINGS: Record<Finger, number[]> = {
-  T: [3, 4, 5],
-  I: [2, 3],
-  M: [1],
-}
-
-// Reverse: which fingers can play each string
+// Which fingers can play each string (Scruggs convention)
 const STRING_FINGERS: Record<number, Finger[]> = {
   1: ['M'],
   2: ['I'],
@@ -132,7 +125,7 @@ export function generateRoll(constraints: RollConstraints = DEFAULT_CONSTRAINTS,
 
       if (filtered.length === 0) { valid = false; break }
 
-      // Weighted random selection
+      // Random pick from candidates
       const pick = filtered[Math.floor(Math.random() * filtered.length)]
       pattern.push(pick)
     }

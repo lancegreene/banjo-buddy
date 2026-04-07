@@ -23,7 +23,7 @@ interface AppState {
   // App shell
   currentPage: Page
   navMode: 'home' | 'section'
-  appMode: 'quick-pick' | 'deep-dive'
+  appMode: 'quick-pick' | 'deep-dive' | null
   setPage: (page: Page) => void
   goHome: () => void
   setAppMode: (mode: 'quick-pick' | 'deep-dive') => void
@@ -138,11 +138,11 @@ interface AppState {
 export const useStore = create<AppState>((set, get) => ({
   currentPage: 'dashboard',
   navMode: 'home',
-  appMode: (localStorage.getItem('banjo-buddy-mode') as 'quick-pick' | 'deep-dive') || 'quick-pick',
+  appMode: (sessionStorage.getItem('banjo-buddy-mode') as 'quick-pick' | 'deep-dive') || null,
   setPage: (page) => set({ currentPage: page, navMode: page === 'dashboard' ? 'home' : 'section' }),
   goHome: () => set({ currentPage: 'dashboard', navMode: 'home', selectedSkillId: null }),
   setAppMode: (mode) => {
-    localStorage.setItem('banjo-buddy-mode', mode)
+    sessionStorage.setItem('banjo-buddy-mode', mode)
     set({ appMode: mode })
   },
 
