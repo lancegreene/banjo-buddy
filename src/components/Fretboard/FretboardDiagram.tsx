@@ -109,6 +109,7 @@ interface FretboardDiagramProps {
   lookahead?: number
   autoPlay?: boolean
   bpm?: number
+  showNoteNames?: boolean
 }
 
 // ─── Note Marker ─────────────────────────────────────────────────────────────
@@ -240,10 +241,11 @@ const STRING_LABELS: Record<number, string> = {
 }
 const NOTES_PER_MEASURE = 8
 
-function TabStrip({ steps, activeStep, onStepClick }: {
+function TabStrip({ steps, activeStep, onStepClick, showNoteNames }: {
   steps: DisplayStep[]
   activeStep: number
   onStepClick?: (stepIdx: number) => void
+  showNoteNames?: boolean
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const strings = [1, 2, 3, 4, 5]
@@ -285,6 +287,7 @@ function TabStrip({ steps, activeStep, onStepClick }: {
           </div>
         ))}
         <div className="ascii-tab-label ascii-tab-label-finger">Pick</div>
+        {showNoteNames && <div className="ascii-tab-label ascii-tab-label-note">Note</div>}
       </div>
 
       {/* Scrollable tab body */}
@@ -299,6 +302,7 @@ function TabStrip({ steps, activeStep, onStepClick }: {
                   <div key={str} className="ascii-tab-cell">|</div>
                 ))}
                 <div className="ascii-tab-cell ascii-tab-cell-finger">&nbsp;</div>
+                {showNoteNames && <div className="ascii-tab-cell ascii-tab-cell-note">&nbsp;</div>}
               </div>
 
               {measure.map((step, noteIdx) => {
@@ -315,6 +319,7 @@ function TabStrip({ steps, activeStep, onStepClick }: {
                       <div key={str} className="ascii-tab-cell" style={{ color: 'rgba(255,255,255,0.2)' }}>-</div>
                     ))}
                     <div className="ascii-tab-cell ascii-tab-cell-finger">&nbsp;</div>
+                    {showNoteNames && <div className="ascii-tab-cell ascii-tab-cell-note">&nbsp;</div>}
                   </div>
                 )
 
@@ -355,6 +360,11 @@ function TabStrip({ steps, activeStep, onStepClick }: {
                     <div className="ascii-tab-cell ascii-tab-cell-finger" style={{ color: STRING_COLORS[step.notes[0]?.string] }}>
                       {fingerLabel}
                     </div>
+                    {showNoteNames && (
+                      <div className="ascii-tab-cell ascii-tab-cell-note" style={{ color: STRING_COLORS[step.notes[0]?.string] }}>
+                        {step.notes.map(n => n.note?.replace(/\d+$/, '') ?? '').join('+')}
+                      </div>
+                    )}
                   </div>
                 )
 
@@ -367,6 +377,7 @@ function TabStrip({ steps, activeStep, onStepClick }: {
                   <div key={str} className="ascii-tab-cell" style={{ color: 'rgba(255,255,255,0.2)' }}>-</div>
                 ))}
                 <div className="ascii-tab-cell ascii-tab-cell-finger">&nbsp;</div>
+                {showNoteNames && <div className="ascii-tab-cell ascii-tab-cell-note">&nbsp;</div>}
               </div>
               {mIdx === measures.length - 1 && (
                 <div className="ascii-tab-col ascii-tab-bar">
@@ -374,6 +385,7 @@ function TabStrip({ steps, activeStep, onStepClick }: {
                     <div key={str} className="ascii-tab-cell">|</div>
                   ))}
                   <div className="ascii-tab-cell ascii-tab-cell-finger">&nbsp;</div>
+                  {showNoteNames && <div className="ascii-tab-cell ascii-tab-cell-note">&nbsp;</div>}
                 </div>
               )}
             </div>
@@ -414,6 +426,7 @@ export function FretboardDiagram({
   currentIndex = -1,
   autoPlay = false,
   bpm = 120,
+  showNoteNames = false,
 }: FretboardDiagramProps) {
   const steps = useMemo(() => buildDisplaySteps(notes), [notes])
   const [activeStep, setActiveStep] = useState(() => {
@@ -570,7 +583,7 @@ export function FretboardDiagram({
       </div>
 
       {/* Scrolling tab strip */}
-      <TabStrip steps={steps} activeStep={activeStep} onStepClick={(idx) => setActiveStep(idx)} />
+      <TabStrip steps={steps} activeStep={activeStep} onStepClick={(idx) => setActiveStep(idx)} showNoteNames={showNoteNames} />
     </div>
   )
 }

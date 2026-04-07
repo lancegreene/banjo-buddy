@@ -215,6 +215,7 @@ export function Library() {
             notes={notes}
             bpm={bpm}
             autoPlay={autoPlay}
+            showNoteNames={category === 'scales'}
           />
 
           {/* Controls */}
