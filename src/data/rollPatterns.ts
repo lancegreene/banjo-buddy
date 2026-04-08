@@ -16,9 +16,9 @@ export const ROLL_PATTERNS: RollPattern[] = [
   {
     id: 'forward_roll',
     name: 'Forward Roll',
-    strings: [5, 2, 1, 5, 2, 1, 5, 2, 1, 5, 2, 1, 5, 2, 1, 5],
-    fingers: ['T', 'I', 'M', 'T', 'I', 'M', 'T', 'I', 'M', 'T', 'I', 'M', 'T', 'I', 'M', 'T'],
-    description: 'Classic Scruggs forward roll: T-I-M repeating, two measures (Scruggs Ch. 7)',
+    strings: [5, 2, 1, 5, 2, 1, 5, 2],
+    fingers: ['T', 'I', 'M', 'T', 'I', 'M', 'T', 'I'],
+    description: 'Classic Scruggs forward roll: T-I-M repeating (Scruggs Ch. 7)',
   },
   {
     id: 'forward_roll_alt',

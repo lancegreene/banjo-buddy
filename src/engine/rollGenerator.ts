@@ -33,7 +33,7 @@ const STRING_FINGERS: Record<number, Finger[]> = {
   1: ['M'],
   2: ['I'],
   3: ['T', 'I'],
-  4: ['T'],
+  4: ['T', 'I'],
   5: ['T'],
 }
 
