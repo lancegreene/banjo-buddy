@@ -35,14 +35,6 @@ export const ROLL_PATTERNS: RollPattern[] = [
     fingers: ['M', 'I', 'T', 'M', 'I', 'T', 'M', 'I'],
     description: 'M-I-T repeating: 1st-2nd-5th string cycling (Scruggs Ch. 7)',
   },
-  // ── Reverse Roll ──────────────────────────────────────────────────────────
-  {
-    id: 'reverse_roll',
-    name: 'Reverse Roll',
-    strings: [3, 2, 1, 5, 1, 2, 3, 5],
-    fingers: ['T', 'I', 'M', 'T', 'M', 'I', 'T', 'T'],
-    description: 'Forward into backward: T-I-M-T then M-I-T-T (Scruggs Ch. 7)',
-  },
   // ── Alternating Thumb ─────────────────────────────────────────────────────
   {
     id: 'alternating_thumb',
