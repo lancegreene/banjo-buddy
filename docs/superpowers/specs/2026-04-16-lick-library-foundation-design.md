@@ -149,7 +149,7 @@ Existing `components/Practice/PlayAlong.tsx` likely has reusable cadence/tempo l
 - **Play/Pause:** play → count-in (if on) → loop. Pause halts at current beat; resume picks up there.
 - **Count-in:** 4 metronome clicks at current tempo, no synth. After click 4, beat 0 fires. Default **on**. Does **not** re-run on each loop iteration, only at initial play.
 - **Loop:** wrap to beat 0 after last beat. Default **on**.
-- **Click track:** metronome ticks on beats 0, 2, 4, 6 (quarter-note pulse within 8-beat measure). Default **on**.
+- **Click track:** metronome ticks on every even beat (0, 2, 4, 6 for 1-measure licks; 0, 2, 4, 6, 8, 10, 12, 14 for 2-measure combination licks) — quarter-note pulse. Default **on**.
 - **Synth mute:** cursor + click continue, no banjo notes. The "I'll play it myself" mode.
 - **Tempo slider:** 40–160 BPM, integer snap. Changing tempo mid-play restarts the current measure at the new tempo.
 - **Stop state:** cursor parks on beat 0, measure 1.
