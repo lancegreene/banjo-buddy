@@ -6,7 +6,13 @@
 
 import { NOTE_NAMES } from './noteCapture'
 import type { CapturedNote } from './noteCapture'
-import type { ReferenceNote } from '../data/lickLibrary'
+// Local type — was previously exported from lickLibrary before the TabNote migration.
+// Kept here so the dormant DTW pipeline still compiles; no new code feeds it.
+interface ReferenceNote {
+  note: string
+  octave: number
+  durationRatio: number
+}
 
 export interface AlignedPair {
   captured: CapturedNote

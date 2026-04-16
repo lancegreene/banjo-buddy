@@ -6,11 +6,11 @@ import { CircleOfFifths } from '../CircleOfFifths/CircleOfFifths'
 import { RollGenerator } from '../RollGenerator/RollGenerator'
 import { WarmupModal } from '../Practice/WarmupModal'
 import { getAllPatterns } from '../../data/rollPatterns'
-import { LICK_LIBRARY, getLickKeys, LICK_TYPES, type LickType } from '../../data/lickLibrary'
+import { LICK_LIBRARY, getLickKeys, LICK_ROLES, type LickRole } from '../../data/lickLibrary'
 import { SONGS } from '../../data/songLibrary'
 import { SCALE_LIBRARY, SCALE_CATEGORIES, getScaleKeys, type ScaleCategory } from '../../data/scaleLibrary'
 import { CHORD_DIAGRAMS, getChordRoots, getChordVoicings, type ChordCategory } from '../../data/chordDiagrams'
-import { rollPatternToFretNotes, lickToFretNotes, sectionToFretNotes } from '../../engine/rollToFretNotes'
+import { rollPatternToFretNotes, sectionToFretNotes } from '../../engine/rollToFretNotes'
 import type { FretNote } from '../../data/fretboardNotes'
 
 type LibraryCategory = 'rolls' | 'licks' | 'songs' | 'scales' | 'chords' | 'circle' | 'generate'
@@ -34,7 +34,7 @@ const CATEGORIES: { id: LibraryCategory; label: string; icon: () => JSX.Element;
   { id: 'rolls',    label: 'Roll Repo',       icon: RollIcon,     desc: 'Scruggs picking patterns',          color: '#26a69a' },
   { id: 'licks',    label: 'Lick Library',    icon: LickIcon,     desc: 'Classic bluegrass licks',           color: '#66bb6a' },
   { id: 'scales',   label: 'Scales',          icon: ScaleIcon,    desc: 'Major, melodic, pentatonic & blues', color: '#ef5350' },
-  { id: 'songs',    label: 'Song Studio',     icon: SongIcon,     desc: 'Full song arrangements',            color: '#42a5f5', badge: 'In Progress' },
+  { id: 'songs',    label: 'Song Studio',     icon: SongIcon,     desc: 'Full song arrangements',            color: '#42a5f5', badge: 'Under Construction' },
   { id: 'generate', label: 'Roll Generator',  icon: GenerateIcon, desc: 'Create custom roll patterns',      color: '#ab47bc' },
 ]
 
@@ -62,7 +62,7 @@ export function Library() {
   const [scaleFilter, setScaleFilter] = useState<ScaleCategory | null>(null)
   const [scaleKey, setScaleKey] = useState<string | null>(null)
   // Lick filters
-  const [lickType, setLickType] = useState<LickType | null>(null)
+  const [lickRole, setLickRole] = useState<LickRole | null>(null)
   const [lickKey, setLickKey] = useState<string | null>(null)
   // Warmup
   const [showWarmup, setShowWarmup] = useState(false)
@@ -83,10 +83,10 @@ export function Library() {
 
   const filteredLicks = useMemo(() => {
     return licks.filter(l =>
-      (!lickType || l.lickType === lickType) &&
+      (!lickRole || l.role === lickRole) &&
       (!lickKey || l.key === lickKey)
     )
-  }, [licks, lickType, lickKey])
+  }, [licks, lickRole, lickKey])
 
   // ── Resolve selected item to FretNote[] ──
   const { notes, label } = useMemo((): { notes: FretNote[]; label: string } => {
@@ -101,7 +101,8 @@ export function Library() {
     if (category === 'licks') {
       const lick = licks.find(l => l.id === selectedId)
       if (!lick) return { notes: [], label: '' }
-      return { notes: lickToFretNotes(lick.notes), label: lick.name }
+      // Licks store TabNote[]; wrap as a single measure for sectionToFretNotes.
+      return { notes: sectionToFretNotes([{ notes: lick.tab }]), label: lick.name }
     }
 
     if (category === 'songs') {
@@ -316,20 +317,20 @@ export function Library() {
           <div className="library-filtered-section">
             <div className="library-filter-row">
               <button
-                className={`library-filter-pill ${!lickType ? 'library-filter-pill-active' : ''}`}
+                className={`library-filter-pill ${!lickRole ? 'library-filter-pill-active' : ''}`}
                 style={{ '--pill-color': '#66bb6a' } as React.CSSProperties}
-                onClick={() => { setLickType(null); setLickKey(null); setSelectedId(null) }}
+                onClick={() => { setLickRole(null); setLickKey(null); setSelectedId(null) }}
               >
                 All
               </button>
-              {LICK_TYPES.map(lt => (
+              {LICK_ROLES.map(lr => (
                 <button
-                  key={lt.id}
-                  className={`library-filter-pill ${lickType === lt.id ? 'library-filter-pill-active' : ''}`}
+                  key={lr.id}
+                  className={`library-filter-pill ${lickRole === lr.id ? 'library-filter-pill-active' : ''}`}
                   style={{ '--pill-color': '#66bb6a' } as React.CSSProperties}
-                  onClick={() => { setLickType(lt.id); setLickKey(null); setSelectedId(null) }}
+                  onClick={() => { setLickRole(lr.id); setLickKey(null); setSelectedId(null) }}
                 >
-                  {lt.label}
+                  {lr.label}
                 </button>
               ))}
             </div>

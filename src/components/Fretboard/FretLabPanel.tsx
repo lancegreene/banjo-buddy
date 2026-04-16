@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { FretboardDiagram } from './FretboardDiagram'
 import { ROLL_MAP } from '../../data/rollPatterns'
-import { rollPatternToFretNotes, lickToFretNotes } from '../../engine/rollToFretNotes'
+import { rollPatternToFretNotes, sectionToFretNotes } from '../../engine/rollToFretNotes'
 import { LICK_LIBRARY } from '../../data/lickLibrary'
 import {
   EXAMPLE_FORWARD_ROLL,
@@ -59,7 +59,7 @@ export function FretLabPanel({ rollPatternId, lickId, bpm: defaultBpm }: FretLab
         list.push({
           id: lickId,
           label: lick.name,
-          notes: lickToFretNotes(lick.notes),
+          notes: sectionToFretNotes([{ notes: lick.tab }]),
         })
       }
     }
