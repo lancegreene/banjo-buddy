@@ -103,7 +103,7 @@ export function ProgressSnapshot() {
           <Sparkline data={bpmData} color="#4a9eff" label="BPM" unit="" />
         )}
         {scoreData.length >= 2 && (
-          <Sparkline data={scoreData} color="#7ed321" label="Score" unit="%" />
+          <Sparkline data={scoreData} color="#E8A838" label="Score" unit="%" />
         )}
       </div>
     </div>

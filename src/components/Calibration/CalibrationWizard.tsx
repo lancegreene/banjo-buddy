@@ -164,7 +164,7 @@ export function CalibrationWizard({ onClose }: CalibrationWizardProps) {
             <div className="cal-rms-track">
               <div
                 className="cal-rms-fill"
-                style={{ width: `${rmsBarWidth}%`, backgroundColor: rmsBarWidth > 60 ? '#7ed321' : rmsBarWidth > 20 ? '#f5a623' : '#555' }}
+                style={{ width: `${rmsBarWidth}%`, backgroundColor: rmsBarWidth > 60 ? '#E8A838' : rmsBarWidth > 20 ? '#f5a623' : '#555' }}
               />
             </div>
           </div>

@@ -92,9 +92,9 @@ export function BpmTrendChart({ skillId }: BpmTrendChartProps) {
             <line
               x1={PAD.left} y1={bpmToY(progressBpm)}
               x2={PAD.left + PLOT_W} y2={bpmToY(progressBpm)}
-              stroke="#7ed321" strokeWidth="1" strokeDasharray="4 3"
+              stroke="#E8A838" strokeWidth="1" strokeDasharray="4 3"
             />
-            <text x={PAD.left + PLOT_W + 4} y={bpmToY(progressBpm) + 3} fontSize="9" fill="#7ed321">Progress</text>
+            <text x={PAD.left + PLOT_W + 4} y={bpmToY(progressBpm) + 3} fontSize="9" fill="#E8A838">Progress</text>
           </g>
         )}
 

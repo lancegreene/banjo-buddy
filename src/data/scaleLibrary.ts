@@ -248,3 +248,24 @@ export const SCALE_LIBRARY: ScalePattern[] = [
 ]
 
 export const SCALE_MAP = new Map(SCALE_LIBRARY.map(s => [s.id, s]))
+
+export type ScaleCategory = ScalePattern['category']
+
+export const SCALE_CATEGORIES: { id: ScaleCategory; label: string }[] = [
+  { id: 'major', label: 'Major' },
+  { id: 'melodic', label: 'Melodic' },
+  { id: 'pentatonic', label: 'Pentatonic' },
+  { id: 'blues', label: 'Blues' },
+]
+
+/** Get unique keys for a given scale category, in definition order */
+export function getScaleKeys(category?: ScaleCategory): string[] {
+  const seen = new Set<string>()
+  const keys: string[] = []
+  for (const s of SCALE_LIBRARY) {
+    if ((!category || s.category === category) && !seen.has(s.key)) {
+      seen.add(s.key); keys.push(s.key)
+    }
+  }
+  return keys
+}

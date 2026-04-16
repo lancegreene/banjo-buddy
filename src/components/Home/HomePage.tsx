@@ -181,7 +181,7 @@ interface CardItem {
 const CARDS: CardItem[] = [
   { id: 'pathway',      label: 'Pathway',  desc: 'Follow your learning path',   icon: PathwayIcon,  page: 'pathway',      color: '#4a9eff' },
   { id: 'skill-tree',   label: 'Skills',   desc: 'Browse & practice skills',    icon: SkillsIcon,   page: 'skill-tree',   color: '#4a7c59' },
-  { id: 'progress',     label: 'Progress', desc: 'Track your improvement',      icon: ProgressIcon, page: 'progress',     color: '#7ed321' },
+  { id: 'progress',     label: 'Progress', desc: 'Track your improvement',      icon: ProgressIcon, page: 'progress',     color: '#E8A838' },
   { id: 'achievements', label: 'Awards',   desc: 'Earn badges & milestones',    icon: AwardsIcon,   page: 'achievements', color: '#c084fc' },
   { id: 'settings',     label: 'Settings', desc: 'Customize your experience',   icon: SettingsIcon, page: 'settings',     color: '#94a3b8' },
 ]
@@ -195,7 +195,7 @@ const TOOL_CARDS: { id: ToolModal; label: string; icon: () => JSX.Element; color
 // ─── Status helpers ─────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<SkillStatus, string> = {
-  locked: '#ccc', unlocked: '#4a9eff', active: '#f5a623', progressed: '#7ed321', mastered: '#9b59b6',
+  locked: '#ccc', unlocked: '#4a9eff', active: '#f5a623', progressed: '#4ADE80', mastered: '#9b59b6',
 }
 const STATUS_LABELS: Record<SkillStatus, string> = {
   locked: 'Locked', unlocked: 'Ready to start', active: 'In progress', progressed: 'Progressed', mastered: 'Mastered',
@@ -305,7 +305,7 @@ export function HomePage() {
             <ProgressRing percent={progress.percentComplete} />
             <div className="home-progress-stats">
               <div className="home-stat">
-                <span className="home-stat-val" style={{ color: '#7ed321' }}>{progress.mastered + progress.progressed}</span>
+                <span className="home-stat-val" style={{ color: '#E8A838' }}>{progress.mastered + progress.progressed}</span>
                 <span className="home-stat-lbl">Complete</span>
               </div>
               <div className="home-stat">

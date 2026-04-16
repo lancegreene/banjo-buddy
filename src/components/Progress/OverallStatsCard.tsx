@@ -25,7 +25,7 @@ export function OverallStatsCard() {
 
   const statItems = [
     { label: 'Total Time', value: hours > 0 ? `${hours}h ${mins}m` : `${mins}m`, color: '#4a9eff' },
-    { label: 'Sessions', value: String(stats.totalSessions), color: '#7ed321' },
+    { label: 'Sessions', value: String(stats.totalSessions), color: '#E8A838' },
     { label: 'Current Streak', value: `${stats.currentStreak}d`, color: '#f5a623' },
     { label: 'Longest Streak', value: `${stats.longestStreak}d`, color: '#e67e22' },
     { label: 'Mastered', value: String(stats.skillsByStatus.mastered ?? 0), color: '#9b59b6' },

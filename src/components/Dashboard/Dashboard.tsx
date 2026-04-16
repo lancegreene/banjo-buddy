@@ -12,7 +12,7 @@ const STATUS_COLORS: Record<SkillStatus, string> = {
   locked: '#ccc',
   unlocked: '#4a9eff',
   active: '#f5a623',
-  progressed: '#7ed321',
+  progressed: '#4ADE80',
   mastered: '#9b59b6',
 }
 
@@ -222,7 +222,7 @@ export function Dashboard() {
           <ProgressRing percent={progress.percentComplete} />
           <div className="progress-stats">
             <div className="stat">
-              <span className="stat-value" style={{ color: '#7ed321' }}>{progress.mastered + progress.progressed}</span>
+              <span className="stat-value" style={{ color: '#E8A838' }}>{progress.mastered + progress.progressed}</span>
               <span className="stat-label">Complete</span>
             </div>
             <div className="stat">

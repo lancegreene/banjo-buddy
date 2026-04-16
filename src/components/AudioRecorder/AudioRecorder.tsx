@@ -109,9 +109,9 @@ export function AudioRecorder({
         const { width, height } = canvas
         const step = Math.floor(data.length / width)
         ctx.clearRect(0, 0, width, height)
-        ctx.fillStyle = '#1a1a2e'
+        ctx.fillStyle = '#1C1A17'
         ctx.fillRect(0, 0, width, height)
-        ctx.strokeStyle = '#7ed321'
+        ctx.strokeStyle = '#E8A838'
         ctx.lineWidth = 1
         ctx.beginPath()
         for (let i = 0; i < width; i++) {

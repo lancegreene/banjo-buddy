@@ -9,7 +9,7 @@ const STATUS_COLORS: Record<SkillStatus, string> = {
   locked: '#ccc',
   unlocked: '#4a9eff',
   active: '#f5a623',
-  progressed: '#7ed321',
+  progressed: '#4ADE80',
   mastered: '#9b59b6',
 }
 

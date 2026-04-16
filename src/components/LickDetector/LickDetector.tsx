@@ -16,7 +16,7 @@ interface LickDetectorProps {
 }
 
 function scoreColor(semitones: number): string {
-  if (semitones <= 1) return '#7ed321'
+  if (semitones <= 1) return '#4ADE80'
   if (semitones <= 3) return '#f5a623'
   return '#e74c3c'
 }
