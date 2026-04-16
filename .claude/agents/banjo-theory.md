@@ -52,6 +52,44 @@ Each fret is one half step. The chromatic scale is: C, C#, D, D#, E, F, F#, G, G
 - **Bm**: B, D, F#
 - **F**: F, A, C (F position / barre chords)
 
+## Chord Inversions
+
+Inversion is determined by which chord tone is the **bass note** (lowest pitch).
+On banjo, the pitch order low→high is: **S4(D3) < S3(G3) < S2(B3) < S1(D4) < S5(G4)**.
+
+| Inversion | Bass Note | Example (G chord) |
+|-----------|-----------|-------------------|
+| Root position | Root (1st) | G in bass |
+| 1st inversion | 3rd | B in bass |
+| 2nd inversion | 5th | D in bass |
+| 3rd inversion | 7th (7th chords only) | F in bass (G7) |
+
+**Note**: Due to banjo's open G tuning, the lowest string (S4) is D3. This means the standard open G strum (gDGBD) has D in the bass, making it technically a **2nd inversion** (G/D). This is normal for banjo — many "standard" open voicings are inversions because of the tuning.
+
+The app computes inversions dynamically via `getChordInversion()` in `chordDiagrams.ts`.
+
+## Movable Chord Shapes (from theory.txt)
+
+Three fundamental shapes that can be moved up the neck to make any major chord.
+**CRITICAL**: The banjo open strings are NOT uniformly spaced (S1–S2=m3, S2–S3=M3, S3–S4=P4),
+so barre shapes produce DIFFERENT chords at each fret. Always verify notes when moving shapes.
+
+### F Position (1st position)
+Frets: `[base+2, base, base+1, base+2, -1]`
+- Example: G at 3rd = `[5, 3, 4, 5, -1]` → G4, D4, B3, G3
+- The 1st and 4th string pitches name the chord root
+- Movable: shift base up to change chord (base=1→F, base=3→G, base=5→A, etc.)
+
+### D Position (2nd position)
+Frets: `[base+2, base+1, base, base+2, -1]`
+- Example: D at open = `[4, 3, 2, 4, -1]` → F#4, D4, A3, F#3
+- Also movable: shift base up (base=4→E, base=9→A, etc.)
+
+### Barre (all same fret)
+Frets: `[N, N, N, N, -1]`
+- Produces different chords at each fret due to non-uniform string intervals:
+  - 0=G, 2=A, 4=B, 5=C, 7=D, 9=E, 10=F, 12=G(8va), 14=A(8va)
+
 ## ASCII Tab Notation
 
 When parsing ASCII tabs, recognize these symbols:

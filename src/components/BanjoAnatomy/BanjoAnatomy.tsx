@@ -138,7 +138,7 @@ const SEGMENTS: Segment[] = [
     title: 'The Bridge',
     subtitle: 'Bridge',
     description: 'Sits on the head (not glued — string tension holds it). Transfers vibration into the head.',
-    viewBox: '170 180 260 120',
+    viewBox: '170 70 260 120',
     highlights: ['bridge'],
     duration: 3.5,
   },
@@ -146,8 +146,8 @@ const SEGMENTS: Segment[] = [
     id: 'tailpiece',
     title: 'The Tailpiece',
     subtitle: 'Tailpiece',
-    description: 'Anchors the strings at the bottom. Strings loop through and run up over the bridge.',
-    viewBox: '190 280 220 120',
+    description: 'Anchors the strings at the top of the pot. Strings loop through and run down over the bridge to the neck.',
+    viewBox: '190 0 220 120',
     highlights: ['tailpiece'],
     duration: 3,
   },
@@ -218,8 +218,8 @@ const SEGMENTS: Segment[] = [
     id: 'nut',
     title: 'The Nut',
     subtitle: 'Nut',
-    description: 'Slotted piece at the top of the neck. Spaces the strings and sets height. Open strings vibrate from here to the bridge.',
-    viewBox: '170 340 260 80',
+    description: 'Slotted piece at the end of the neck. Spaces the strings and sets height. Open strings vibrate from here to the bridge.',
+    viewBox: '170 680 260 80',
     highlights: ['nut'],
     duration: 3.5,
   },
@@ -228,18 +228,9 @@ const SEGMENTS: Segment[] = [
     title: '5th String Peg',
     subtitle: 'Unique to 5-String Banjo',
     description: 'String 5\'s peg sits in the side of the neck at the 5th fret — the signature drone string.',
-    viewBox: '100 440 260 140',
+    viewBox: '200 480 260 140',
     highlights: ['fifth-peg'],
     duration: 4,
-  },
-  {
-    id: 'fingers',
-    title: 'Picking Hand',
-    subtitle: 'T-I-M: Thumb, Index, Middle',
-    description: 'Thumb picks strings 3, 4, 5. Index picks string 2. Middle picks string 1. Roll patterns combine them.',
-    viewBox: '80 20 440 340',
-    highlights: ['strings', 'finger-labels'],
-    duration: 5,
   },
 ]
 
@@ -318,7 +309,8 @@ function BanjoSVG({ highlights, viewBox }: { highlights: Set<string>; viewBox: s
   const glow = (part: string) => hl(part) ? 'ba-glow' : 'ba-dim'
   const noHl = highlights.size === 0
 
-  const FRET_YS = [0, 42, 78, 110, 138, 163, 185, 204, 221, 236, 250, 262, 273]
+  // Frets get tighter near the pot (top) — reversed so high frets are near pot
+  const FRET_YS = [0, 11, 23, 37, 52, 69, 88, 110, 135, 163, 195, 231, 273]
   const NECK_TOP = 380
   const NECK_H = 340
   const STR_X = [252, 268, 284, 300, 316]
@@ -366,34 +358,34 @@ function BanjoSVG({ highlights, viewBox }: { highlights: Set<string>; viewBox: s
         })}
       </g>
 
-      {/* Bridge */}
+      {/* Bridge — sits on the head, opposite side from neck */}
       <g className={noHl ? '' : glow('bridge')}>
-        <motion.rect x="240" y="230" width="88" height="7" rx="2"
+        <motion.rect x="240" y="120" width="88" height="7" rx="2"
           stroke="currentColor" strokeWidth="1.5"
           fill={hl('bridge') ? 'rgba(74,158,255,0.3)' : 'none'}
           initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
           transition={{ duration: 0.6, delay: 0.5 }} style={{ originX: '50%' }} />
         <AnimatePresence>
           {hl('bridge') && (
-            <motion.text x="284" y="255" textAnchor="middle" fontSize="10" fill="currentColor"
-              initial={{ opacity: 0, y: -5 }} animate={{ opacity: 0.7, y: 0 }} exit={{ opacity: 0 }}
+            <motion.text x="284" y="112" textAnchor="middle" fontSize="10" fill="currentColor"
+              initial={{ opacity: 0, y: 5 }} animate={{ opacity: 0.7, y: 0 }} exit={{ opacity: 0 }}
               transition={{ type: 'spring', stiffness: 200, damping: 20 }}>Bridge</motion.text>
           )}
         </AnimatePresence>
       </g>
 
-      {/* Tailpiece */}
+      {/* Tailpiece — anchors strings at top of pot */}
       <g className={noHl ? '' : glow('tailpiece')}>
-        <motion.path d="M255 310 L284 330 L313 310" stroke="currentColor" strokeWidth="2"
+        <motion.path d="M255 65 L284 45 L313 65" stroke="currentColor" strokeWidth="2"
           fill={hl('tailpiece') ? 'rgba(74,158,255,0.2)' : 'none'}
           variants={drawVariant} initial="hidden" animate="visible" custom={0.6} />
-        <motion.line x1="284" y1="325" x2="284" y2="345" stroke="currentColor" strokeWidth="1.5"
+        <motion.line x1="284" y1="50" x2="284" y2="30" stroke="currentColor" strokeWidth="1.5"
           initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
           transition={{ duration: 0.4, delay: 0.8 }} />
         <AnimatePresence>
           {hl('tailpiece') && (
-            <motion.text x="284" y="360" textAnchor="middle" fontSize="10" fill="currentColor"
-              initial={{ opacity: 0, y: -5 }} animate={{ opacity: 0.7, y: 0 }} exit={{ opacity: 0 }}
+            <motion.text x="284" y="22" textAnchor="middle" fontSize="10" fill="currentColor"
+              initial={{ opacity: 0, y: 5 }} animate={{ opacity: 0.7, y: 0 }} exit={{ opacity: 0 }}
               transition={{ type: 'spring', stiffness: 200, damping: 20 }}>Tailpiece</motion.text>
           )}
         </AnimatePresence>
@@ -505,17 +497,17 @@ function BanjoSVG({ highlights, viewBox }: { highlights: Set<string>; viewBox: s
         )}
       </AnimatePresence>
 
-      {/* ── Nut ── */}
+      {/* ── Nut — at the far end of the neck (away from pot) ── */}
       <g className={noHl ? '' : glow('nut')}>
-        <motion.rect x="245" y={NECK_TOP - 4} width="78" height="6" rx="1"
+        <motion.rect x="245" y={NECK_TOP + NECK_H - 2} width="78" height="6" rx="1"
           fill={hl('nut') ? 'rgba(255,255,255,0.4)' : 'currentColor'}
           opacity={hl('nut') ? 1 : 0.6}
           initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
           transition={{ duration: 0.5, delay: 0.3 }} style={{ originX: '50%' }} />
         <AnimatePresence>
           {hl('nut') && (
-            <motion.text x="284" y={NECK_TOP - 10} textAnchor="middle" fontSize="10" fill="currentColor"
-              initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            <motion.text x="284" y={NECK_TOP + NECK_H + 18} textAnchor="middle" fontSize="10" fill="currentColor"
+              initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               transition={{ type: 'spring', stiffness: 200, damping: 20 }}>Nut</motion.text>
           )}
         </AnimatePresence>
@@ -539,26 +531,28 @@ function BanjoSVG({ highlights, viewBox }: { highlights: Set<string>; viewBox: s
         ))}
       </g>
 
-      {/* Fret numbers */}
+      {/* Fret numbers — 12 near pot, 1 near nut */}
       <AnimatePresence>
         {hl('frets') && FRET_YS.slice(1).map((y, i) => (
           <motion.text key={i} x="238" y={NECK_TOP + y + 4} textAnchor="end" fontSize="8" fill="currentColor"
-            variants={fadeUpVariant} initial="hidden" animate="visible" exit="hidden" custom={i * 0.05}>{i + 1}</motion.text>
+            variants={fadeUpVariant} initial="hidden" animate="visible" exit="hidden" custom={i * 0.05}>{12 - i}</motion.text>
         ))}
       </AnimatePresence>
 
-      {/* ── Fret dots — pop in ── */}
+      {/* ── Fret dots — pop in (fret N → array index 13-N) ── */}
       <g className={noHl ? '' : glow('fret-dots')}>
-        {[3, 5, 7, 10].map((f, idx) => {
-          const y = NECK_TOP + FRET_YS[f] - (FRET_YS[f] - FRET_YS[f - 1]) / 2
+        {[3, 5, 7, 10].map((fretNum, idx) => {
+          const fi = 13 - fretNum
+          const y = NECK_TOP + FRET_YS[fi] - (FRET_YS[fi] - FRET_YS[fi - 1]) / 2
           return (
-            <motion.circle key={f} cx="284" cy={y} r="3.5" fill="currentColor"
+            <motion.circle key={fretNum} cx="284" cy={y} r="3.5" fill="currentColor"
               opacity={hl('fret-dots') ? 0.7 : 0.3}
               variants={popVariant} initial="hidden" animate="visible" custom={0.6 + idx * 0.1} />
           )
         })}
-        {FRET_YS[12] && (() => {
-          const y = NECK_TOP + FRET_YS[12] - (FRET_YS[12] - FRET_YS[11]) / 2
+        {(() => {
+          const fi = 1 // fret 12 → index 1
+          const y = NECK_TOP + FRET_YS[fi] - (FRET_YS[fi] - FRET_YS[fi - 1]) / 2
           return (
             <>
               <motion.circle cx="275" cy={y} r="3" fill="currentColor" opacity={hl('fret-dots') ? 0.7 : 0.3}
@@ -570,11 +564,15 @@ function BanjoSVG({ highlights, viewBox }: { highlights: Set<string>; viewBox: s
         })()}
       </g>
 
-      {/* Scale notes — spring cascade */}
+      {/* Scale notes — spring cascade (reversed: open at nut/bottom, fret 12 at top) */}
       <AnimatePresence>
         {hl('scale-notes') && SCALE_NOTES.map((note, i) => {
           if (i >= FRET_YS.length) return null
-          const y = i === 0 ? NECK_TOP - 2 : NECK_TOP + FRET_YS[i] - (FRET_YS[i] - FRET_YS[i - 1]) / 2
+          // Open note (i=0) at nut (bottom of neck); fret i → array index 13-i
+          const fi = 13 - i
+          const y = i === 0
+            ? NECK_TOP + NECK_H + 2
+            : NECK_TOP + FRET_YS[fi] - (FRET_YS[fi] - FRET_YS[fi - 1]) / 2
           const isNatural = !note.includes('#')
           return (
             <motion.g key={`note-${i}`}
@@ -592,20 +590,20 @@ function BanjoSVG({ highlights, viewBox }: { highlights: Set<string>; viewBox: s
         })}
       </AnimatePresence>
 
-      {/* ── 5th String Peg ── */}
+      {/* ── 5th String Peg — right side of neck at fret 5 (index 8 reversed) ── */}
       <g className={noHl ? '' : glow('fifth-peg')}>
-        <motion.circle cx="238" cy={NECK_TOP + FRET_YS[5] - (FRET_YS[5] - FRET_YS[4]) / 2} r="6"
+        <motion.circle cx="330" cy={NECK_TOP + FRET_YS[8] - (FRET_YS[8] - FRET_YS[7]) / 2} r="6"
           stroke="currentColor" strokeWidth="1.5"
           fill={hl('fifth-peg') ? 'rgba(192,132,252,0.3)' : 'none'}
           variants={popVariant} initial="hidden" animate="visible" custom={0.5} />
-        <motion.line x1="244" y1={NECK_TOP + FRET_YS[5] - (FRET_YS[5] - FRET_YS[4]) / 2}
-          x2="248" y2={NECK_TOP + FRET_YS[5] - (FRET_YS[5] - FRET_YS[4]) / 2}
+        <motion.line x1="324" y1={NECK_TOP + FRET_YS[8] - (FRET_YS[8] - FRET_YS[7]) / 2}
+          x2="320" y2={NECK_TOP + FRET_YS[8] - (FRET_YS[8] - FRET_YS[7]) / 2}
           stroke="currentColor" strokeWidth="1"
           initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
           transition={{ duration: 0.3, delay: 0.7 }} />
         <AnimatePresence>
           {hl('fifth-peg') && (
-            <motion.text x="220" y={NECK_TOP + FRET_YS[5] - (FRET_YS[5] - FRET_YS[4]) / 2 - 12}
+            <motion.text x="348" y={NECK_TOP + FRET_YS[8] - (FRET_YS[8] - FRET_YS[7]) / 2 - 12}
               textAnchor="middle" fontSize="9" fill="#C084FC"
               initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               transition={{ type: 'spring', stiffness: 200, damping: 20 }}>5th peg</motion.text>

@@ -28,6 +28,7 @@ import { TopNavBar } from './components/Home/TopNavBar'
 import { ProfilePage } from './components/Profile/ProfilePage'
 import { AuthScreen } from './components/Auth/AuthScreen'
 import { ModeSelect } from './components/ModeSelect/ModeSelect'
+import { ModeTour } from './components/ModeSelect/ModeTour'
 import { Library } from './components/Library/Library'
 import { supabase } from './db/supabase'
 import { startAutoSync, stopAutoSync, uploadLocalData, setOnAfterPull } from './db/sync'
@@ -116,7 +117,6 @@ export default function App() {
   const tourPending = useStore((s) => s.tourPending)
   const startTour = useStore((s) => s.startTour)
   const dismissTour = useStore((s) => s.dismissTour)
-  const [showTourOffer, setShowTourOffer] = useState(false)
   const [skillCategory, setSkillCategory] = useState<import('./data/curriculum').SkillCategory | 'library' | null>(null)
 
   const { theme, toggleTheme } = useTheme()
@@ -136,6 +136,7 @@ export default function App() {
     () => localStorage.getItem('banjo-buddy-onboarded') === 'true'
   )
   const [authChecked, setAuthChecked] = useState(false)
+  const [modeTourPending, setModeTourPending] = useState<'quick-pick' | 'deep-dive' | null>(null)
   const [authedUserId, setAuthedUserId] = useState<string | null>(null)
 
   // Check for existing Supabase session on mount
@@ -175,13 +176,13 @@ export default function App() {
     loadUser()
   }, [])
 
-  // Show tour offer after login if this is a new user
+  // Clear legacy tour-pending flag — tours now handled by ModeTour per mode
   useEffect(() => {
-    if (tourPending && !showLoginScreen) {
-      const timer = setTimeout(() => setShowTourOffer(true), 600)
-      return () => clearTimeout(timer)
+    if (tourPending) {
+      localStorage.removeItem('banjo-buddy-tour-pending')
+      dismissTour()
     }
-  }, [tourPending, showLoginScreen])
+  }, [tourPending, dismissTour])
 
   if (isLoading) {
     return (
@@ -291,7 +292,24 @@ export default function App() {
 
   // Mode select gate — show choice if user hasn't picked yet
   if (!appMode) {
-    return <ModeSelect />
+    return <ModeSelect onSelect={(mode) => {
+      if (mode === 'quick-pick' && !localStorage.getItem('banjo-buddy-tour-quick-pick')) {
+        setModeTourPending('quick-pick')
+      }
+      setAppMode(mode)
+    }} />
+  }
+
+  // Quick Pick feature tour — shown once on first entry
+  if (modeTourPending) {
+    return (
+      <ModeTour
+        onComplete={() => {
+          localStorage.setItem('banjo-buddy-tour-quick-pick', 'true')
+          setModeTourPending(null)
+        }}
+      />
+    )
   }
 
   // Quick Pick route — Library-first layout
@@ -327,29 +345,6 @@ export default function App() {
       {/* Site tour overlay */}
       <SiteTour />
 
-      {/* Tour offer modal for new users */}
-      {showTourOffer && (
-        <div className="tour-offer-overlay">
-          <div className="tour-offer-modal">
-            <h2>Welcome to Banjo Buddy!</h2>
-            <p>Would you like a quick tour to get familiar with the app?</p>
-            <div className="tour-offer-actions">
-              <button
-                className="tour-offer-btn tour-offer-btn-primary"
-                onClick={() => { setShowTourOffer(false); localStorage.setItem('banjo-buddy-tour-seen', 'true'); startTour() }}
-              >
-                Show Me Around
-              </button>
-              <button
-                className="tour-offer-btn tour-offer-btn-secondary"
-                onClick={() => { setShowTourOffer(false); localStorage.setItem('banjo-buddy-tour-seen', 'true'); dismissTour() }}
-              >
-                Skip for Now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Confetti overlay for celebrations */}
       <ConfettiEffect trigger={newlyUnlocked.length > 0 || celebration?.type === 'confetti'} />
