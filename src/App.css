@@ -13454,3 +13454,137 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .roll-gen-save {
   align-self: flex-start;
 }
+/* ─── LickPlayer ──────────────────────────────────────────────────────────── */
+
+.lick-player {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: var(--surface-2, #1a1614);
+  border: 1px solid var(--border, rgba(245, 166, 35, 0.15));
+  border-radius: 12px;
+  position: relative;
+}
+
+.lick-player-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lick-player-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #f5e6d3);
+}
+
+.lick-player-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-secondary, #a89583);
+}
+
+.lick-player-meta > span {
+  padding: 2px 8px;
+  background: rgba(245, 166, 35, 0.08);
+  border-radius: 4px;
+}
+
+.lick-player-tab {
+  width: 100%;
+}
+
+.lick-player-tab-wide {
+  /* Combination licks: allow the tab strip to scroll if needed */
+  overflow-x: auto;
+}
+
+.lick-player-countin-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 8, 6, 0.6);
+  border-radius: 12px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.lick-player-countin-number {
+  font-size: 96px;
+  font-weight: 700;
+  color: var(--accent, #f5a623);
+  text-shadow: 0 4px 20px rgba(245, 166, 35, 0.6);
+}
+
+.lick-player-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+.lick-player-btn {
+  padding: 8px 16px;
+  background: var(--accent, #f5a623);
+  color: #1a1410;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.05s ease;
+}
+
+.lick-player-btn:active { transform: scale(0.97); }
+
+.lick-player-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-primary, #f5e6d3);
+  cursor: pointer;
+  user-select: none;
+}
+
+.lick-player-tempo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.lick-player-tempo-label {
+  font-size: 12px;
+  color: var(--text-secondary, #a89583);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.lick-player-tempo-slider {
+  width: 140px;
+  accent-color: var(--accent, #f5a623);
+}
+
+.lick-player-tempo-value {
+  font-family: var(--font-mono, monospace);
+  font-size: 14px;
+  color: var(--text-primary, #f5e6d3);
+  min-width: 28px;
+  text-align: right;
+}
+
+.lick-player-description {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary, #a89583);
+}

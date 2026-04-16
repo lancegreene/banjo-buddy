@@ -58,6 +58,14 @@ interface FretboardDiagramProps {
   autoPlay?: boolean
   bpm?: number
   showNoteNames?: boolean
+  /** If true, synth does not play notes on activeStep changes. Cursor still advances. */
+  synthMuted?: boolean
+  /** If false, playback stops after the last step instead of looping. Default: true. */
+  loop?: boolean
+  /** Called when playback reaches the final step in a non-looping pass. */
+  onComplete?: () => void
+  /** Called with the current active step index on every change. */
+  onActiveStepChange?: (step: number) => void
 }
 
 // ─── Tab Cell Formatting — technique notation (2S4, 0H2, 3P2) ──────────────
@@ -265,6 +273,10 @@ export function FretboardDiagram({
   autoPlay = false,
   bpm = 120,
   showNoteNames = false,
+  synthMuted = false,
+  loop = true,
+  onComplete,
+  onActiveStepChange,
 }: FretboardDiagramProps) {
   const steps = useMemo(() => buildDisplaySteps(notes), [notes])
   const [activeStep, setActiveStep] = useState(() => {
@@ -291,11 +303,13 @@ export function FretboardDiagram({
   // Play note(s) audio when activeStep changes
   useEffect(() => {
     if (activeStep < 0 || activeStep >= steps.length) return
+    onActiveStepChange?.(activeStep)
+    if (synthMuted) return
     const stepNotes = steps[activeStep].notes
     for (const n of stepNotes) {
       getSynth().playNote(n.string, n.fret)
     }
-  }, [activeStep, steps])
+  }, [activeStep, steps, synthMuted, onActiveStepChange])
 
   useEffect(() => {
     if (!autoPlay) {
@@ -309,10 +323,19 @@ export function FretboardDiagram({
     const ms = (60 / bpm) * 1000
     setActiveStep(0)
     intervalRef.current = setInterval(() => {
-      setActiveStep((prev) => (prev + 1 >= steps.length ? 0 : prev + 1))
+      setActiveStep((prev) => {
+        const next = prev + 1
+        if (next >= steps.length) {
+          if (loop) return 0
+          if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null }
+          onComplete?.()
+          return prev  // stay on last step
+        }
+        return next
+      })
     }, ms)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [autoPlay, bpm, steps])
+  }, [autoPlay, bpm, steps, loop, onComplete])
 
   const activeStepData = activeStep >= 0 && activeStep < steps.length ? steps[activeStep] : null
   const activeNotes = activeStepData?.notes ?? []
