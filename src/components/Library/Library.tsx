@@ -6,11 +6,12 @@ import { CircleOfFifths } from '../CircleOfFifths/CircleOfFifths'
 import { RollGenerator } from '../RollGenerator/RollGenerator'
 import { WarmupModal } from '../Practice/WarmupModal'
 import { getAllPatterns } from '../../data/rollPatterns'
-import { LICK_LIBRARY, getLickKeys, LICK_ROLES, type LickRole } from '../../data/lickLibrary'
+import { LICK_LIBRARY, getLickKeys, getLickLeadsToTargets, LICK_ROLES, type LickRole } from '../../data/lickLibrary'
 import { SONGS } from '../../data/songLibrary'
 import { SCALE_LIBRARY, SCALE_CATEGORIES, getScaleKeys, type ScaleCategory } from '../../data/scaleLibrary'
 import { CHORD_DIAGRAMS, getChordRoots, getChordVoicings, type ChordCategory } from '../../data/chordDiagrams'
 import { rollPatternToFretNotes, sectionToFretNotes } from '../../engine/rollToFretNotes'
+import { LickPlayer } from '../LickPlayer/LickPlayer'
 import type { FretNote } from '../../data/fretboardNotes'
 
 type LibraryCategory = 'rolls' | 'licks' | 'songs' | 'scales' | 'chords' | 'circle' | 'generate'
@@ -64,6 +65,7 @@ export function Library() {
   // Lick filters
   const [lickRole, setLickRole] = useState<LickRole | null>(null)
   const [lickKey, setLickKey] = useState<string | null>(null)
+  const [lickLeadsTo, setLickLeadsTo] = useState<string | null>(null)
   // Warmup
   const [showWarmup, setShowWarmup] = useState(false)
 
@@ -84,9 +86,10 @@ export function Library() {
   const filteredLicks = useMemo(() => {
     return licks.filter(l =>
       (!lickRole || l.role === lickRole) &&
-      (!lickKey || l.key === lickKey)
+      (!lickKey || l.key === lickKey) &&
+      (!lickLeadsTo || l.leadsTo === lickLeadsTo)
     )
-  }, [licks, lickRole, lickKey])
+  }, [licks, lickRole, lickKey, lickLeadsTo])
 
   // ── Resolve selected item to FretNote[] ──
   const { notes, label } = useMemo((): { notes: FretNote[]; label: string } => {
@@ -310,58 +313,94 @@ export function Library() {
         )
       })()}
 
-      {/* ══ Licks — type pills + key buttons + item list ══ */}
-      {category === 'licks' && (() => {
-        const keys = getLickKeys()
-        return (
-          <div className="library-filtered-section">
+      {/* ══ Licks — role/key/leadsTo chip rows + card list ══ */}
+      {category === 'licks' && (
+        <div className="library-filtered-section">
+          <div className="library-filters">
             <div className="library-filter-row">
+              <span className="library-filter-label">Role:</span>
               <button
-                className={`library-filter-pill ${!lickRole ? 'library-filter-pill-active' : ''}`}
-                style={{ '--pill-color': '#66bb6a' } as React.CSSProperties}
-                onClick={() => { setLickRole(null); setLickKey(null); setSelectedId(null) }}
+                type="button"
+                className={`library-filter-chip ${lickRole === null ? 'is-active' : ''}`}
+                onClick={() => { setLickRole(null); setLickLeadsTo(null); setSelectedId(null) }}
               >
                 All
               </button>
-              {LICK_ROLES.map(lr => (
+              {LICK_ROLES.map(r => (
                 <button
-                  key={lr.id}
-                  className={`library-filter-pill ${lickRole === lr.id ? 'library-filter-pill-active' : ''}`}
-                  style={{ '--pill-color': '#66bb6a' } as React.CSSProperties}
-                  onClick={() => { setLickRole(lr.id); setLickKey(null); setSelectedId(null) }}
+                  type="button"
+                  key={r.id}
+                  className={`library-filter-chip ${lickRole === r.id ? 'is-active' : ''}`}
+                  onClick={() => { setLickRole(r.id); setLickLeadsTo(null); setSelectedId(null) }}
                 >
-                  {lr.label}
+                  {r.label}
                 </button>
               ))}
             </div>
-            <div className="library-key-row">
-              {keys.map(k => (
+
+            <div className="library-filter-row">
+              <span className="library-filter-label">Key:</span>
+              <button
+                type="button"
+                className={`library-filter-chip ${lickKey === null ? 'is-active' : ''}`}
+                onClick={() => { setLickKey(null); setSelectedId(null) }}
+              >
+                All
+              </button>
+              {getLickKeys().map(k => (
                 <button
+                  type="button"
                   key={k}
-                  className={`library-key-btn ${lickKey === k ? 'library-key-btn-active' : ''}`}
-                  style={{ '--pill-color': '#66bb6a' } as React.CSSProperties}
-                  onClick={() => { setLickKey(lickKey === k ? null : k); setSelectedId(null) }}
+                  className={`library-filter-chip ${lickKey === k ? 'is-active' : ''}`}
+                  onClick={() => { setLickKey(k); setSelectedId(null) }}
                 >
                   {k}
                 </button>
               ))}
             </div>
-            <div className="library-items">
-              {filteredLicks.map(l => (
+
+            {lickRole === 'transition' && (
+              <div className="library-filter-row">
+                <span className="library-filter-label">Leads to:</span>
                 <button
-                  key={l.id}
-                  className={`library-item ${selectedId === l.id ? 'library-item-active' : ''}`}
-                  onClick={() => handleSelect(l.id)}
-                  title={l.description}
+                  type="button"
+                  className={`library-filter-chip ${lickLeadsTo === null ? 'is-active' : ''}`}
+                  onClick={() => setLickLeadsTo(null)}
                 >
-                  <span className="library-item-name">{l.name}</span>
-                  <span className="library-item-meta">{l.key} · {l.referenceBpm} BPM</span>
+                  Any
                 </button>
-              ))}
-            </div>
+                {getLickLeadsToTargets().map(t => (
+                  <button
+                    type="button"
+                    key={t}
+                    className={`library-filter-chip ${lickLeadsTo === t ? 'is-active' : ''}`}
+                    onClick={() => setLickLeadsTo(t)}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        )
-      })()}
+
+          <div className="library-items">
+            {filteredLicks.map(l => (
+              <button
+                type="button"
+                key={l.id}
+                className={`library-item lick-card ${l.role === 'combination' ? 'lick-card-combination' : ''} ${selectedId === l.id ? 'library-item-active' : ''}`}
+                onClick={() => handleSelect(l.id)}
+              >
+                <div className="lick-card-name">{l.name}</div>
+                <div className="lick-card-meta">
+                  {l.key} · {l.role}{l.leadsTo ? ` → ${l.leadsTo}` : ''} · {l.measureCount === 2 ? '2 measures' : '1 measure'} · {l.referenceBpm} BPM
+                </div>
+                <div className="lick-card-desc">{l.description.slice(0, 80)}{l.description.length > 80 ? '…' : ''}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ══ Rolls — simple item list (no filters needed for 7 items) ══ */}
       {category === 'rolls' && (
@@ -424,8 +463,14 @@ export function Library() {
         )
       })()}
 
-      {/* FretLab-style tab viewer */}
-      {!isStandalone && selectedId && notes.length > 0 && (
+      {/* Lick detail — rendered via LickPlayer (bypasses generic viewer) */}
+      {!isStandalone && selectedId && category === 'licks' && (() => {
+        const lick = LICK_LIBRARY.find(l => l.id === selectedId)
+        return lick ? <LickPlayer lick={lick} /> : null
+      })()}
+
+      {/* FretLab-style tab viewer — all non-lick categories */}
+      {!isStandalone && selectedId && category !== 'licks' && notes.length > 0 && (
         <div className="library-viewer">
           <div className="library-viewer-label">{label}</div>
           {category === 'rolls' && (() => {
