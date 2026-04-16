@@ -24,7 +24,6 @@ export interface UseTabPlaybackReturn {
   synthMuted: boolean
   clickOn: boolean
   countInRemaining: number  // 4 → 3 → 2 → 1 → 0
-  currentStep: number       // mirrored from FretboardDiagram.onActiveStepChange
 
   // Control
   play: () => void
@@ -34,7 +33,7 @@ export interface UseTabPlaybackReturn {
   toggleSynthMuted: () => void
   toggleClick: () => void
   setBpm: (bpm: number) => void
-  setCurrentStep: (step: number) => void
+  handleStepAdvance: (step: number) => void  // was: setCurrentStep; fires click on even steps
 }
 
 export function useTabPlayback(options: UseTabPlaybackOptions): UseTabPlaybackReturn {
@@ -47,10 +46,8 @@ export function useTabPlayback(options: UseTabPlaybackOptions): UseTabPlaybackRe
   const [synthMuted, setSynthMuted] = useState(false)
   const [clickOn, setClickOn] = useState(true)
   const [countInRemaining, setCountInRemaining] = useState(0)
-  const [currentStep, setCurrentStepState] = useState(-1)
 
   const countInIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const clickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const clickAudioRef = useRef<AudioContext | null>(null)
 
   const playClickSound = useCallback(() => {
@@ -72,10 +69,8 @@ export function useTabPlayback(options: UseTabPlaybackOptions): UseTabPlaybackRe
 
   const stop = useCallback(() => {
     if (countInIntervalRef.current) { clearInterval(countInIntervalRef.current); countInIntervalRef.current = null }
-    if (clickIntervalRef.current) { clearInterval(clickIntervalRef.current); clickIntervalRef.current = null }
     setPhase('idle')
     setCountInRemaining(0)
-    setCurrentStepState(-1)
   }, [])
 
   const startMainPlayback = useCallback(() => {
@@ -107,25 +102,19 @@ export function useTabPlayback(options: UseTabPlaybackOptions): UseTabPlaybackRe
     }
   }, [phase, countInOn, bpm, clickOn, countInBeats, playClickSound, startMainPlayback])
 
-  // Click-track while playing — ticks on every other step (half-note pulse at input BPM)
-  useEffect(() => {
-    if (phase !== 'playing' || !clickOn) return
-    const tickMs = (60 / bpm) * 1000 * 2  // every 2 steps
-    // Fire a click on entering the playing phase
-    playClickSound()
-    clickIntervalRef.current = setInterval(() => {
+  // handleStepAdvance — called by FretboardDiagram's onActiveStepChange.
+  // Fires the metronome click on every other step (half-note pulse) so click
+  // and cursor share one clock and cannot drift apart.
+  const handleStepAdvance = useCallback((step: number) => {
+    if (phase === 'playing' && clickOn && step >= 0 && step % 2 === 0) {
       playClickSound()
-    }, tickMs)
-    return () => {
-      if (clickIntervalRef.current) { clearInterval(clickIntervalRef.current); clickIntervalRef.current = null }
     }
-  }, [phase, clickOn, bpm, playClickSound])
+  }, [phase, clickOn, playClickSound])
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (countInIntervalRef.current) clearInterval(countInIntervalRef.current)
-      if (clickIntervalRef.current) clearInterval(clickIntervalRef.current)
       clickAudioRef.current?.close()
     }
   }, [])
@@ -139,7 +128,6 @@ export function useTabPlayback(options: UseTabPlaybackOptions): UseTabPlaybackRe
     synthMuted,
     clickOn,
     countInRemaining,
-    currentStep,
     play,
     stop,
     toggleLoop: () => setLoop(v => !v),
@@ -147,6 +135,6 @@ export function useTabPlayback(options: UseTabPlaybackOptions): UseTabPlaybackRe
     toggleSynthMuted: () => setSynthMuted(v => !v),
     toggleClick: () => setClickOn(v => !v),
     setBpm: (next: number) => setBpmState(Math.max(40, Math.min(160, Math.round(next)))),
-    setCurrentStep: setCurrentStepState,
+    handleStepAdvance,
   }
 }

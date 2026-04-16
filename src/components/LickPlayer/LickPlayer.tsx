@@ -48,7 +48,7 @@ export function LickPlayer({ lick }: LickPlayerProps) {
           loop={pb.loop}
           synthMuted={pb.synthMuted}
           onComplete={pb.stop}
-          onActiveStepChange={pb.setCurrentStep}
+          onActiveStepChange={pb.handleStepAdvance}
         />
       </div>
 

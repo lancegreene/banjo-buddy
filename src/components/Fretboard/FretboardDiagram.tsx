@@ -323,16 +323,20 @@ export function FretboardDiagram({
     const ms = (60 / bpm) * 1000
     setActiveStep(0)
     intervalRef.current = setInterval(() => {
+      let completed = false
       setActiveStep((prev) => {
         const next = prev + 1
         if (next >= steps.length) {
           if (loop) return 0
-          if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null }
-          onComplete?.()
+          completed = true
           return prev  // stay on last step
         }
         return next
       })
+      if (completed) {
+        if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null }
+        onComplete?.()
+      }
     }, ms)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [autoPlay, bpm, steps, loop, onComplete])
