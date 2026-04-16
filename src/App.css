@@ -12982,6 +12982,14 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   line-height: 1.4;
 }
 
+.library-warmup-card {
+  width: 100%;
+  max-width: 720px;
+  flex-direction: row;
+  gap: 12px;
+  padding: 16px 24px;
+}
+
 @media (max-width: 640px) {
   .library-menu-card {
     padding: 16px 12px;
@@ -12989,6 +12997,9 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   }
   .library-menu-card-desc {
     display: none;
+  }
+  .library-warmup-card {
+    padding: 14px 16px;
   }
 }
 

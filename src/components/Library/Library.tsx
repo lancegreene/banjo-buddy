@@ -4,6 +4,7 @@ import { FretboardDiagram } from '../Fretboard/FretboardDiagram'
 import { BanjoChordDiagram } from '../BanjoChordDiagram/BanjoChordDiagram'
 import { CircleOfFifths } from '../CircleOfFifths/CircleOfFifths'
 import { RollGenerator } from '../RollGenerator/RollGenerator'
+import { WarmupModal } from '../Practice/WarmupModal'
 import { getAllPatterns } from '../../data/rollPatterns'
 import { LICK_LIBRARY, getLickKeys, LICK_TYPES, type LickType } from '../../data/lickLibrary'
 import { SONGS } from '../../data/songLibrary'
@@ -25,6 +26,7 @@ const LickIcon = () => <CatIcon><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18
 const ScaleIcon = () => <CatIcon><path d="M3 20l4-6 3 4 4-8 3 5 4-9"/></CatIcon>
 const SongIcon = () => <CatIcon><path d="M4 4h16v16H4z" rx="2"/><path d="M8 8h8"/><path d="M8 12h6"/><path d="M8 16h4"/></CatIcon>
 const GenerateIcon = () => <CatIcon><path d="M12 3v4m0 10v4M3 12h4m10 0h4"/><path d="M5.6 5.6l2.8 2.8m7.2 7.2l2.8 2.8M18.4 5.6l-2.8 2.8M5.6 18.4l2.8-2.8"/><circle cx="12" cy="12" r="3"/></CatIcon>
+const WarmupIcon = () => <CatIcon><path d="M12 2v4"/><path d="M12 18v4"/><circle cx="12" cy="12" r="6"/><path d="M12 9v4l2.5 1.5"/></CatIcon>
 
 const CATEGORIES: { id: LibraryCategory; label: string; icon: () => JSX.Element; desc: string; color: string; badge?: string }[] = [
   { id: 'chords',   label: 'Chord Charts',    icon: ChordIcon,    desc: 'Major, minor & 7th chord shapes',  color: '#ffa726' },
@@ -62,6 +64,8 @@ export function Library() {
   // Lick filters
   const [lickType, setLickType] = useState<LickType | null>(null)
   const [lickKey, setLickKey] = useState<string | null>(null)
+  // Warmup
+  const [showWarmup, setShowWarmup] = useState(false)
 
   // ── Data sources ──
   const rolls = useMemo(() => getAllPatterns(), [])
@@ -168,7 +172,22 @@ export function Library() {
               </button>
             ))}
           </div>
+          <button
+            className="library-menu-card library-warmup-card"
+            style={{ '--cat-color': '#E8A838' } as React.CSSProperties}
+            onClick={() => setShowWarmup(true)}
+          >
+            <span className="library-menu-card-icon"><WarmupIcon /></span>
+            <span className="library-menu-card-label">Warm Up</span>
+            <span className="library-menu-card-desc">5-min guided roll practice</span>
+          </button>
         </div>
+        {showWarmup && (
+          <WarmupModal
+            onComplete={() => setShowWarmup(false)}
+            onSkip={() => setShowWarmup(false)}
+          />
+        )}
       </div>
     )
   }

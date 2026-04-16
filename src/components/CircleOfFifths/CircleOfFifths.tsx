@@ -4,6 +4,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useMemo, useSyncExternalStore } from 'react';
+import { CHORD_DIAGRAMS, type ChordDiagram } from '../../data/chordDiagrams';
+import { BanjoChordDiagram } from '../BanjoChordDiagram/BanjoChordDiagram';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -231,10 +233,28 @@ const PALETTE = {
 export function CircleOfFifths() {
   const [selection, setSelection] = useState<Selection>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const [show145, setShow145] = useState(false);
   const isLight = useIsLight();
   const p = isLight ? PALETTE.light : PALETTE.dark;
 
   const diatonicChords = getDiatonicChords(selection);
+
+  // Build set of I, IV, V root names + chord diagrams for circle highlighting
+  const { primaryKeys, primaryChords } = useMemo(() => {
+    if (!show145 || !selection) return { primaryKeys: new Set<string>(), primaryChords: [] as { roman: string; chord: ChordDiagram }[] };
+    const roots = new Set<string>();
+    const chords: { roman: string; chord: ChordDiagram }[] = [];
+    diatonicChords.forEach(c => {
+      if (!c.isPrimary) return;
+      const root = c.name.replace(/m$|dim$/, '');
+      roots.add(root);
+      // Find the matching chord category based on quality
+      const cat = c.name.endsWith('m') ? 'minor' : c.name.endsWith('dim') ? 'minor' : 'major';
+      const diagram = CHORD_DIAGRAMS.find(d => d.root === root && d.category === cat);
+      if (diagram) chords.push({ roman: c.roman, chord: diagram });
+    });
+    return { primaryKeys: roots, primaryChords: chords };
+  }, [show145, selection, diatonicChords]);
 
   function handleSelect(key: string, type: 'major' | 'minor') {
     if (selection?.key === key && selection?.type === type) {
@@ -264,8 +284,10 @@ export function CircleOfFifths() {
           const labelPos = polarToCartesian(CX, CY, (OUTER_R + MID_R) / 2, midAngle);
           const dotPos = polarToCartesian(CX, CY, OUTER_R - 10, midAngle);
 
+          const isPrimary145 = primaryKeys.has(entry.major);
           let fill = p.segFill;
           if (isSelected) fill = 'rgba(74,158,255,0.3)';
+          else if (isPrimary145) fill = 'rgba(232,168,56,0.25)';
           else if (isHovered) fill = p.segHover;
 
           return (
@@ -273,8 +295,8 @@ export function CircleOfFifths() {
               <path
                 d={describeArc(CX, CY, MID_R, OUTER_R, startAngle, endAngle)}
                 fill={fill}
-                stroke={isSelected ? '#4a9eff' : p.segStroke}
-                strokeWidth={isSelected ? 1.5 : 0.5}
+                stroke={isSelected ? '#4a9eff' : isPrimary145 ? '#E8A838' : p.segStroke}
+                strokeWidth={isSelected ? 1.5 : isPrimary145 ? 1.5 : 0.5}
                 style={{ cursor: 'pointer', transition: 'fill 0.15s' }}
                 onMouseEnter={() => setHovered(`major-${i}`)}
                 onMouseLeave={() => setHovered(null)}
@@ -393,6 +415,38 @@ export function CircleOfFifths() {
           </text>
         )}
       </svg>
+
+      {/* I-IV-V toggle */}
+      {selection && (
+        <button
+          onClick={() => setShow145(v => !v)}
+          style={{
+            padding: '6px 14px',
+            borderRadius: '20px',
+            border: `1.5px solid ${show145 ? '#E8A838' : p.badgeBorder}`,
+            background: show145 ? 'rgba(232,168,56,0.15)' : 'transparent',
+            color: show145 ? '#E8A838' : p.textNormal,
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+          }}
+        >
+          {show145 ? 'I · IV · V ✓' : 'Show I · IV · V'}
+        </button>
+      )}
+
+      {/* I-IV-V chord diagrams */}
+      {primaryChords.length > 0 && (
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          {primaryChords.map(({ roman, chord }) => (
+            <div key={roman} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#E8A838' }}>{roman}</span>
+              <BanjoChordDiagram chord={chord} />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Diatonic chords row */}
       {diatonicChords.length > 0 && (
