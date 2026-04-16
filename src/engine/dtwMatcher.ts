@@ -6,12 +6,36 @@
 
 import { NOTE_NAMES } from './noteCapture'
 import type { CapturedNote } from './noteCapture'
+import type { TabNote } from './banjoSynth'
+import { OPEN_STRINGS } from '../data/fretboardNotes'
+
 // Local type — was previously exported from lickLibrary before the TabNote migration.
 // Kept here so the dormant DTW pipeline still compiles; no new code feeds it.
 interface ReferenceNote {
   note: string
   octave: number
   durationRatio: number
+}
+
+const _CHROMATIC = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
+/**
+ * Derive a pitch sequence from a lick's tab. Used by the dormant DTW pipeline
+ * (LickDetector) to keep working without a dedicated pitch-sequence field.
+ * Duration ratio defaults to 0.5 (eighth-note feel of the 8-beat measure).
+ */
+export function tabToReferenceNotes(tab: TabNote[]): ReferenceNote[] {
+  const result: ReferenceNote[] = []
+  for (const n of tab) {
+    const open = OPEN_STRINGS[n.string]
+    if (!open) continue
+    const openSemi = (open.octave + 1) * 12 + _CHROMATIC.indexOf(open.note)
+    const semi = openSemi + n.fret
+    const note = _CHROMATIC[((semi % 12) + 12) % 12]
+    const octave = Math.floor(semi / 12) - 1
+    result.push({ note, octave, durationRatio: 0.5 })
+  }
+  return result
 }
 
 export interface AlignedPair {

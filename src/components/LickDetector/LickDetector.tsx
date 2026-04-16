@@ -3,8 +3,8 @@
 // Receives notes from the parent's shared useNoteCapture instance.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, useEffect } from 'react'
-import { dtwMatch, type DTWResult } from '../../engine/dtwMatcher'
+import { useState, useEffect, useMemo } from 'react'
+import { dtwMatch, tabToReferenceNotes, type DTWResult } from '../../engine/dtwMatcher'
 import { LICK_MAP } from '../../data/lickLibrary'
 import type { CapturedNote } from '../../engine/noteCapture'
 
@@ -25,10 +25,12 @@ export function LickDetector({ lickId, notes, isListening, onScore }: LickDetect
   const lick = LICK_MAP.get(lickId)
   const [result, setResult] = useState<DTWResult | null>(null)
 
+  const refNotes = useMemo(() => lick ? tabToReferenceNotes(lick.tab) : [], [lick])
+
   useEffect(() => {
     if (!lick || notes.length < 3) return
-    setResult(dtwMatch(notes, lick.notes))
-  }, [notes, lick])
+    setResult(dtwMatch(notes, refNotes))
+  }, [notes, lick, refNotes])
 
   if (!lick) {
     return <div className="tuner-error">Lick not found: {lickId}</div>
@@ -46,7 +48,7 @@ export function LickDetector({ lickId, notes, isListening, onScore }: LickDetect
       {/* Reference notes row */}
       <div className="lick-ref-label">Reference:</div>
       <div className="lick-note-row">
-        {lick.notes.map((ref, i) => {
+        {refNotes.map((ref, i) => {
           const pair = result?.alignedPairs.find((p) => p.ref === ref)
           const matched = pair !== undefined
           return (
@@ -69,7 +71,7 @@ export function LickDetector({ lickId, notes, isListening, onScore }: LickDetect
         <>
           <div className="lick-ref-label">You played:</div>
           <div className="lick-note-row lick-note-row-played">
-            {notes.slice(-lick.notes.length * 2).map((n, i) => (
+            {notes.slice(-refNotes.length * 2).map((n, i) => (
               <div key={i} className="lick-note-chip lick-note-chip-played">
                 {n.note}{n.octave}
               </div>
