@@ -399,7 +399,7 @@ export function Library() {
                 >
                   <div className="lick-card-name">{l.name}</div>
                   <div className="lick-card-meta">
-                    {l.key} · {l.role}{l.leadsTo ? ` → ${l.leadsTo}` : ''} · {l.measureCount === 2 ? '2 measures' : '1 measure'} · {l.referenceBpm} BPM
+                    {l.key} · {l.role}{l.leadsTo ? ` → ${l.leadsTo}` : ''} · {l.measureCount === 2 ? '2 measures' : '1 measure'}
                   </div>
                   <div className="lick-card-desc">{l.description.slice(0, 80)}{l.description.length > 80 ? '…' : ''}</div>
                 </button>
