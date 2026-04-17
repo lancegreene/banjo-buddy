@@ -135,6 +135,12 @@ export function Library() {
   }
 
   function handleSelect(id: string) {
+    // Clicking the already-selected lick closes its inline player
+    if (category === 'licks' && selectedId === id) {
+      setSelectedId(null)
+      setAutoPlay(false)
+      return
+    }
     setSelectedId(id)
     setSelectedSectionId(null)
     setAutoPlay(false)
