@@ -44,6 +44,7 @@ export const LICK_LIBRARY: LickReference[] = [
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
     sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.03, y: 0.02, width: 0.22, height: 0.09 },
     tab: [
       { string: 2, fret: 3, beat: 0, finger: 'I', technique: 'pull', slideToFret: 0 },
       { string: 2, fret: 0, beat: 1, finger: 'I' },
@@ -62,6 +63,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'G', role: 'ending', chord: 'G',
     measureCount: 1, referenceBpm: 80,
     source: 'Earl Scruggs and the 5-String Banjo, vol 1',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.25, y: 0.02, width: 0.22, height: 0.09 },
     tab: [
       { string: 1, fret: 0, beat: 0, finger: 'M' },
       { string: 2, fret: 0, beat: 1, finger: 'I' },
@@ -80,6 +83,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'G', role: 'basic', chord: 'G',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.03, y: 0.11, width: 0.22, height: 0.09 },
     tab: [
       { string: 3, fret: 0, beat: 0, finger: 'T' },
       { string: 2, fret: 0, beat: 1, finger: 'I' },
@@ -100,6 +105,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'G', role: 'basic', chord: 'G',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.25, y: 0.11, width: 0.22, height: 0.09 },
     tab: [
       { string: 2, fret: 0, beat: 0, finger: 'I' },
       { string: 1, fret: 0, beat: 1, finger: 'M' },
@@ -118,6 +125,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'G', role: 'basic', chord: 'G',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.03, y: 0.20, width: 0.22, height: 0.09 },
     tab: [
       { string: 3, fret: 0, beat: 0, finger: 'T' },
       { string: 2, fret: 0, beat: 1, finger: 'I' },
@@ -136,6 +145,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'G', role: 'basic', chord: 'G',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.25, y: 0.20, width: 0.22, height: 0.09 },
     tab: [
       { string: 3, fret: 0, beat: 0, finger: 'T', technique: 'hammer', slideToFret: 2 },
       { string: 2, fret: 0, beat: 1, finger: 'I' },
@@ -154,6 +165,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'G', role: 'basic', chord: 'G',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.03, y: 0.29, width: 0.22, height: 0.09 },
     tab: [
       { string: 3, fret: 0, beat: 0, finger: 'T' },
       { string: 2, fret: 3, beat: 1, finger: 'I', technique: 'pull', slideToFret: 0 },
@@ -172,6 +185,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'G', role: 'basic', chord: 'G',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.25, y: 0.29, width: 0.22, height: 0.09 },
     tab: [
       { string: 3, fret: 0, beat: 0, finger: 'T' },
       { string: 2, fret: 0, beat: 1, finger: 'I' },
@@ -192,6 +207,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'C', role: 'basic', chord: 'C',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.03, y: 0.50, width: 0.22, height: 0.09 },
     tab: [
       { string: 2, fret: 1, beat: 0, finger: 'I' },
       { string: 4, fret: 2, beat: 1, finger: 'T' },
@@ -210,6 +227,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'C', role: 'basic', chord: 'C',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.25, y: 0.50, width: 0.22, height: 0.09 },
     tab: [
       { string: 4, fret: 2, beat: 0, finger: 'T' },
       { string: 2, fret: 0, beat: 1, finger: 'I', technique: 'hammer', slideToFret: 1 },
@@ -228,6 +247,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'C', role: 'fill', chord: 'C',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.03, y: 0.59, width: 0.22, height: 0.09 },
     tab: [
       { string: 3, fret: 0, beat: 0, finger: 'T' },
       { string: 2, fret: 1, beat: 1, finger: 'I' },
@@ -248,6 +269,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'C', role: 'basic', chord: 'C',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.25, y: 0.59, width: 0.22, height: 0.09 },
     tab: [
       { string: 4, fret: 2, beat: 0, finger: 'T' },
       { string: 2, fret: 0, beat: 1, finger: 'I', technique: 'hammer', slideToFret: 1 },
@@ -266,6 +289,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'C', role: 'basic', chord: 'C',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.03, y: 0.68, width: 0.22, height: 0.09 },
     tab: [
       { string: 4, fret: 2, beat: 0, finger: 'T' },
       { string: 2, fret: 1, beat: 1, finger: 'I' },
@@ -284,6 +309,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'C', role: 'basic', chord: 'C',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.25, y: 0.68, width: 0.22, height: 0.09 },
     tab: [
       { string: 2, fret: 1, beat: 0, finger: 'I' },
       { string: 1, fret: 0, beat: 1, finger: 'M' },
@@ -302,6 +329,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'C', role: 'fill', chord: 'C',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.03, y: 0.77, width: 0.22, height: 0.09 },
     tab: [
       { string: 1, fret: 0, beat: 0, finger: 'M' },
       { string: 2, fret: 1, beat: 1, finger: 'I', technique: 'pull', slideToFret: 0 },
@@ -320,6 +349,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'C', role: 'ending', chord: 'C',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.25, y: 0.77, width: 0.22, height: 0.09 },
     tab: [
       { string: 4, fret: 2, beat: 0, finger: 'T' },
       { string: 2, fret: 1, beat: 1, finger: 'I' },
@@ -340,6 +371,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'D', role: 'basic', chord: 'D',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.11',
+    sourcePage: 'splitting-licks-p11.jpg',
+    sourceBbox: { x: 0.03, y: 0.04, width: 0.22, height: 0.09 },
     tab: [
       { string: 4, fret: 0, beat: 0, finger: 'T' },
       { string: 3, fret: 2, beat: 1, finger: 'T' },
@@ -358,6 +391,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'D', role: 'basic', chord: 'D',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.11',
+    sourcePage: 'splitting-licks-p11.jpg',
+    sourceBbox: { x: 0.03, y: 0.14, width: 0.22, height: 0.09 },
     tab: [
       { string: 4, fret: 0, beat: 0, finger: 'T' },
       { string: 3, fret: 2, beat: 1, finger: 'T', technique: 'pull', slideToFret: 0 },
@@ -376,6 +411,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'D', role: 'transition', chord: 'D', leadsTo: 'G',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.11',
+    sourcePage: 'splitting-licks-p11.jpg',
+    sourceBbox: { x: 0.03, y: 0.24, width: 0.22, height: 0.09 },
     tab: [
       { string: 3, fret: 2, beat: 0, finger: 'T' },
       { string: 2, fret: 3, beat: 1, finger: 'I' },
@@ -396,6 +433,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'D', role: 'basic', chord: 'D',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.11',
+    sourcePage: 'splitting-licks-p11.jpg',
+    sourceBbox: { x: 0.27, y: 0.04, width: 0.22, height: 0.09 },
     tab: [
       { string: 4, fret: 0, beat: 0, finger: 'T' },
       { string: 2, fret: 3, beat: 1, finger: 'I' },
@@ -414,6 +453,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'D', role: 'basic', chord: 'D',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.11',
+    sourcePage: 'splitting-licks-p11.jpg',
+    sourceBbox: { x: 0.27, y: 0.14, width: 0.22, height: 0.09 },
     tab: [
       { string: 2, fret: 3, beat: 0, finger: 'I' },
       { string: 1, fret: 4, beat: 1, finger: 'M' },
@@ -432,6 +473,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'D', role: 'basic', chord: 'D',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.11',
+    sourcePage: 'splitting-licks-p11.jpg',
+    sourceBbox: { x: 0.27, y: 0.24, width: 0.22, height: 0.09 },
     tab: [
       { string: 3, fret: 2, beat: 0, finger: 'T' },
       { string: 2, fret: 3, beat: 1, finger: 'I' },
@@ -450,6 +493,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'D', role: 'fill', chord: 'D',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.11',
+    sourcePage: 'splitting-licks-p11.jpg',
+    sourceBbox: { x: 0.27, y: 0.34, width: 0.22, height: 0.09 },
     tab: [
       { string: 3, fret: 2, beat: 0, finger: 'T', technique: 'pull', slideToFret: 0 },
       { string: 2, fret: 3, beat: 1, finger: 'I' },
@@ -468,6 +513,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'D', role: 'ending', chord: 'D', leadsTo: 'G',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.11',
+    sourcePage: 'splitting-licks-p11.jpg',
+    sourceBbox: { x: 0.03, y: 0.34, width: 0.22, height: 0.09 },
     tab: [
       { string: 4, fret: 0, beat: 0, finger: 'T' },
       { string: 2, fret: 3, beat: 1, finger: 'I' },
@@ -488,6 +535,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'G', role: 'fill', chord: 'G',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.03, y: 0.38, width: 0.22, height: 0.09 },
     tab: [
       { string: 3, fret: 0, beat: 0, finger: 'T' },
       { string: 2, fret: 0, beat: 1, finger: 'I' },
@@ -506,6 +555,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'G', role: 'fill', chord: 'G',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.25, y: 0.38, width: 0.22, height: 0.09 },
     tab: [
       { string: 3, fret: 0, beat: 0, finger: 'T' },
       { string: 2, fret: 3, beat: 1, finger: 'I', technique: 'pull', slideToFret: 0 },
@@ -524,6 +575,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'G', role: 'combination', chord: 'G',
     measureCount: 2, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.03, y: 0.87, width: 0.65, height: 0.09 },
     tab: [
       // Measure 1 — forward roll vamp (beats 0-7)
       { string: 3, fret: 0, beat: 0, finger: 'T' },
@@ -554,6 +607,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'G', role: 'transition', chord: 'G', leadsTo: 'C',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.27, y: 0.42, width: 0.22, height: 0.09 },
     tab: [
       { string: 3, fret: 0, beat: 0, finger: 'T' },
       { string: 2, fret: 0, beat: 1, finger: 'I' },
@@ -572,6 +627,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'G', role: 'transition', chord: 'G', leadsTo: 'C',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.27, y: 0.51, width: 0.22, height: 0.09 },
     tab: [
       { string: 3, fret: 0, beat: 0, finger: 'T' },
       { string: 2, fret: 0, beat: 1, finger: 'I' },
@@ -590,6 +647,8 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'C', role: 'transition', chord: 'C', leadsTo: 'G',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
+    sourceBbox: { x: 0.27, y: 0.60, width: 0.22, height: 0.09 },
     tab: [
       { string: 4, fret: 2, beat: 0, finger: 'T' },
       { string: 2, fret: 1, beat: 1, finger: 'I' },
