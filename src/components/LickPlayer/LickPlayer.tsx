@@ -4,7 +4,7 @@
 // loop toggle, tempo slider. Spec: 2026-04-16-lick-library-foundation-design.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { LickReference } from '../../data/lickLibrary'
 import { FretboardDiagram } from '../Fretboard/FretboardDiagram'
 import { sectionToFretNotes } from '../../engine/rollToFretNotes'
@@ -25,7 +25,7 @@ export function LickPlayer({ lick }: LickPlayerProps) {
 
   const [showSource, setShowSource] = useState(false)
   // Reset source toggle when the lick changes
-  useMemo(() => { setShowSource(false); return null }, [lick.id])
+  useEffect(() => { setShowSource(false) }, [lick.id])
 
   const roleLabel = lick.role.charAt(0).toUpperCase() + lick.role.slice(1)
   const leadsToLabel = lick.leadsTo ? ` → ${lick.leadsTo}` : ''
@@ -128,7 +128,7 @@ export function LickPlayer({ lick }: LickPlayerProps) {
             <span className="lick-source-toggle-text">
               {showSource ? 'Hide source' : `View source${lick.source ? ` (${lick.source})` : ''}`}
             </span>
-            <span className="lick-source-toggle-text-mobile">📖 Source</span>
+            <span className="lick-source-toggle-text-mobile">Source</span>
           </button>
           {showSource && (
             <SourceView

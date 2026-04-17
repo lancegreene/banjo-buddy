@@ -4,13 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState } from 'react'
-
-export interface SourceBBox {
-  x: number       // 0..1, fraction of image width
-  y: number       // 0..1, fraction of image height
-  width: number   // 0..1, fraction of image width
-  height: number  // 0..1, fraction of image height
-}
+import type { SourceBBox } from '../../data/lickLibrary'
 
 interface SourceViewProps {
   sourcePage: string       // filename, e.g. 'splitting-licks-p10.jpg'

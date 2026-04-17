@@ -13696,7 +13696,7 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 10px 14px;
   background: transparent;
   color: var(--text-secondary, #a89583);
   border: 1px solid rgba(245, 166, 35, 0.2);
@@ -13761,11 +13761,11 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   outline: 2px solid var(--accent, #f5a623);
   outline-offset: -1px;
   border-radius: 4px;
-  background: rgba(245, 166, 35, 0.08);
+  background: rgba(245, 166, 35, 0.12);
   pointer-events: none;
-  box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.25);
-  /* The huge box-shadow dims the rest of the page; the cutout effect is implicit
-     because outline + offset draws ON the bbox region, leaving it bright. */
+  /* Highlight is just an outlined rectangle with a faint amber fill.
+     A page-wide spotlight effect was attempted with box-shadow but
+     overflow: hidden on the wrapper clips it — keep this simpler. */
 }
 
 .lick-source-label {

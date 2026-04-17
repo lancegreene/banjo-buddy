@@ -8,6 +8,14 @@ import type { TabNote } from '../engine/banjoSynth'
 
 export type LickRole = 'basic' | 'fill' | 'ending' | 'transition' | 'combination'
 
+/** Normalized [0..1] coordinates of a region on a source page image. */
+export interface SourceBBox {
+  x: number       // left edge, fraction of image width
+  y: number       // top edge, fraction of image height
+  width: number   // fraction of image width
+  height: number  // fraction of image height
+}
+
 export interface LickReference {
   id: string
   name: string
@@ -21,8 +29,8 @@ export interface LickReference {
   source?: string          // e.g. 'Splitting the Licks, p.11'
   /** Filename in public/sources/ — e.g. 'splitting-licks-p10.jpg'. If absent, source view is hidden. */
   sourcePage?: string
-  /** Normalized [0..1] coordinates of the lick's region on its source page. If absent, no highlight rectangle is drawn. */
-  sourceBbox?: { x: number; y: number; width: number; height: number }
+  /** Normalized coordinates of the lick's region on its source page. If absent, no highlight rectangle is drawn. */
+  sourceBbox?: SourceBBox
   tab: TabNote[]
 }
 
