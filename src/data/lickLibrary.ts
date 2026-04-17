@@ -19,6 +19,10 @@ export interface LickReference {
   measureCount: 1 | 2      // 2 only for 'combination'
   referenceBpm: number
   source?: string          // e.g. 'Splitting the Licks, p.11'
+  /** Filename in public/sources/ — e.g. 'splitting-licks-p10.jpg'. If absent, source view is hidden. */
+  sourcePage?: string
+  /** Normalized [0..1] coordinates of the lick's region on its source page. If absent, no highlight rectangle is drawn. */
+  sourceBbox?: { x: number; y: number; width: number; height: number }
   tab: TabNote[]
 }
 
@@ -31,6 +35,7 @@ export const LICK_LIBRARY: LickReference[] = [
     key: 'G', role: 'ending', chord: 'G',
     measureCount: 1, referenceBpm: 80,
     source: 'Splitting the Licks, p.10',
+    sourcePage: 'splitting-licks-p10.jpg',
     tab: [
       { string: 2, fret: 3, beat: 0, finger: 'I', technique: 'pull', slideToFret: 0 },
       { string: 2, fret: 0, beat: 1, finger: 'I' },

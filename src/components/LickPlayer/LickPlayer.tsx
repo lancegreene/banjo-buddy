@@ -4,11 +4,12 @@
 // loop toggle, tempo slider. Spec: 2026-04-16-lick-library-foundation-design.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { LickReference } from '../../data/lickLibrary'
 import { FretboardDiagram } from '../Fretboard/FretboardDiagram'
 import { sectionToFretNotes } from '../../engine/rollToFretNotes'
 import { useTabPlayback } from './useTabPlayback'
+import { SourceView } from './SourceView'
 
 interface LickPlayerProps {
   lick: LickReference
@@ -21,6 +22,10 @@ export function LickPlayer({ lick }: LickPlayerProps) {
   )
 
   const pb = useTabPlayback({ bpmDefault: lick.referenceBpm })
+
+  const [showSource, setShowSource] = useState(false)
+  // Reset source toggle when the lick changes
+  useMemo(() => { setShowSource(false); return null }, [lick.id])
 
   const roleLabel = lick.role.charAt(0).toUpperCase() + lick.role.slice(1)
   const leadsToLabel = lick.leadsTo ? ` → ${lick.leadsTo}` : ''
@@ -108,6 +113,32 @@ export function LickPlayer({ lick }: LickPlayerProps) {
       {/* Description */}
       {lick.description && (
         <p className="lick-player-description">{lick.description}</p>
+      )}
+
+      {/* Source view — collapsible QC panel, only shown when sourcePage is set */}
+      {lick.sourcePage && (
+        <div className="lick-source-section">
+          <button
+            type="button"
+            className="lick-source-toggle"
+            onClick={() => setShowSource(v => !v)}
+            aria-expanded={showSource}
+          >
+            <span className="lick-source-toggle-icon">{showSource ? '▼' : '▶'}</span>
+            <span className="lick-source-toggle-text">
+              {showSource ? 'Hide source' : `View source${lick.source ? ` (${lick.source})` : ''}`}
+            </span>
+            <span className="lick-source-toggle-text-mobile">📖 Source</span>
+          </button>
+          {showSource && (
+            <SourceView
+              key={lick.id}
+              sourcePage={lick.sourcePage}
+              sourceBbox={lick.sourceBbox}
+              sourceLabel={lick.source || lick.sourcePage}
+            />
+          )}
+        </div>
       )}
     </div>
   )
