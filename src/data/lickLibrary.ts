@@ -532,6 +532,62 @@ export const LICK_LIBRARY: LickReference[] = [
       { string: 3, fret: 0, beat: 15, finger: 'T' },
     ],
   },
+
+  // ── Transitions — Wave 1 batch 5 from Splitting the Licks, p.10 ────────────
+  {
+    id: 'g_lick_transition_to_c_walkup',
+    name: 'G Transition — Walk-Up to C',
+    description: 'G chord roll that walks into C by landing on C4 (string 2, fret 1) on beats 5 and 7, setting up the C chord shape for the next measure via half-step voice leading (B3→C4).',
+    key: 'G', role: 'transition', chord: 'G', leadsTo: 'C',
+    measureCount: 1, referenceBpm: 80,
+    source: 'Splitting the Licks, p.10',
+    tab: [
+      { string: 3, fret: 0, beat: 0, finger: 'T' },
+      { string: 2, fret: 0, beat: 1, finger: 'I' },
+      { string: 1, fret: 0, beat: 2, finger: 'M' },
+      { string: 5, fret: 0, beat: 3, finger: 'T' },
+      { string: 3, fret: 0, beat: 4, finger: 'T' },
+      { string: 2, fret: 1, beat: 5, finger: 'I' },
+      { string: 1, fret: 0, beat: 6, finger: 'M' },
+      { string: 2, fret: 1, beat: 7, finger: 'I' },
+    ],
+  },
+  {
+    id: 'g_lick_transition_to_c_slide',
+    name: 'G Transition — Slide to C',
+    description: 'G chord lick with a thumb slide on string 3 from A#3 (fret 3) to C4 (fret 5), approaching the C chord root chromatically. The slide provides a bluesy, vocal-like connection between the two chords.',
+    key: 'G', role: 'transition', chord: 'G', leadsTo: 'C',
+    measureCount: 1, referenceBpm: 80,
+    source: 'Splitting the Licks, p.10',
+    tab: [
+      { string: 3, fret: 0, beat: 0, finger: 'T' },
+      { string: 2, fret: 0, beat: 1, finger: 'I' },
+      { string: 3, fret: 3, beat: 2, finger: 'T', technique: 'slide', slideToFret: 5 },
+      { string: 2, fret: 1, beat: 3, finger: 'I' },
+      { string: 1, fret: 0, beat: 4, finger: 'M' },
+      { string: 5, fret: 0, beat: 5, finger: 'T' },
+      { string: 2, fret: 1, beat: 6, finger: 'I' },
+      { string: 1, fret: 0, beat: 7, finger: 'M' },
+    ],
+  },
+  {
+    id: 'c_lick_transition_to_g_descending',
+    name: 'C Transition — Descending Turnaround to G',
+    description: 'C chord lick that releases the C chord shape and descends through open strings back to G. Pull-off from C4 to B3 on string 2 (fret 1 to open) is the key voice-leading moment, landing squarely on the G chord 3rd and resolving to G3.',
+    key: 'C', role: 'transition', chord: 'C', leadsTo: 'G',
+    measureCount: 1, referenceBpm: 80,
+    source: 'Splitting the Licks, p.10',
+    tab: [
+      { string: 4, fret: 2, beat: 0, finger: 'T' },
+      { string: 2, fret: 1, beat: 1, finger: 'I' },
+      { string: 1, fret: 0, beat: 2, finger: 'M' },
+      { string: 5, fret: 0, beat: 3, finger: 'T' },
+      { string: 2, fret: 1, beat: 4, finger: 'I', technique: 'pull', slideToFret: 0 },
+      { string: 1, fret: 0, beat: 5, finger: 'M' },
+      { string: 5, fret: 0, beat: 6, finger: 'T' },
+      { string: 3, fret: 0, beat: 7, finger: 'T' },
+    ],
+  },
 ]
 
 export const LICK_MAP = new Map(LICK_LIBRARY.map((l) => [l.id, l]))
