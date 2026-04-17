@@ -1,5 +1,5 @@
 // ─── Library — Browse rolls, licks, songs, scales, chords with FretLab-style tab viewer ──
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Fragment } from 'react'
 import { FretboardDiagram } from '../Fretboard/FretboardDiagram'
 import { BanjoChordDiagram } from '../BanjoChordDiagram/BanjoChordDiagram'
 import { CircleOfFifths } from '../CircleOfFifths/CircleOfFifths'
@@ -383,20 +383,26 @@ export function Library() {
             )}
           </div>
 
-          <div className="library-items">
+          <div className="library-items library-items-licks-grid">
             {filteredLicks.map(l => (
-              <button
-                type="button"
-                key={l.id}
-                className={`library-item lick-card ${l.role === 'combination' ? 'lick-card-combination' : ''} ${selectedId === l.id ? 'library-item-active' : ''}`}
-                onClick={() => handleSelect(l.id)}
-              >
-                <div className="lick-card-name">{l.name}</div>
-                <div className="lick-card-meta">
-                  {l.key} · {l.role}{l.leadsTo ? ` → ${l.leadsTo}` : ''} · {l.measureCount === 2 ? '2 measures' : '1 measure'} · {l.referenceBpm} BPM
-                </div>
-                <div className="lick-card-desc">{l.description.slice(0, 80)}{l.description.length > 80 ? '…' : ''}</div>
-              </button>
+              <Fragment key={l.id}>
+                <button
+                  type="button"
+                  className={`library-item lick-card ${l.role === 'combination' ? 'lick-card-combination' : ''} ${selectedId === l.id ? 'library-item-active' : ''}`}
+                  onClick={() => handleSelect(l.id)}
+                >
+                  <div className="lick-card-name">{l.name}</div>
+                  <div className="lick-card-meta">
+                    {l.key} · {l.role}{l.leadsTo ? ` → ${l.leadsTo}` : ''} · {l.measureCount === 2 ? '2 measures' : '1 measure'} · {l.referenceBpm} BPM
+                  </div>
+                  <div className="lick-card-desc">{l.description.slice(0, 80)}{l.description.length > 80 ? '…' : ''}</div>
+                </button>
+                {selectedId === l.id && (
+                  <div className="lick-player-inline">
+                    <LickPlayer lick={l} />
+                  </div>
+                )}
+              </Fragment>
             ))}
           </div>
         </div>
@@ -463,11 +469,7 @@ export function Library() {
         )
       })()}
 
-      {/* Lick detail — rendered via LickPlayer (bypasses generic viewer) */}
-      {!isStandalone && selectedId && category === 'licks' && (() => {
-        const lick = LICK_LIBRARY.find(l => l.id === selectedId)
-        return lick ? <LickPlayer lick={lick} /> : null
-      })()}
+      {/* Lick detail renders inline inside the licks grid above — see library-items-licks-grid */}
 
       {/* FretLab-style tab viewer — all non-lick categories */}
       {!isStandalone && selectedId && category !== 'licks' && notes.length > 0 && (

@@ -13659,3 +13659,27 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .lick-card-combination {
   border-left: 3px solid var(--accent, #f5a623);
 }
+
+/* ─── Lick grid — 3-column layout with inline player ─────────────────────── */
+
+.library-items-licks-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  align-items: stretch;
+}
+
+.library-items-licks-grid > .lick-card {
+  width: 100%;
+}
+
+.lick-player-inline {
+  grid-column: 1 / -1;
+  margin: 8px 0;
+}
+
+@media (max-width: 768px) {
+  .lick-card-desc {
+    display: none;
+  }
+}
