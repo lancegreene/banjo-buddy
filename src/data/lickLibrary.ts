@@ -466,6 +466,72 @@ export const LICK_LIBRARY: LickReference[] = [
       { string: 3, fret: 0, beat: 7, finger: 'T' },
     ],
   },
+
+  // ── G Fills & Combinations — Wave 1 batch 4 from Splitting the Licks, p.10-11 ──
+  {
+    id: 'g_lick_vamp_fill',
+    name: 'G Fill — Vamping with Open 5th',
+    description: 'Open-string G chord vamping fill. Roll pattern weaves through all five open strings, with the 5th string (G4) providing a high drone anchor. Used between vocal lines or during held G sections.',
+    key: 'G', role: 'fill', chord: 'G',
+    measureCount: 1, referenceBpm: 80,
+    source: 'Splitting the Licks, p.10',
+    tab: [
+      { string: 3, fret: 0, beat: 0, finger: 'T' },
+      { string: 2, fret: 0, beat: 1, finger: 'I' },
+      { string: 1, fret: 0, beat: 2, finger: 'M' },
+      { string: 2, fret: 0, beat: 3, finger: 'I' },
+      { string: 1, fret: 0, beat: 4, finger: 'M' },
+      { string: 2, fret: 0, beat: 5, finger: 'I' },
+      { string: 5, fret: 0, beat: 6, finger: 'T' },
+      { string: 1, fret: 0, beat: 7, finger: 'M' },
+    ],
+  },
+  {
+    id: 'g_lick_desc_tag_fill',
+    name: 'G Fill — Descending Pull-Off Tag',
+    description: 'Tag-style G fill that opens with a pull-off from D4 to B3 on string 2 (fret 3 to open), creating a descending melodic contour. Resolves through open G chord tones with the 5th string drone anchoring the rhythm.',
+    key: 'G', role: 'fill', chord: 'G',
+    measureCount: 1, referenceBpm: 80,
+    source: 'Splitting the Licks, p.10',
+    tab: [
+      { string: 3, fret: 0, beat: 0, finger: 'T' },
+      { string: 2, fret: 3, beat: 1, finger: 'I', technique: 'pull', slideToFret: 0 },
+      { string: 1, fret: 0, beat: 2, finger: 'M' },
+      { string: 5, fret: 0, beat: 3, finger: 'T' },
+      { string: 3, fret: 0, beat: 4, finger: 'T' },
+      { string: 2, fret: 0, beat: 5, finger: 'I' },
+      { string: 5, fret: 0, beat: 6, finger: 'T' },
+      { string: 1, fret: 0, beat: 7, finger: 'M' },
+    ],
+  },
+  {
+    id: 'g_combo_vamp_to_lick',
+    name: 'G Combination — Vamp into G-Lick',
+    description: 'Two-measure G phrase combining a forward roll vamp (measure 1) with the classic Scruggs G-lick ending (measure 2). A fundamental building block for bluegrass solos over G.',
+    key: 'G', role: 'combination', chord: 'G',
+    measureCount: 2, referenceBpm: 80,
+    source: 'Splitting the Licks, p.10',
+    tab: [
+      // Measure 1 — forward roll vamp (beats 0-7)
+      { string: 3, fret: 0, beat: 0, finger: 'T' },
+      { string: 2, fret: 0, beat: 1, finger: 'I' },
+      { string: 1, fret: 0, beat: 2, finger: 'M' },
+      { string: 5, fret: 0, beat: 3, finger: 'T' },
+      { string: 3, fret: 0, beat: 4, finger: 'T' },
+      { string: 2, fret: 0, beat: 5, finger: 'I' },
+      { string: 1, fret: 0, beat: 6, finger: 'M' },
+      { string: 5, fret: 0, beat: 7, finger: 'T' },
+      // Measure 2 — G-lick ending with pull-off (beats 8-15)
+      { string: 2, fret: 3, beat: 8, finger: 'I', technique: 'pull', slideToFret: 0 },
+      { string: 2, fret: 0, beat: 9, finger: 'I' },
+      { string: 1, fret: 0, beat: 10, finger: 'M' },
+      { string: 5, fret: 0, beat: 11, finger: 'T' },
+      { string: 2, fret: 0, beat: 12, finger: 'I' },
+      { string: 1, fret: 0, beat: 13, finger: 'M' },
+      { string: 5, fret: 0, beat: 14, finger: 'T' },
+      { string: 3, fret: 0, beat: 15, finger: 'T' },
+    ],
+  },
 ]
 
 export const LICK_MAP = new Map(LICK_LIBRARY.map((l) => [l.id, l]))
