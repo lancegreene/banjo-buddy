@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { supabase } from '../../db/supabase'
 import { stopAutoSync } from '../../db/sync'
-import type { Path } from '../../data/curriculum'
+
+type Path = 'newby' | 'beginner' | 'intermediate'
 
 const PATH_OPTIONS: { value: Path; label: string; desc: string }[] = [
   { value: 'newby', label: 'Newby', desc: 'Just getting started — learn the basics of Scruggs-style picking' },
@@ -18,7 +19,6 @@ export function ProfilePage() {
   const setUserPath = useStore((s) => s.setUserPath)
   const activeUserRole = useStore((s) => s.activeUserRole)
   const streak = useStore((s) => s.streak)
-  const skillRecords = useStore((s) => s.skillRecords)
 
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState(authUserName ?? '')
@@ -29,12 +29,6 @@ export function ProfilePage() {
 
   const displayName = authUserName || authUserEmail || user.name || 'Guest'
   const isAuthed = !!authUserEmail
-
-  // Skill stats
-  const totalSkills = skillRecords.size
-  const mastered = [...skillRecords.values()].filter(r => r.status === 'mastered').length
-  const progressed = [...skillRecords.values()].filter(r => r.status === 'progressed').length
-  const active = [...skillRecords.values()].filter(r => r.status === 'active').length
 
   async function handleSaveName() {
     const trimmed = nameInput.trim()
@@ -139,22 +133,6 @@ export function ProfilePage() {
           <div className="profile-stat">
             <span className="profile-stat-value">{streak}</span>
             <span className="profile-stat-label">Day streak</span>
-          </div>
-          <div className="profile-stat">
-            <span className="profile-stat-value">{totalSkills}</span>
-            <span className="profile-stat-label">Skills started</span>
-          </div>
-          <div className="profile-stat">
-            <span className="profile-stat-value">{mastered}</span>
-            <span className="profile-stat-label">Mastered</span>
-          </div>
-          <div className="profile-stat">
-            <span className="profile-stat-value">{progressed}</span>
-            <span className="profile-stat-label">Progressed</span>
-          </div>
-          <div className="profile-stat">
-            <span className="profile-stat-value">{active}</span>
-            <span className="profile-stat-label">Active</span>
           </div>
         </div>
       </section>

@@ -4,26 +4,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect } from 'react'
-import { db, nowISO } from '../../db/db'
-import type { CustomRollPattern, TeacherClip, MediaDisplaySettings } from '../../db/db'
-import { updateTeacherConfig } from '../../db/db'
+import { db } from '../../db/db'
+import type { CustomRollPattern } from '../../db/db'
 import { enqueueSync } from '../../db/sync'
 import { refreshRollMap, ROLL_PATTERNS } from '../../data/rollPatterns'
 import { BanjoTabDiagram } from '../BanjoTabDiagram/BanjoTabDiagram'
 import { RollPatternEditor } from './RollPatternEditor'
-import { CurriculumEditor } from './CurriculumEditor'
 import { useStore } from '../../store/useStore'
-import { getClipsByTeacher, deleteClip, getMediaStorageUsage, type ClipStorageUsage } from '../../engine/teacherClipService'
-import { SKILL_MAP } from '../../data/curriculum'
-import { VideoRecorder } from '../Teaching/VideoRecorder'
-import { AudioRecorderTeacher } from '../Teaching/AudioRecorderTeacher'
-import { ImageUploader } from '../Teaching/ImageUploader'
-import { TabCropper } from '../Teaching/TabCropper'
 import { RecordingStudio } from './RecordingStudio'
 import { BanjoAnatomy } from '../BanjoAnatomy/BanjoAnatomy'
-import { AdminPanel } from './AdminPanel'
 
-type SettingsView = 'list' | 'create' | 'edit' | 'curriculum' | 'record_video' | 'record_audio' | 'upload_image' | 'upload_tab' | 'edit_clip' | 'recording_studio' | 'banjo_anatomy'
+type SettingsView = 'list' | 'create' | 'edit' | 'recording_studio' | 'banjo_anatomy'
 
 export function SettingsPage() {
   const user = useStore((s) => s.user)
@@ -31,7 +22,6 @@ export function SettingsPage() {
   const students = useStore((s) => s.students)
   const createStudent = useStore((s) => s.createStudent)
   const deleteStudent = useStore((s) => s.deleteStudent)
-  const teacherConfig = useStore((s) => s.teacherConfig)
 
   const [customPatterns, setCustomPatterns] = useState<CustomRollPattern[]>([])
   const [settingsView, setSettingsView] = useState<SettingsView>('list')
@@ -40,60 +30,7 @@ export function SettingsPage() {
   const [newStudentName, setNewStudentName] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
-  // Teacher clips state
-  const [teacherClips, setTeacherClips] = useState<TeacherClip[]>([])
-  const [clipStorage, setClipStorage] = useState<ClipStorageUsage | null>(null)
-  const [editingClip, setEditingClip] = useState<TeacherClip | null>(null)
-  const [clipPlayingId, setClipPlayingId] = useState<string | null>(null)
-  const [clipVideoUrls, setClipVideoUrls] = useState<Map<string, string>>(new Map())
-  const [confirmDeleteClipId, setConfirmDeleteClipId] = useState<string | null>(null)
-
-  const isAdmin = useStore((s) => s.isAdmin)
   const isTeacher = activeUserRole === 'teacher'
-  const [adminTapCount, setAdminTapCount] = useState(0)
-  const [adminTapTimer, setAdminTapTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
-
-  function handleTitleClick() {
-    const newCount = adminTapCount + 1
-    if (adminTapTimer) clearTimeout(adminTapTimer)
-
-    if (newCount >= 5) {
-      // 5 rapid taps activates admin mode
-      setAdminTapCount(0)
-      const store = useStore.getState()
-      const userId = store.activeUserId ?? store.user?.id
-      if (userId && !store.isAdmin) {
-        store.setAdminStatus(userId, true)
-      }
-      return
-    }
-
-    setAdminTapCount(newCount)
-    const timer = setTimeout(() => setAdminTapCount(0), 1500)
-    setAdminTapTimer(timer)
-  }
-
-  async function loadClips() {
-    if (!user || !isTeacher) return
-    const clips = await getClipsByTeacher(user.id)
-    setTeacherClips(clips)
-    const storage = await getMediaStorageUsage()
-    setClipStorage(storage)
-    // Revoke old URLs
-    clipVideoUrls.forEach((url) => URL.revokeObjectURL(url))
-    const urls = new Map<string, string>()
-    clips.forEach((c) => {
-      const blob = c.videoBlob ?? c.audioBlob ?? c.imageBlob
-      if (blob) urls.set(c.id, URL.createObjectURL(blob))
-    })
-    setClipVideoUrls(urls)
-  }
-
-  useEffect(() => {
-    loadClips()
-    return () => { clipVideoUrls.forEach((url) => URL.revokeObjectURL(url)) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, isTeacher])
 
   async function loadCustomPatterns() {
     const allPatterns = await db.customRollPatterns.orderBy('createdAt').reverse().toArray()
@@ -138,14 +75,6 @@ export function SettingsPage() {
     setEditingPattern(null)
   }
 
-  if (settingsView === 'curriculum') {
-    return (
-      <div className="settings-page">
-        <CurriculumEditor onExit={() => setSettingsView('list')} />
-      </div>
-    )
-  }
-
   if (settingsView === 'create' || settingsView === 'edit') {
     return (
       <div className="settings-page">
@@ -153,63 +82,6 @@ export function SettingsPage() {
           pattern={editingPattern ?? undefined}
           onSave={handleEditorSave}
           onCancel={handleEditorCancel}
-        />
-      </div>
-    )
-  }
-
-  if (settingsView === 'record_video' || settingsView === 'edit_clip') {
-    return (
-      <div className="settings-page">
-        <button className="btn btn-sm settings-back-btn" onClick={() => { setSettingsView('list'); setEditingClip(null) }}>
-          &larr; Back to Settings
-        </button>
-        <VideoRecorder
-          editClip={editingClip ?? undefined}
-          onSaved={() => { setSettingsView('list'); setEditingClip(null); loadClips() }}
-          onCancel={() => { setSettingsView('list'); setEditingClip(null) }}
-        />
-      </div>
-    )
-  }
-
-  if (settingsView === 'record_audio') {
-    return (
-      <div className="settings-page">
-        <button className="btn btn-sm settings-back-btn" onClick={() => setSettingsView('list')}>
-          &larr; Back to Settings
-        </button>
-        <AudioRecorderTeacher
-          onSaved={() => { setSettingsView('list'); loadClips() }}
-          onCancel={() => setSettingsView('list')}
-        />
-      </div>
-    )
-  }
-
-  if (settingsView === 'upload_image') {
-    return (
-      <div className="settings-page">
-        <button className="btn btn-sm settings-back-btn" onClick={() => setSettingsView('list')}>
-          &larr; Back to Settings
-        </button>
-        <ImageUploader
-          onSaved={() => { setSettingsView('list'); loadClips() }}
-          onCancel={() => setSettingsView('list')}
-        />
-      </div>
-    )
-  }
-
-  if (settingsView === 'upload_tab') {
-    return (
-      <div className="settings-page">
-        <button className="btn btn-sm settings-back-btn" onClick={() => setSettingsView('list')}>
-          &larr; Back to Settings
-        </button>
-        <TabCropper
-          onSaved={() => { setSettingsView('list'); loadClips() }}
-          onCancel={() => setSettingsView('list')}
         />
       </div>
     )
@@ -272,7 +144,7 @@ export function SettingsPage() {
 
   return (
     <div className="settings-page" data-tour="settings-page">
-      <h1 className="settings-title" onClick={handleTitleClick} style={{ cursor: 'default', userSelect: 'none' }}>Settings</h1>
+      <h1 className="settings-title">Settings</h1>
 
       {/* Role Toggle */}
       <section className="settings-section">
@@ -281,8 +153,8 @@ export function SettingsPage() {
             <span className="settings-role-badge">{isTeacher ? 'Teacher Mode' : activeUserRole === 'student' ? 'Student Mode' : 'Solo Mode'}</span>
             <p className="settings-role-desc">
               {isTeacher
-                ? 'You can manage students, customize curriculum, and upload teaching media.'
-                : 'Switch to Teacher Mode to manage students and customize the curriculum.'}
+                ? 'You can manage students.'
+                : 'Switch to Teacher Mode to manage students.'}
             </p>
           </div>
           <button className="btn btn-primary btn-sm" onClick={handleToggleRole}>
@@ -350,19 +222,12 @@ export function SettingsPage() {
             <div>
               <h2 className="settings-section-title">Teacher Tools</h2>
               <p className="settings-section-desc">
-                Manage students and customize the curriculum they see.
+                Manage students.
               </p>
             </div>
           </div>
 
           <div className="settings-teacher-content">
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => setSettingsView('curriculum')}
-            >
-              Edit Curriculum
-            </button>
-
             <div className="settings-student-manager">
               <h3 className="settings-list-label">Students</h3>
 
@@ -410,138 +275,6 @@ export function SettingsPage() {
           </div>
         </section>
       )}
-
-      {/* Teaching Media — only visible when logged in as Teacher */}
-      {isTeacher && (
-        <section className="settings-section" data-tour="settings-media">
-          <div className="settings-section-header">
-            <div>
-              <h2 className="settings-section-title">Teaching Media</h2>
-              <p className="settings-section-desc">
-                Record demos, upload images, or add tablature. Students see these during practice.
-              </p>
-            </div>
-          </div>
-
-          <div className="settings-media-actions">
-            <button className="btn btn-primary btn-sm" onClick={() => setSettingsView('record_video')}>
-              + Video
-            </button>
-            <button className="btn btn-primary btn-sm" onClick={() => setSettingsView('record_audio')}>
-              + Audio
-            </button>
-            <button className="btn btn-primary btn-sm" onClick={() => setSettingsView('upload_image')}>
-              + Image
-            </button>
-            <button className="btn btn-primary btn-sm" onClick={() => setSettingsView('upload_tab')}>
-              + Tab
-            </button>
-          </div>
-
-          {/* Display size settings */}
-          {teacherConfig && <MediaDisplayConfig config={teacherConfig} />}
-
-          {/* Storage usage */}
-          {clipStorage && (
-            <div className="teacher-clips-storage">
-              <div className="teacher-clips-storage-bar">
-                <div
-                  className={`teacher-clips-storage-fill ${clipStorage.isNearLimit ? 'teacher-clips-storage-warn' : ''}`}
-                  style={{ width: `${Math.min(100, (clipStorage.totalBytes / (500 * 1024 * 1024)) * 100)}%` }}
-                />
-              </div>
-              <span className="teacher-clips-storage-text">
-                {(clipStorage.totalBytes / (1024 * 1024)).toFixed(1)} MB used · {clipStorage.clipCount} clip{clipStorage.clipCount !== 1 ? 's' : ''}
-                {clipStorage.isNearLimit && ' — Approaching storage limit'}
-              </span>
-            </div>
-          )}
-
-          {teacherClips.length > 0 ? (
-            <div className="teacher-clips-list">
-              {teacherClips.map((clip) => {
-                const skillName = clip.skillId ? SKILL_MAP.get(clip.skillId)?.name : null
-                const isPlaying = clipPlayingId === clip.id
-                return (
-                  <div key={clip.id} className="teacher-clips-card">
-                    <div className="teacher-clips-card-info">
-                      <span className="teacher-clips-card-type">{clip.mediaType ?? 'video'}</span>
-                      <span className="teacher-clips-card-title">{clip.title}</span>
-                      <span className="teacher-clips-card-meta">
-                        {clip.durationSeconds > 0 && <>{clip.durationSeconds.toFixed(0)}s · </>}
-                        {skillName && <>{skillName} · </>}
-                        {clip.rollPatternId && <>{clip.rollPatternId} · </>}
-                        {new Date(clip.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div className="teacher-clips-card-actions">
-                      {(clip.mediaType === 'video' || clip.mediaType === 'audio' || !clip.mediaType) && (
-                        <button
-                          className="btn btn-sm"
-                          onClick={() => setClipPlayingId(isPlaying ? null : clip.id)}
-                        >
-                          {isPlaying ? '\u25A0 Stop' : '\u25B6 Play'}
-                        </button>
-                      )}
-                      {(clip.mediaType === 'image' || clip.mediaType === 'tab_crop') && (
-                        <button
-                          className="btn btn-sm"
-                          onClick={() => setClipPlayingId(isPlaying ? null : clip.id)}
-                        >
-                          {isPlaying ? 'Hide' : 'View'}
-                        </button>
-                      )}
-                      {(clip.mediaType === 'video' || clip.mediaType === 'audio' || !clip.mediaType) && (
-                        <button
-                          className="btn btn-sm"
-                          onClick={() => { setEditingClip(clip); setSettingsView('edit_clip') }}
-                        >
-                          Edit
-                        </button>
-                      )}
-                      {confirmDeleteClipId === clip.id ? (
-                        <span className="settings-student-confirm">
-                          <button className="btn btn-sm settings-delete-btn" onClick={async () => { await deleteClip(clip.id); setConfirmDeleteClipId(null); loadClips() }}>
-                            Confirm
-                          </button>
-                          <button className="btn btn-sm" onClick={() => setConfirmDeleteClipId(null)}>
-                            Cancel
-                          </button>
-                        </span>
-                      ) : (
-                        <button
-                          className="btn btn-sm settings-delete-btn"
-                          onClick={() => setConfirmDeleteClipId(clip.id)}
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                    {isPlaying && clipVideoUrls.has(clip.id) && (
-                      <div className="teacher-clips-card-player">
-                        {(clip.mediaType === 'video' || !clip.mediaType) && (
-                          <video src={clipVideoUrls.get(clip.id)} controls autoPlay playsInline className="teacher-clips-card-video" />
-                        )}
-                        {clip.mediaType === 'audio' && (
-                          <audio src={clipVideoUrls.get(clip.id)} controls autoPlay className="teacher-clips-card-audio" />
-                        )}
-                        {(clip.mediaType === 'image' || clip.mediaType === 'tab_crop') && (
-                          <img src={clipVideoUrls.get(clip.id)} alt={clip.title} className="teacher-clips-card-image" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="settings-empty">
-              No teaching media yet. Use the buttons above to add videos, audio, images, or tabs.
-            </div>
-          )}
-        </section>
-      )}
-
       {/* Custom Roll Patterns */}
       <section className="settings-section" data-tour="settings-patterns">
         <div className="settings-section-header">
@@ -646,76 +379,6 @@ export function SettingsPage() {
         </div>
       </section>
 
-      {/* Admin Panel — only visible to admin users */}
-      {isAdmin && (
-        <section className="settings-section">
-          <AdminPanel />
-        </section>
-      )}
-    </div>
-  )
-}
-
-// ── Media Display Size Settings ──────────────────────────────────────────────
-
-function MediaDisplayConfig({ config }: { config: import('../../db/db').TeacherConfig }) {
-  const ds = config.mediaDisplay ?? {}
-  const videoW = ds.videoThumbWidth ?? 216
-  const tabW = ds.tabMaxWidth ?? 200
-  const imgW = ds.imageMaxWidth ?? 0
-
-  async function update(patch: Partial<MediaDisplaySettings>) {
-    const updated = {
-      ...config,
-      mediaDisplay: { ...ds, ...patch },
-    }
-    await updateTeacherConfig(updated)
-    enqueueSync('teacherConfigs', updated.id, 'upsert', updated as any)
-    useStore.setState({ teacherConfig: updated })
-  }
-
-  return (
-    <div className="media-display-config">
-      <h4 className="media-display-config-title">Display Sizes</h4>
-      <div className="media-display-config-row">
-        <label className="media-display-config-label">Video thumbnail</label>
-        <input
-          type="range"
-          min={100}
-          max={400}
-          step={10}
-          value={videoW}
-          onChange={(e) => update({ videoThumbWidth: parseInt(e.target.value) })}
-          className="media-display-config-slider"
-        />
-        <span className="media-display-config-value">{videoW}px</span>
-      </div>
-      <div className="media-display-config-row">
-        <label className="media-display-config-label">Tab image</label>
-        <input
-          type="range"
-          min={100}
-          max={600}
-          step={10}
-          value={tabW}
-          onChange={(e) => update({ tabMaxWidth: parseInt(e.target.value) })}
-          className="media-display-config-slider"
-        />
-        <span className="media-display-config-value">{tabW}px</span>
-      </div>
-      <div className="media-display-config-row">
-        <label className="media-display-config-label">Image</label>
-        <input
-          type="range"
-          min={0}
-          max={800}
-          step={10}
-          value={imgW}
-          onChange={(e) => update({ imageMaxWidth: parseInt(e.target.value) })}
-          className="media-display-config-slider"
-        />
-        <span className="media-display-config-value">{imgW === 0 ? 'Full' : `${imgW}px`}</span>
-      </div>
     </div>
   )
 }

@@ -8,7 +8,6 @@ import { db, newId, nowISO } from '../../db/db'
 import type { CustomRollPattern } from '../../db/db'
 import { enqueueSync } from '../../db/sync'
 import { refreshRollMap } from '../../data/rollPatterns'
-import { refreshSkillMap } from '../../data/curriculum'
 import { useStore } from '../../store/useStore'
 import { BanjoTabDiagram } from '../BanjoTabDiagram/BanjoTabDiagram'
 
@@ -104,7 +103,6 @@ export function RollPatternEditor({ pattern, onSave, onCancel }: RollPatternEdit
       }
 
       await refreshRollMap(user?.id, activeUserRole, user?.teacherId)
-      await refreshSkillMap(user?.id, activeUserRole, user?.teacherId)
       onSave()
     } catch (err) {
       setError(String(err))
