@@ -1,6 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Banjo Buddy — Settings Page
-// Teacher/admin settings: custom roll patterns, future: lessons, media uploads.
+//
+// Phase 0 placeholder: teacher-mode UI, the "Take a tour" button, and the
+// Fretboard Lab navigation were dropped when the corresponding store slices
+// and pages were retired in Task 0.4. The custom-roll editor, recording
+// studio, and banjo anatomy viewer all still work standalone.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect } from 'react'
@@ -18,44 +22,29 @@ type SettingsView = 'list' | 'create' | 'edit' | 'recording_studio' | 'banjo_ana
 
 export function SettingsPage() {
   const user = useStore((s) => s.user)
-  const activeUserRole = useStore((s) => s.activeUserRole)
-  const students = useStore((s) => s.students)
-  const createStudent = useStore((s) => s.createStudent)
-  const deleteStudent = useStore((s) => s.deleteStudent)
 
   const [customPatterns, setCustomPatterns] = useState<CustomRollPattern[]>([])
   const [settingsView, setSettingsView] = useState<SettingsView>('list')
   const [editingPattern, setEditingPattern] = useState<CustomRollPattern | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [newStudentName, setNewStudentName] = useState('')
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
-
-  const isTeacher = activeUserRole === 'teacher'
 
   async function loadCustomPatterns() {
     const allPatterns = await db.customRollPatterns.orderBy('createdAt').reverse().toArray()
-    // Filter by visibility: teachers see all, students see theirs + teacher's, solo sees own
-    let visible = allPatterns
-    if (user) {
-      if (activeUserRole === 'teacher') {
-        visible = allPatterns
-      } else if (activeUserRole === 'student' && user.teacherId) {
-        visible = allPatterns.filter((p) => p.createdBy === user.id || p.createdBy === user.teacherId)
-      } else {
-        visible = allPatterns.filter((p) => p.createdBy === user.id)
-      }
-    }
+    // Phase 0: solo only — show this user's patterns.
+    const visible = user
+      ? allPatterns.filter((p) => p.createdBy === user.id)
+      : allPatterns
     setCustomPatterns(visible)
   }
 
   useEffect(() => {
     loadCustomPatterns()
-  }, [user?.id, activeUserRole])
+  }, [user?.id])
 
   async function handleDelete(id: string) {
     await db.customRollPatterns.delete(id)
     enqueueSync('customRollPatterns', id, 'delete', {} as any)
-    await refreshRollMap(user?.id, activeUserRole, user?.teacherId)
+    await refreshRollMap(user?.id, user?.role, user?.teacherId)
     loadCustomPatterns()
   }
 
@@ -106,75 +95,9 @@ export function SettingsPage() {
     )
   }
 
-  async function handleAddStudent() {
-    const trimmed = newStudentName.trim()
-    if (!trimmed) return
-    await createStudent(trimmed)
-    setNewStudentName('')
-  }
-
-  async function handleDeleteStudent(id: string) {
-    await deleteStudent(id)
-    setConfirmDeleteId(null)
-  }
-
-  async function handleToggleRole() {
-    const store = useStore.getState()
-    if (isTeacher) {
-      // Switch back to solo mode
-      await store.loginAsGuest()
-      store.setPage('settings')
-    } else {
-      // Switch to teacher mode — find or create a teacher profile
-      let teacherId: string | null = null
-      const existingTeachers = store.teachers
-      if (existingTeachers.length > 0) {
-        teacherId = existingTeachers[0].id
-      } else {
-        await store.createTeacher(user?.name ?? 'Teacher')
-        const updated = useStore.getState().teachers
-        if (updated.length > 0) teacherId = updated[0].id
-      }
-      if (teacherId) {
-        await store.loginAsTeacher(teacherId)
-        store.setPage('settings')
-      }
-    }
-  }
-
   return (
     <div className="settings-page" data-tour="settings-page">
       <h1 className="settings-title">Settings</h1>
-
-      {/* Role Toggle */}
-      <section className="settings-section">
-        <div className="settings-role-toggle">
-          <div className="settings-role-info">
-            <span className="settings-role-badge">{isTeacher ? 'Teacher Mode' : activeUserRole === 'student' ? 'Student Mode' : 'Solo Mode'}</span>
-            <p className="settings-role-desc">
-              {isTeacher
-                ? 'You can manage students.'
-                : 'Switch to Teacher Mode to manage students.'}
-            </p>
-          </div>
-          <button className="btn btn-primary btn-sm" onClick={handleToggleRole}>
-            {isTeacher ? 'Switch to Solo' : 'Switch to Teacher'}
-          </button>
-        </div>
-      </section>
-
-      {/* Quick Actions */}
-      <section className="settings-section">
-        <button
-          className="btn btn-secondary btn-sm"
-          onClick={() => {
-            useStore.getState().startTour()
-            useStore.getState().setPage('dashboard')
-          }}
-        >
-          Take a Tour
-        </button>
-      </section>
 
       {/* Experimental */}
       <section className="settings-section">
@@ -186,12 +109,6 @@ export function SettingsPage() {
             </p>
           </div>
         </div>
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={() => useStore.getState().setPage('fretboard-lab')}
-        >
-          Fretboard Lab
-        </button>
         <button
           className="btn btn-primary btn-sm"
           onClick={() => setSettingsView('banjo_anatomy')}
@@ -215,74 +132,13 @@ export function SettingsPage() {
         </div>
       </section>
 
-      {/* Teacher Tools — only visible when logged in as Teacher */}
-      {isTeacher && (
-        <section className="settings-section" data-tour="settings-teacher">
-          <div className="settings-section-header">
-            <div>
-              <h2 className="settings-section-title">Teacher Tools</h2>
-              <p className="settings-section-desc">
-                Manage students.
-              </p>
-            </div>
-          </div>
-
-          <div className="settings-teacher-content">
-            <div className="settings-student-manager">
-              <h3 className="settings-list-label">Students</h3>
-
-              {students.length === 0 && (
-                <p className="settings-empty">No students yet. Add a student below — they'll appear on the login screen.</p>
-              )}
-
-              {students.map((student) => (
-                <div key={student.id} className="settings-student-row">
-                  <span className="settings-student-name">{student.name}</span>
-                  {confirmDeleteId === student.id ? (
-                    <span className="settings-student-confirm">
-                      <button className="btn btn-sm settings-delete-btn" onClick={() => handleDeleteStudent(student.id)}>
-                        Confirm
-                      </button>
-                      <button className="btn btn-sm" onClick={() => setConfirmDeleteId(null)}>
-                        Cancel
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      className="btn btn-sm settings-delete-btn"
-                      onClick={() => setConfirmDeleteId(student.id)}
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              ))}
-
-              <div className="settings-add-student">
-                <input
-                  type="text"
-                  className="settings-add-student-input"
-                  placeholder="Student name"
-                  value={newStudentName}
-                  onChange={(e) => setNewStudentName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddStudent()}
-                />
-                <button className="btn btn-sm btn-primary" onClick={handleAddStudent}>
-                  Add
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
       {/* Custom Roll Patterns */}
       <section className="settings-section" data-tour="settings-patterns">
         <div className="settings-section-header">
           <div>
             <h2 className="settings-section-title">Custom Roll Patterns</h2>
             <p className="settings-section-desc">
-              Create your own roll patterns for students to practice.
-              Custom patterns appear alongside the defaults everywhere in the app.
+              Create your own roll patterns. Custom patterns appear alongside the defaults everywhere in the app.
             </p>
           </div>
           <button className="btn btn-primary btn-sm" onClick={() => setSettingsView('create')}>

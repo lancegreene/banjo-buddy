@@ -1,6 +1,10 @@
 // ─── Site Tour Step Definitions ──────────────────────────────────────────────
+//
+// NOTE: Unused since Task 0.4 — the SiteTour component is a no-op placeholder
+// until a coach-aware onboarding flow is designed. Kept here as the schema
+// + copy reference for when tours come back.
 
-import type { Page, ToolModal } from '../store/useStore'
+import type { ToolModal } from '../store/useStore'
 
 export interface TourStep {
   target: string           // data-tour attribute value to find the element
@@ -8,7 +12,7 @@ export interface TourStep {
   body: string
   placement: 'top' | 'bottom' | 'left' | 'right'
   section: string          // section label for grouped progress indicator
-  navigateTo?: Page        // page to navigate to before showing step
+  navigateTo?: string      // page to navigate to before showing step (string until routing is redesigned)
   openModal?: ToolModal    // modal to open before showing step
   closeModal?: boolean     // close any open modal before this step
 }

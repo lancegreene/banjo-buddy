@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Path } from '../data/curriculum'
+import type { Path } from '../types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Banjo Buddy — Local Database (Dexie / IndexedDB)
