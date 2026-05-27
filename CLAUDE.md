@@ -1,10 +1,10 @@
 # Banjo Buddy
 
-A progressive web app that helps 5-string banjo players learn Scruggs-style picking through real-time audio feedback, curriculum-guided practice sessions, and progress tracking.
+A progressive web app that helps 5-string banjo players learn Scruggs-style picking through real-time audio feedback, LLM-coach-driven goals, and progress tracking. (Mid-rewrite: Phase 0 of the coach overhaul is complete; Phase 1 will land assessment + goals.)
 
 ## Quick Reference
 
-- **Stack**: React 18 + TypeScript + Vite, Zustand (state), Dexie v4/IndexedDB (persistence), Supabase (auth + sync), Tone.js (synth/metronome), pitchy (pitch detection), ts-fsrs (spaced repetition), ONNX Runtime Web (digit/label classification)
+- **Stack**: React 18 + TypeScript + Vite, Zustand (state), Dexie v14/IndexedDB (persistence), Supabase (auth + sync), Tone.js (synth/metronome), pitchy (pitch detection), ONNX Runtime Web (digit/label classification)
 - **Build**: `npm run dev` (dev server), `npm run build` (tsc + vite build)
 - **Deploy**: `npm run deploy` (gh-pages)
 - **No test suite** — verify changes with `npx tsc --noEmit` and `npx vite build`
@@ -15,10 +15,10 @@ A progressive web app that helps 5-string banjo players learn Scruggs-style pick
 
 ```
 src/
-  engine/          34 pure-function modules — no React, no side effects
-  hooks/           9 React hooks wrapping engines (useNoteCapture, useBanjoSynth, etc.)
-  components/      35 feature directories (Practice, SkillTree, Library, Fretboard, etc.)
-  data/            Static data: curriculum, roll patterns, lick library, songs, chords, achievements
+  engine/          14 pure-function modules — no React, no side effects
+  hooks/           7 React hooks wrapping engines (useNoteCapture, useBanjoSynth, etc.)
+  components/      28 feature directories (Practice, Library, Fretboard, CircleOfFifths, etc.)
+  data/            Static data: roll patterns, lick library, songs, chords, scales, achievements
   store/           Zustand store (useStore.ts) — single source of truth for all app state
   db/              Dexie schema (db.ts), Supabase client (supabase.ts), sync engine (sync.ts)
   styles/          Design tokens (tokens.css)
@@ -34,20 +34,27 @@ public/models/     ONNX models: digit-classifier.onnx, label-classifier.onnx
 1. **Audio in**: `useNoteCapture` hook → pitchy pitch detection → `detectOnset()` → `CapturedNote[]`
 2. **Roll detection**: `CapturedNote[]` → `RollDetector` (batch, 8-note) or `LiveRollFeedback` (streaming, per-note)
 3. **Session logging**: `logSessionItem()` → Dexie tables → enqueue for Supabase sync
-4. **Recommendations**: `buildSessionPlan()` reads skill records + recent accuracy → prioritized practice plan
-5. **Sync**: Dexie → sync queue → push to Supabase (every 30s + on reconnect) → pull remote changes
+4. **Sync**: Dexie → sync queue → push to Supabase (every 30s + on reconnect) → pull remote changes
 
 ## Navigation & Routing
 
 No React Router — single `<App>` switches on `currentPage` state from the store.
 
-**Startup gates** (in order): Splash → AuthScreen → IntroFlow → OnboardingFlow → SiteTour → Main App
+## Coach-Driven Architecture
 
-**Pages**: `dashboard`, `practice`, `skill-tree`, `pathway`, `progress`, `achievements`, `settings`, `profile`, `fretboard-lab`
+After auth + API key setup, every user takes a one-time chat assessment that produces 5–7 personalized goals. The dashboard surfaces 1 "focus" goal + 1–2 "explore" goals; the rest live behind a "see all" view. A 7-day check-in chat updates goal states based on activity and conversation.
+
+### Startup Gates (in order, post-Phase-0 placeholder)
+
+Splash → AuthScreen (skippable → guest mode) → PlaceholderHome (Phase 1 will insert ApiKeyGate + AssessmentChat before this)
+
+### Pages (post-Phase-0)
+
+`splash`, `auth`, `placeholder-home`
+
+Phase 1 adds: `api-key-gate`, `assessment`, `plan-dashboard`, `library`, `check-in`.
 
 **Tool modals** (float over any page): Metronome, Tuner, FretLab
-
-**Split pages**: `pathway` uses sidebar + content layout with practice on the right.
 
 ## Tab Scanning Pipeline (Fretboard Lab)
 
@@ -144,33 +151,29 @@ Decision types: `onset`, `locked`, `no_onset`, `unstable`, `string_cooldown`, `o
 
 | File | Key Exports | Purpose |
 |------|-------------|---------|
-| `curriculum.ts` | `SKILLS[]`, `SKILL_MAP`, `CATEGORIES` | 100+ skills across 8 categories with prerequisites (DAG), exercises, BPM targets |
 | `rollPatterns.ts` | `ROLL_PATTERNS[]`, `ROLL_MAP`, `refreshRollMap()` | 8 built-in Scruggs rolls + custom patterns from DB |
 | `lickLibrary.ts` | `LICK_LIBRARY[]`, `LICK_MAP` | Melodic lick references (Foggy Mountain, Cripple Creek, G/C/D licks) for DTW matching |
 | `songLibrary.ts` | `SONGS[]`, `SONG_MAP`, `SECTION_MAP` | Full song arrangements with measures, chord changes, tab notes (string/fret/technique) |
 | `chordDiagrams.ts` | `CHORD_DIAGRAMS[]`, `CHORD_MAP` | Chord shapes with fret positions |
+| `scaleLibrary.ts` | `SCALE_LIBRARY[]`, `SCALE_CATEGORIES` | Major, pentatonic, blues, melodic minor scales |
 | `fretboardNotes.ts` | `OPEN_STRINGS`, `getNoteAtFret()` | Banjo fretboard pitch reference |
 | `achievements.ts` | `ACHIEVEMENTS[]` | Achievement unlock conditions (streaks, BPM records, skill counts) |
 | `tourSteps.ts` | Tour step definitions | Guided tour sequence for onboarding |
 
-### Database (Dexie v4 / IndexedDB)
+### Database (Dexie v14 / IndexedDB)
 
-13 tables. Key ones:
+9 tables (post-Phase-0). Phase 1 will bump to v15 and add 3 more (`goals`, `itemTags`, `checkInRecords`).
 
 | Table | Purpose |
 |-------|---------|
-| `userProfiles` | User identity: solo, teacher, or student; admin flag; curriculum path |
-| `skillRecords` | Per-user skill progress: status, BPM, practice count, FSRS state, mastery level |
+| `userProfiles` | User identity: role (solo/admin retained, teacher/student dormant), admin flag |
 | `practiceSessions` | Session metadata (start/end timestamps) |
-| `sessionItems` | Individual practice items: skill, BPM, scores (rhythm/pitch/tempo/composite), recording ref |
-| `noteAccuracyRecords` | Per-note evaluations with `[skillId+patternId+position]` index for weak-spot queries |
+| `sessionItems` | Individual practice items: BPM, scores (rhythm/pitch/tempo/composite), recording ref |
+| `noteAccuracyRecords` | Per-note evaluations indexed by `sessionItemId` |
 | `recordings` | Audio blobs (local only, not synced) |
 | `streakRecords` | One record per practice day for streak tracking |
 | `achievements` | Earned achievement timestamps |
-| `customRollPatterns` | Teacher-created roll patterns with role-based visibility |
-| `teacherConfigs` | Per-class/per-student skill overrides, media display settings |
-| `teacherClips` | Teacher demo media (video/audio/image/tab crops) attached to skills |
-| `skillImageOverrides` | Admin-set override images for skill display (synced via Supabase Storage) |
+| `customRollPatterns` | Custom roll patterns |
 | `tabTrainingPairs` | Tab image + corrected notes for digit model training |
 
 ### Sync Engine (src/db/sync.ts)
@@ -192,53 +195,32 @@ Supabase email/password auth. Session auto-restored on app load. Users can skip 
 
 ### User Roles
 
+Teacher mode was retired in Phase 0 of the coach overhaul. The `teacher` and `student` literals still exist on the `UserRole` type, but the supporting tables (`teacherConfigs`, `teacherClips`, `skillImageOverrides`) and UI are gone. Only `solo` and `admin` are meaningful today.
+
 | Role | Access |
 |------|--------|
-| **solo** | Default guest mode, single profile, no teacher features |
-| **teacher** | Creates/manages students, disables skills, uploads demo clips, custom roll patterns |
-| **student** | Linked to a teacher via `teacherId`, sees teacher-filtered curriculum |
-| **admin** | `isAdmin` flag — admin panel access, skill image overrides, database stats |
+| **solo** | Default guest or signed-in user, single profile |
+| **admin** | `isAdmin` flag — admin panel access, database stats |
+| **teacher** | Dormant — type literal preserved; no functionality |
+| **student** | Dormant — type literal preserved; no functionality |
 
-### Teacher Controls
+## Curriculum
 
-- `disabledSkillIds[]` — class-wide curriculum filter
-- `studentOverrides{ [studentId]: disabledSkillIds[] }` — per-student overrides
-- Custom roll patterns (visible to their students)
-- Demo clips (video/audio/image) attached to skills
-
-## Curriculum & Recommendations
-
-- Skills defined in `src/data/curriculum.ts` with prerequisites forming a DAG
-- Categories: `setup`, `theory`, `rolls`, `chords`, `techniques`, `licks`, `songs`, `performance`
-- Paths: `newby`, `beginner`, `intermediate`
-- Status progression: `locked -> unlocked -> active -> progressed -> mastered`
-- `buildSessionPlan()` allocates: 25% new skills, 50% active work, 25% maintenance/review
-- Factors: BPM gap, recency, practice count, accuracy score, FSRS due date
-- Low accuracy (<70%) triggers: higher priority, lower suggested BPM
-
-## FSRS & Mastery
-
-### Spaced Repetition (ts-fsrs)
-
-- FSRS-5 algorithm schedules skill reviews based on composite score + self-rating
-- State stored as JSON in `skillRecords.fsrsState`, next review in `fsrsNextReview`
-- `isDueForReview()` checks if a skill needs practice
-
-### 5-Level Mastery (engine/masteryLevels.ts)
-
-Introduced -> Developing -> Competent -> Mastered -> Fluent
-
-Decays over 30 days of inactivity. Overdue skills show visual indicator in skill tree.
+Retired. The Deep Dive curriculum DAG (`SKILLS[]`), FSRS spaced repetition, skill records, pathway, skill-tree, achievements auto-tracking are gone (Phase 0 of the coach overhaul). Replaced by LLM-driven assessment + persistent goals (Phase 1+). See `docs/superpowers/specs/2026-05-27-coach-overhaul-design.md`.
 
 ## Library
 
-Browse-only view under Skills page with three tabs:
+Browse-only view of static catalogs. Previously the Quick Pick landing page; Quick Pick mode was retired in Phase 0. In Phase 2 the library will return as a secondary tab off the plan dashboard. The 7 categories are still in place:
 
-- **Roll Repo** — all built-in + custom roll patterns
-- **Lick Library** — all lick references
-- **Song Studio** — all songs with section selector
+- **Chord Charts** — 94 voicings across all 12 keys (major, minor, 7th) with BanjoChordDiagram component
+- **Circle of 5ths** — Interactive SVG circle with key selection, diatonic chord display, I-IV-V highlighting with chord diagrams
+- **Roll Repo** — Built-in + custom Scruggs roll patterns
+- **Lick Library** — Classic bluegrass licks with key/type filters
+- **Scales** — Major, pentatonic, blues, melodic minor with ASCII tab strip
+- **Song Studio** — Full song arrangements (under construction)
+- **Roll Generator** — Create custom roll patterns
 
-Each item loads a FretLab-style tab viewer (FretboardDiagram + play/stop + BPM controls). Conversion functions: `rollPatternToFretNotes()`, `lickToFretNotes()`, `sectionToFretNotes()` in `engine/rollToFretNotes.ts`.
+Each item loads a FretboardDiagram tab viewer with play/stop + BPM controls. Conversion via `rollPatternToFretNotes()`, `lickToFretNotes()`, `sectionToFretNotes()` in `engine/rollToFretNotes.ts`.
 
 ## Key Engine Modules
 
@@ -249,35 +231,15 @@ Each item loads a FretLab-style tab viewer (FretboardDiagram + play/stop + BPM c
 | `streamingRollMatcher.ts` | Per-note streaming roll evaluation with cursor |
 | `streamingSongMatcher.ts` | Streaming matcher for full song sections |
 | `dtwMatcher.ts` | Dynamic Time Warping for lick comparison |
-| `recommendationEngine.ts` | Session planning, skill status evaluation, unlock detection |
-| `fsrs.ts` | FSRS-5 spaced repetition scheduling |
-| `masteryLevels.ts` | 5-level mastery with decay |
-| `performanceMetrics.ts` | Per-note accuracy, timing, rhythm/pitch/tempo scores |
-| `weakSpotAnalysis.ts` | Per-position accuracy stats from noteAccuracyRecords |
-| `weakSpotDrillGenerator.ts` | Generate targeted drills for weak positions |
 | `banjoSynth.ts` | Karplus-Strong synthesis for demo playback |
-| `adaptiveTempo.ts` | Auto-adjust BPM based on accuracy |
 | `tabParser.ts` | Parse ASCII tablature -> FretNote[] |
 | `tabImageOcr.ts` | Staff line detection, note detection, Vision API integration |
 | `digitClassifier.ts` | ONNX model loading + digit/label inference |
 | `syntheticTabGenerator.ts` | Canvas-rendered synthetic tab images for training |
 | `rollToFretNotes.ts` | Convert rolls/licks/song sections -> FretNote[] for fretboard display |
-| `achievementTracker.ts` | Check unlock conditions after each session |
-| `theoryEngine.ts` | Music theory utilities (scales, intervals, chord construction) |
-| `fingerBalance.ts` | Analyze finger usage distribution across practice |
-| `coachingCards.ts` | Generate practice tips based on performance patterns |
+| `rollGenerator.ts` | Generate custom roll patterns |
 | `rhythmAnalysis.ts` | Rhythm pattern analysis (uses Web Worker with essentia.js) |
-| `teacherMode.ts` | Teacher curriculum management and student filtering |
-| `challengeEngine.ts` | Practice challenge/goal generation |
-| `focusMode.ts` | Focused practice session management |
-| `warmupEngine.ts` | Generate warmup exercise sequences |
-| `plateauDetector.ts` | Detect when a student plateaus on a skill |
-| `autoChunker.ts` | Auto-segment practice into logical chunks |
-| `tempoRamp.ts` | Gradual tempo increase during practice |
-| `teacherClipService.ts` | Teacher demo media management |
 | `recordingService.ts` | Audio recording utilities |
-| `analyticsQueries.ts` | Dexie queries for progress analytics |
-| `spacedRepetition.ts` | Legacy spaced repetition (pre-FSRS) |
 
 ## Conventions
 
