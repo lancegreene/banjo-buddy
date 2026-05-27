@@ -13683,3 +13683,34 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
     display: none;
   }
 }
+
+/* ─── Phase 0 placeholder home ────────────────────────────────────────────── */
+.placeholder-home {
+  max-width: 480px;
+  margin: 96px auto;
+  padding: 24px;
+  text-align: center;
+  opacity: 0.7;
+}
+.placeholder-home h1 {
+  margin: 0 0 12px;
+}
+.placeholder-home-tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+.placeholder-home-tools button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+.placeholder-home-tools button:hover {
+  opacity: 0.85;
+}
