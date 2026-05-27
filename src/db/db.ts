@@ -339,15 +339,15 @@ class BanjoBuddyDB extends Dexie {
     // v14: Drop curriculum + teacher tables (skillRecords, teacherConfigs,
     // teacherClips, skillImageOverrides). Coach tables will be added in v15.
     this.version(14).stores({
-      userProfiles:       'id',
+      userProfiles:       'id, role',
       practiceSessions:   'id, userId, startedAt',
-      sessionItems:       'id, sessionId',
-      recordings:         'id, userId, createdAt',
-      streakRecords:      'id, userId',
-      noteAccuracyRecords:'id, userId, recordedAt',
-      achievements:       'id, userId',
-      customRollPatterns: 'id, userId',
-      tabTrainingPairs:   'id, userId, createdAt',
+      sessionItems:       'id, sessionId, completedAt',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, createdAt',
+      achievements:       '++id, achievementId, userId',
+      customRollPatterns: 'id, createdBy, createdAt',
+      tabTrainingPairs:   'id, createdAt',
       // Removed: skillRecords, teacherConfigs, teacherClips, skillImageOverrides
     }).upgrade(async (tx) => {
       // Explicitly clear removed tables so IndexedDB releases storage

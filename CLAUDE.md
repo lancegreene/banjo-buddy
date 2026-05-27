@@ -274,7 +274,6 @@ Each item loads a FretLab-style tab viewer (FretboardDiagram + play/stop + BPM c
 | `plateauDetector.ts` | Detect when a student plateaus on a skill |
 | `autoChunker.ts` | Auto-segment practice into logical chunks |
 | `tempoRamp.ts` | Gradual tempo increase during practice |
-| `imageCropService.ts` | Image cropping utilities for teacher clips |
 | `teacherClipService.ts` | Teacher demo media management |
 | `recordingService.ts` | Audio recording utilities |
 | `analyticsQueries.ts` | Dexie queries for progress analytics |
