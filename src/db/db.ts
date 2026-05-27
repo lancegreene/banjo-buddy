@@ -6,11 +6,9 @@ import type { Path } from '../types'
 // All tables use UUIDs + timestamps so migration to cloud sync is seamless.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type SkillStatus = 'locked' | 'unlocked' | 'active' | 'progressed' | 'mastered'
 export type SessionItemType = 'roll' | 'song' | 'exercise' | 'technique' | 'theory'
 export type SelfRating = 'felt_good' | 'ok' | 'needs_work'
 export type UserRole = 'solo' | 'teacher' | 'student'
-export type MediaType = 'video' | 'audio' | 'image' | 'tab_crop'
 
 // ── Table shapes ─────────────────────────────────────────────────────────────
 
@@ -23,44 +21,6 @@ export interface UserProfile {
   hasSeenTour?: boolean // false for new students, triggers auto-tour on first login
   isAdmin?: boolean    // admin flag — grants access to admin panel
   createdAt: string    // ISO
-  updatedAt: string
-}
-
-export interface MediaDisplaySettings {
-  videoThumbWidth?: number     // px, default 216
-  tabMaxWidth?: number         // px, default 200
-  imageMaxWidth?: number       // px, default full width (0 = full)
-}
-
-export interface TeacherConfig {
-  id: string                   // same as teacher's userId ('local')
-  disabledSkillIds: string[]   // skills toggled off for students (default)
-  studentOverrides?: { [studentId: string]: string[] }  // per-student disabled lists (overrides default)
-  mediaDisplay?: MediaDisplaySettings
-  skillOrder?: { [category: string]: string[] }  // custom ordering of skill IDs within each category
-  updatedAt: string
-}
-
-export type MasteryLevel = 'introduced' | 'developing' | 'competent' | 'mastered' | 'fluent'
-
-export interface SkillRecord {
-  id: string           // UUID
-  userId: string
-  skillId: string      // references SKILL_MAP key
-  status: SkillStatus
-  currentBpm: number | null
-  bestBpm: number | null
-  practiceCount: number
-  lastPracticed: string | null   // ISO
-  unlockedAt: string | null      // ISO
-  progressedAt: string | null    // ISO — when progressBpm first hit
-  masteredAt: string | null      // ISO — when masteryBpm first hit
-  srInterval: number | null      // days until next review (1, 3, or 7) — legacy, kept for compat
-  srNextReview: string | null    // ISO date — legacy, kept for compat
-  fsrsState: string | null       // JSON-serialized FSRS card state
-  fsrsNextReview: string | null  // ISO date from FSRS scheduler
-  masteryLevel: MasteryLevel | null // 5-level mastery
-  createdAt: string
   updatedAt: string
 }
 
@@ -143,44 +103,6 @@ export interface CustomRollPattern {
   updatedAt: string
 }
 
-export interface CropRect {
-  x: number       // normalized 0-1
-  y: number
-  w: number
-  h: number
-}
-
-export interface TeacherClip {
-  id: string
-  teacherId: string             // userId of recording teacher
-  skillId: string | null        // attached skill (nullable)
-  rollPatternId: string | null  // attached roll pattern (nullable)
-  mediaType: MediaType          // 'video' | 'audio' | 'image' | 'tab_crop'
-  videoBlob: Blob | null        // video/webm blob (video only)
-  audioBlob: Blob | null        // audio blob (audio only)
-  imageBlob: Blob | null        // image blob (image + tab_crop)
-  thumbnailBlob: Blob | null    // poster frame / image thumbnail
-  sourceImageId: string | null  // for tab_crop: parent image clip ID
-  cropRect: CropRect | null     // for tab_crop: crop region on source image
-  sortOrder: number | null      // for tab_crop: ordering within source
-  durationSeconds: number       // 0 for images
-  trimStart: number             // seconds, 0 if untrimmed or non-temporal
-  trimEnd: number               // seconds, = durationSeconds if untrimmed
-  title: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface SkillImageOverride {
-  skillId: string        // primary key — one override per skill
-  imageUrl: string       // public URL from Supabase Storage
-  alt: string
-  caption: string | null
-  mimeType: string       // 'image/jpeg', 'image/png', etc.
-  updatedBy: string      // userId of admin who set it
-  updatedAt: string      // ISO
-}
-
 export interface TabTrainingPair {
   id: string              // UUID
   imageBlob: Blob         // original cropped tab image
@@ -194,7 +116,6 @@ export interface TabTrainingPair {
 
 class BanjoBuddyDB extends Dexie {
   userProfiles!: Table<UserProfile>
-  skillRecords!: Table<SkillRecord>
   practiceSessions!: Table<PracticeSession>
   sessionItems!: Table<SessionItem>
   recordings!: Table<Recording>
@@ -202,9 +123,6 @@ class BanjoBuddyDB extends Dexie {
   noteAccuracyRecords!: Table<NoteAccuracyRecord>
   achievements!: Table<Achievement>
   customRollPatterns!: Table<CustomRollPattern>
-  teacherConfigs!: Table<TeacherConfig>
-  teacherClips!: Table<TeacherClip>
-  skillImageOverrides!: Table<SkillImageOverride>
   tabTrainingPairs!: Table<TabTrainingPair>
 
   constructor() {
@@ -251,7 +169,7 @@ class BanjoBuddyDB extends Dexie {
       noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
     }).upgrade((tx) => {
       // Backfill SR fields as null on existing records
-      return tx.table('skillRecords').toCollection().modify((record: SkillRecord) => {
+      return tx.table('skillRecords').toCollection().modify((record: any) => {
         if (record.srInterval === undefined) record.srInterval = null
         if (record.srNextReview === undefined) record.srNextReview = null
       })
@@ -268,7 +186,7 @@ class BanjoBuddyDB extends Dexie {
       noteAccuracyRecords:'id, sessionItemId, skillId, patternId, [skillId+patternId+position], createdAt',
       achievements:       '++id, achievementId, userId, earnedAt',
     }).upgrade((tx) => {
-      return tx.table('skillRecords').toCollection().modify((record: SkillRecord) => {
+      return tx.table('skillRecords').toCollection().modify((record: any) => {
         if (record.fsrsState === undefined) record.fsrsState = null
         if (record.fsrsNextReview === undefined) record.fsrsNextReview = null
         if (record.masteryLevel === undefined) record.masteryLevel = null
@@ -301,9 +219,9 @@ class BanjoBuddyDB extends Dexie {
       customRollPatterns: 'id, name, createdAt',
       teacherConfigs:     'id',
     }).upgrade((tx) => {
-      return tx.table('userProfiles').toCollection().modify((profile: UserProfile) => {
-        if ((profile as any).role === undefined) profile.role = 'solo'
-        if ((profile as any).teacherId === undefined) profile.teacherId = null
+      return tx.table('userProfiles').toCollection().modify((profile: any) => {
+        if (profile.role === undefined) profile.role = 'solo'
+        if (profile.teacherId === undefined) profile.teacherId = null
       })
     })
 
@@ -417,6 +335,29 @@ class BanjoBuddyDB extends Dexie {
       skillImageOverrides:'skillId',
       tabTrainingPairs:   'id, createdAt',
     })
+
+    // v14: Drop curriculum + teacher tables (skillRecords, teacherConfigs,
+    // teacherClips, skillImageOverrides). Coach tables will be added in v15.
+    this.version(14).stores({
+      userProfiles:       'id',
+      practiceSessions:   'id, userId, startedAt',
+      sessionItems:       'id, sessionId',
+      recordings:         'id, userId, createdAt',
+      streakRecords:      'id, userId',
+      noteAccuracyRecords:'id, userId, recordedAt',
+      achievements:       'id, userId',
+      customRollPatterns: 'id, userId',
+      tabTrainingPairs:   'id, userId, createdAt',
+      // Removed: skillRecords, teacherConfigs, teacherClips, skillImageOverrides
+    }).upgrade(async (tx) => {
+      // Explicitly clear removed tables so IndexedDB releases storage
+      await Promise.all([
+        tx.table('skillRecords').clear().catch(() => undefined),
+        tx.table('teacherConfigs').clear().catch(() => undefined),
+        tx.table('teacherClips').clear().catch(() => undefined),
+        tx.table('skillImageOverrides').clear().catch(() => undefined),
+      ])
+    })
   }
 }
 
@@ -452,244 +393,6 @@ export async function getOrCreateUser(): Promise<UserProfile> {
   }
   await db.userProfiles.add(user)
   return user
-}
-
-// Get all skill records for the local user as a Map<skillId, SkillRecord>
-export async function getSkillRecordMap(userId: string): Promise<Map<string, SkillRecord>> {
-  const records = await db.skillRecords.where('userId').equals(userId).toArray()
-  return new Map(records.map((r) => [r.skillId, r]))
-}
-
-// Upsert a skill record
-export async function upsertSkillRecord(record: Partial<SkillRecord> & { skillId: string; userId: string }): Promise<void> {
-  const existing = await db.skillRecords
-    .where('[userId+skillId]')
-    .equals([record.userId, record.skillId])
-    .first()
-
-  if (existing) {
-    await db.skillRecords.update(existing.id, { ...record, updatedAt: nowISO() })
-  } else {
-    await db.skillRecords.add({
-      id: newId(),
-      status: 'locked',
-      currentBpm: null,
-      bestBpm: null,
-      practiceCount: 0,
-      lastPracticed: null,
-      unlockedAt: null,
-      progressedAt: null,
-      masteredAt: null,
-      createdAt: nowISO(),
-      updatedAt: nowISO(),
-      ...record,
-    } as SkillRecord)
-  }
-}
-
-// ── Teacher mode helpers ──────────────────────────────────────────────────────
-
-export async function getStudents(teacherId: string): Promise<UserProfile[]> {
-  return db.userProfiles.where('role').equals('student').filter((p) => p.teacherId === teacherId).toArray()
-}
-
-export async function getStandaloneStudents(): Promise<UserProfile[]> {
-  return db.userProfiles.where('role').equals('student').filter((p) => !p.teacherId).toArray()
-}
-
-export async function createStudent(name: string, teacherId: string | null, path: Path): Promise<UserProfile> {
-  const student: UserProfile = {
-    id: newId(),
-    name,
-    path,
-    role: 'student',
-    teacherId,
-    hasSeenTour: false,
-    createdAt: nowISO(),
-    updatedAt: nowISO(),
-  }
-  await db.userProfiles.add(student)
-  return student
-}
-
-export async function markTourSeen(userId: string): Promise<void> {
-  await db.userProfiles.update(userId, { hasSeenTour: true, updatedAt: nowISO() })
-}
-
-export async function deleteStudent(userId: string): Promise<void> {
-  // Remove student's skill records, sessions, session items, streak records, and profile
-  const sessions = await db.practiceSessions.where('userId').equals(userId).toArray()
-  const sessionIds = sessions.map((s) => s.id)
-  if (sessionIds.length > 0) {
-    const items = await db.sessionItems.where('sessionId').anyOf(sessionIds).toArray()
-    const itemIds = items.map((i) => i.id)
-    if (itemIds.length > 0) {
-      await db.noteAccuracyRecords.where('sessionItemId').anyOf(itemIds).delete()
-      await db.recordings.where('sessionItemId').anyOf(itemIds).delete()
-    }
-    await db.sessionItems.where('sessionId').anyOf(sessionIds).delete()
-  }
-  await db.practiceSessions.where('userId').equals(userId).delete()
-  await db.skillRecords.where('userId').equals(userId).delete()
-  await db.streakRecords.where('userId').equals(userId).delete()
-  await db.userProfiles.delete(userId)
-}
-
-export async function getOrCreateTeacherConfig(teacherId: string): Promise<TeacherConfig> {
-  const existing = await db.teacherConfigs.get(teacherId)
-  if (existing) return existing
-  const config: TeacherConfig = {
-    id: teacherId,
-    disabledSkillIds: [],
-    updatedAt: nowISO(),
-  }
-  await db.teacherConfigs.add(config)
-  return config
-}
-
-export async function updateTeacherConfig(config: TeacherConfig): Promise<void> {
-  await db.teacherConfigs.put({ ...config, updatedAt: nowISO() })
-}
-
-// ── Multi-teacher helpers ─────────────────────────────────────────────────────
-
-export async function getTeachers(): Promise<UserProfile[]> {
-  return db.userProfiles.where('role').equals('teacher').toArray()
-}
-
-export async function createTeacher(name: string): Promise<UserProfile> {
-  const teacher: UserProfile = {
-    id: newId(),
-    name,
-    path: 'newby',
-    role: 'teacher',
-    teacherId: null,
-    createdAt: nowISO(),
-    updatedAt: nowISO(),
-  }
-  await db.userProfiles.add(teacher)
-  return teacher
-}
-
-export async function deleteTeacher(teacherId: string): Promise<void> {
-  // Remove all students of this teacher first
-  const students = await getStudents(teacherId)
-  for (const s of students) {
-    await deleteStudent(s.id)
-  }
-  // Remove teacher config
-  await db.teacherConfigs.delete(teacherId)
-  // Remove teacher's video clips
-  await db.teacherClips.where('teacherId').equals(teacherId).delete()
-  // Remove teacher's custom patterns
-  await db.customRollPatterns.where('createdBy').equals(teacherId).delete()
-  // Remove teacher's own data
-  const sessions = await db.practiceSessions.where('userId').equals(teacherId).toArray()
-  const sessionIds = sessions.map((s) => s.id)
-  if (sessionIds.length > 0) {
-    const items = await db.sessionItems.where('sessionId').anyOf(sessionIds).toArray()
-    const itemIds = items.map((i) => i.id)
-    if (itemIds.length > 0) {
-      await db.noteAccuracyRecords.where('sessionItemId').anyOf(itemIds).delete()
-      await db.recordings.where('sessionItemId').anyOf(itemIds).delete()
-    }
-    await db.sessionItems.where('sessionId').anyOf(sessionIds).delete()
-  }
-  await db.practiceSessions.where('userId').equals(teacherId).delete()
-  await db.skillRecords.where('userId').equals(teacherId).delete()
-  await db.streakRecords.where('userId').equals(teacherId).delete()
-  await db.userProfiles.delete(teacherId)
-}
-
-// ── Skill image override helpers ──────────────────────────────────────────────
-
-export async function getAllSkillImageOverrides(): Promise<SkillImageOverride[]> {
-  return db.skillImageOverrides.toArray()
-}
-
-export async function putSkillImageOverride(override: SkillImageOverride): Promise<void> {
-  await db.skillImageOverrides.put(override)
-}
-
-export async function deleteSkillImageOverride(skillId: string): Promise<void> {
-  await db.skillImageOverrides.delete(skillId)
-}
-
-// ── Admin helpers ─────────────────────────────────────────────────────────────
-
-export async function setAdminStatus(userId: string, isAdmin: boolean): Promise<void> {
-  await db.userProfiles.update(userId, { isAdmin, updatedAt: nowISO() })
-}
-
-export async function getAllUsers(): Promise<UserProfile[]> {
-  return db.userProfiles.toArray()
-}
-
-export async function getDbStats(): Promise<{
-  users: number
-  skillRecords: number
-  sessions: number
-  sessionItems: number
-  recordings: number
-  clips: number
-  patterns: number
-  achievements: number
-}> {
-  const [users, skillRecords, sessions, sessionItems, recordings, clips, patterns, achievements] =
-    await Promise.all([
-      db.userProfiles.count(),
-      db.skillRecords.count(),
-      db.practiceSessions.count(),
-      db.sessionItems.count(),
-      db.recordings.count(),
-      db.teacherClips.count(),
-      db.customRollPatterns.count(),
-      db.achievements.count(),
-    ])
-  return { users, skillRecords, sessions, sessionItems, recordings, clips, patterns, achievements }
-}
-
-export async function clearAllUserData(userId: string): Promise<void> {
-  // Clear all practice data for a specific user (keeps profile)
-  const sessions = await db.practiceSessions.where('userId').equals(userId).toArray()
-  const sessionIds = sessions.map((s) => s.id)
-  if (sessionIds.length > 0) {
-    const items = await db.sessionItems.where('sessionId').anyOf(sessionIds).toArray()
-    const itemIds = items.map((i) => i.id)
-    if (itemIds.length > 0) {
-      await db.noteAccuracyRecords.where('sessionItemId').anyOf(itemIds).delete()
-      await db.recordings.where('sessionItemId').anyOf(itemIds).delete()
-    }
-    await db.sessionItems.where('sessionId').anyOf(sessionIds).delete()
-  }
-  await db.practiceSessions.where('userId').equals(userId).delete()
-  await db.skillRecords.where('userId').equals(userId).delete()
-  await db.streakRecords.where('userId').equals(userId).delete()
-}
-
-export async function exportAllData(): Promise<object> {
-  const [userProfiles, skillRecords, practiceSessions, sessionItems, streakRecords, achievements, customRollPatterns, teacherConfigs] =
-    await Promise.all([
-      db.userProfiles.toArray(),
-      db.skillRecords.toArray(),
-      db.practiceSessions.toArray(),
-      db.sessionItems.toArray(),
-      db.streakRecords.toArray(),
-      db.achievements.toArray(),
-      db.customRollPatterns.toArray(),
-      db.teacherConfigs.toArray(),
-    ])
-  return {
-    exportedAt: nowISO(),
-    userProfiles,
-    skillRecords,
-    practiceSessions,
-    sessionItems,
-    streakRecords,
-    achievements,
-    customRollPatterns,
-    teacherConfigs,
-  }
 }
 
 // Calculate current streak from streak records

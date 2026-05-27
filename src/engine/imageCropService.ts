@@ -3,7 +3,12 @@
 // Pure canvas-based functions for cropping and thumbnailing images.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { CropRect } from '../db/db'
+export interface CropRect {
+  x: number       // normalized 0-1
+  y: number
+  w: number
+  h: number
+}
 
 /** Crop a region from a source image blob. CropRect uses normalized 0-1 coords. */
 export async function cropImageBlob(sourceBlob: Blob, rect: CropRect): Promise<Blob> {

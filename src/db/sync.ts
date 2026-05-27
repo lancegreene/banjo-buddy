@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { supabase } from './supabase'
-import { db, type SkillRecord, type PracticeSession, type SessionItem, type NoteAccuracyRecord, type SkillImageOverride } from './db'
+import { db, type PracticeSession, type SessionItem, type NoteAccuracyRecord } from './db'
 import type { User } from '@supabase/supabase-js'
 
 // ─── Sync Queue (persisted in IndexedDB) ────────────────────────────────────
@@ -84,15 +84,12 @@ function toCamel(obj: Record<string, unknown>): Record<string, unknown> {
 
 const TABLE_MAP: Record<string, string> = {
   userProfiles: 'profiles',
-  skillRecords: 'skill_records',
   practiceSessions: 'practice_sessions',
   sessionItems: 'session_items',
   streakRecords: 'streak_records',
   noteAccuracyRecords: 'note_accuracy_records',
   achievements: 'achievements',
   customRollPatterns: 'custom_roll_patterns',
-  teacherConfigs: 'teacher_configs',
-  skillImageOverrides: 'skill_image_overrides',
 }
 
 // Fields to exclude from sync (blobs, local-only data)
@@ -129,8 +126,7 @@ export async function pushPendingChanges(): Promise<{ pushed: number; errors: nu
     }
 
     try {
-      // skillImageOverrides uses skill_id as primary key, not id
-      const pkColumn = item.table === 'skillImageOverrides' ? 'skill_id' : 'id'
+      const pkColumn = 'id'
 
       if (item.operation === 'delete') {
         const { error } = await supabase
@@ -173,29 +169,6 @@ export async function pullRemoteChanges(userId: string): Promise<{ pulled: numbe
 
   const lastSynced = syncMeta?.last_synced_at ?? '1970-01-01T00:00:00Z'
   let pulled = 0
-
-  // Pull skill records
-  const { data: remoteSkills } = await supabase
-    .from('skill_records')
-    .select('*')
-    .eq('user_id', userId)
-    .gt('updated_at', lastSynced)
-
-  if (remoteSkills) {
-    for (const remote of remoteSkills) {
-      const local = toCamel(remote) as unknown as SkillRecord
-      const existing = await db.skillRecords
-        .where('[userId+skillId]')
-        .equals([local.userId, local.skillId])
-        .first()
-
-      // Remote wins if newer
-      if (!existing || (existing.updatedAt && local.updatedAt && local.updatedAt > existing.updatedAt)) {
-        await db.skillRecords.put(local)
-        pulled++
-      }
-    }
-  }
 
   // Pull practice sessions
   const { data: remoteSessions } = await supabase
@@ -292,33 +265,6 @@ export async function pullRemoteChanges(userId: string): Promise<{ pulled: numbe
     }
   }
 
-  // Pull skill image overrides (global, not per-user) — full reconciliation
-  // since this is a small table and deletions can't be detected incrementally
-  const { data: remoteImageOverrides } = await supabase
-    .from('skill_image_overrides')
-    .select('*')
-
-  if (remoteImageOverrides) {
-    const remoteSkillIds = new Set<string>()
-    for (const remote of remoteImageOverrides) {
-      const local = toCamel(remote) as unknown as any
-      remoteSkillIds.add(local.skillId)
-      const existing = await db.skillImageOverrides.get(local.skillId)
-      if (!existing || (existing.updatedAt && local.updatedAt && local.updatedAt > existing.updatedAt)) {
-        await db.skillImageOverrides.put(local)
-        pulled++
-      }
-    }
-    // Remove local overrides deleted on another device
-    const allLocal = await db.skillImageOverrides.toArray()
-    for (const local of allLocal) {
-      if (!remoteSkillIds.has(local.skillId)) {
-        await db.skillImageOverrides.delete(local.skillId)
-        pulled++
-      }
-    }
-  }
-
   // Update sync timestamp
   await supabase
     .from('sync_metadata')
@@ -375,56 +321,10 @@ export function stopAutoSync() {
   }
 }
 
-// ─── Pull global data (no auth required) ─────────────────────────────────────
-
-/** Pull skill image overrides from Supabase (global, not per-user) */
-export async function pullSkillImageOverrides(): Promise<number> {
-  try {
-    const { data, error } = await supabase
-      .from('skill_image_overrides')
-      .select('*')
-
-    if (error || !data) return 0
-
-    let count = 0
-    const remoteSkillIds = new Set<string>()
-
-    for (const remote of data) {
-      const local = toCamel(remote) as unknown as SkillImageOverride
-      remoteSkillIds.add(local.skillId)
-      const existing = await db.skillImageOverrides.get(local.skillId)
-      if (!existing || (existing.updatedAt && local.updatedAt && local.updatedAt > existing.updatedAt)) {
-        await db.skillImageOverrides.put(local)
-        count++
-      }
-    }
-
-    // Delete local overrides that no longer exist in Supabase (reverted on another device)
-    const allLocal = await db.skillImageOverrides.toArray()
-    for (const local of allLocal) {
-      if (!remoteSkillIds.has(local.skillId)) {
-        await db.skillImageOverrides.delete(local.skillId)
-        count++
-      }
-    }
-
-    return count
-  } catch {
-    return 0
-  }
-}
-
 // ─── Initial upload (migrate local data to cloud on first auth) ─────────────
 
 /** Push all local Dexie data to Supabase for a newly authenticated user */
 export async function uploadLocalData(localUserId: string, cloudUserId: string): Promise<void> {
-  // Skill records
-  const skills = await db.skillRecords.where('userId').equals(localUserId).toArray()
-  for (const record of skills) {
-    const data = { ...record, userId: cloudUserId }
-    await enqueueSync('skillRecords', record.id, 'upsert', data)
-  }
-
   // Practice sessions
   const sessions = await db.practiceSessions.where('userId').equals(localUserId).toArray()
   for (const session of sessions) {
