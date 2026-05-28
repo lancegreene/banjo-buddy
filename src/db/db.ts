@@ -21,6 +21,10 @@ export interface UserProfile {
   teacherId: string | null  // for students, points to teacher's user ID
   hasSeenTour?: boolean // false for new students, triggers auto-tour on first login
   isAdmin?: boolean    // admin flag — grants access to admin panel
+  // Coach overhaul (Phase 1) — check-in scheduling + onboarding gates.
+  lastCheckInAt?: string         // ISO — last completed check-in
+  nextCheckInDueAt?: string      // ISO — when the next check-in is suggested
+  assessmentCompletedAt?: string // ISO — initial assessment gate
   createdAt: string    // ISO
   updatedAt: string
 }
