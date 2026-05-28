@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 import type { Path } from '../types'
+import type { Goal, ItemTag, CheckInRecord } from '../types/coach'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Banjo Buddy — Local Database (Dexie / IndexedDB)
@@ -50,6 +51,7 @@ export interface SessionItem {
   hasRecording: boolean
   recordingKey: string | null    // IndexedDB blob key
   completedAt: string
+  goalId?: string                // optional: which plan goal this practice item belongs to
 }
 
 export interface Recording {
@@ -124,6 +126,9 @@ class BanjoBuddyDB extends Dexie {
   achievements!: Table<Achievement>
   customRollPatterns!: Table<CustomRollPattern>
   tabTrainingPairs!: Table<TabTrainingPair>
+  goals!: Table<Goal>
+  itemTags!: Table<ItemTag>
+  checkInRecords!: Table<CheckInRecord>
 
   constructor() {
     super('BanjoBuddyDB')
@@ -357,6 +362,26 @@ class BanjoBuddyDB extends Dexie {
         tx.table('teacherClips').clear().catch(() => undefined),
         tx.table('skillImageOverrides').clear().catch(() => undefined),
       ])
+    })
+
+    // v15: Coach overhaul — add goals, itemTags, checkInRecords. Extend
+    // sessionItems index with goalId for plan-context activity queries.
+    // No data migration: only adds tables and extends one index.
+    this.version(15).stores({
+      // Carried forward from v14
+      userProfiles:       'id, role',
+      practiceSessions:   'id, userId, startedAt',
+      sessionItems:       'id, sessionId, completedAt, goalId',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, createdAt',
+      achievements:       '++id, achievementId, userId',
+      customRollPatterns: 'id, createdBy, createdAt',
+      tabTrainingPairs:   'id, createdAt',
+      // New coach tables
+      goals:              'id, userId, status, updatedAt',
+      itemTags:           'id, userId, updatedAt',
+      checkInRecords:     'id, userId, kind, startedAt',
     })
   }
 }
