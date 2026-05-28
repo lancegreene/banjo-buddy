@@ -24,6 +24,7 @@ export interface ChordDiagram {
   baseFret?: number  // fret the diagram starts at (default 1)
   category: ChordCategory
   position?: string  // position label (Open, 5th, 9th, etc.)
+  tags?: string[]    // concept tag IDs from src/data/conceptTags.ts
 }
 
 export const CHORD_DIAGRAMS: ChordDiagram[] = [

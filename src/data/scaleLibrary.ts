@@ -14,6 +14,7 @@ export interface ScalePattern {
   key: string
   notes: FretNote[]
   defaultBpm: number
+  tags?: string[]    // concept tag IDs from src/data/conceptTags.ts
 }
 
 export const SCALE_LIBRARY: ScalePattern[] = [
