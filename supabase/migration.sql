@@ -210,3 +210,46 @@ create trigger set_updated_at before update on public.skill_records for each row
 create trigger set_updated_at before update on public.custom_roll_patterns for each row execute function public.update_updated_at();
 create trigger set_updated_at before update on public.teacher_configs for each row execute function public.update_updated_at();
 create trigger set_updated_at before update on public.sync_metadata for each row execute function public.update_updated_at();
+
+-- ─── Coach overhaul: goals, item tags ───────────────────────────────────────
+-- `checkInRecords` is intentionally NOT synced (transcripts are too large
+-- and treated as local-only for privacy). Goal deltas produced by check-ins
+-- are persisted via the synced `goals` table.
+
+create table if not exists public.goals (
+  id uuid primary key,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  title text not null,
+  description text not null,
+  status text not null,
+  supporting_item_refs jsonb not null default '[]'::jsonb,
+  concept_tags text[] not null default '{}',
+  history jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null,
+  updated_at timestamptz not null,
+  completed_at timestamptz
+);
+create index if not exists goals_user_id_idx on public.goals (user_id);
+create index if not exists goals_status_idx on public.goals (user_id, status);
+
+create table if not exists public.item_tags (
+  id text primary key,                -- composite "kind:id"
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  item_ref jsonb not null,
+  tag text not null,
+  updated_at timestamptz not null
+);
+create index if not exists item_tags_user_id_idx on public.item_tags (user_id);
+
+-- RLS
+alter table public.goals enable row level security;
+alter table public.item_tags enable row level security;
+
+create policy "users can read own goals" on public.goals
+  for select using (auth.uid() = user_id);
+create policy "users can write own goals" on public.goals
+  for all using (auth.uid() = user_id);
+create policy "users can read own item_tags" on public.item_tags
+  for select using (auth.uid() = user_id);
+create policy "users can write own item_tags" on public.item_tags
+  for all using (auth.uid() = user_id);

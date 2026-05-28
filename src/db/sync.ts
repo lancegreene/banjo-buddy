@@ -13,6 +13,7 @@
 
 import { supabase } from './supabase'
 import { db, type PracticeSession, type SessionItem, type NoteAccuracyRecord } from './db'
+import type { Goal, ItemTag } from '../types/coach'
 import type { User } from '@supabase/supabase-js'
 
 // ─── Sync Queue (persisted in IndexedDB) ────────────────────────────────────
@@ -90,6 +91,12 @@ const TABLE_MAP: Record<string, string> = {
   noteAccuracyRecords: 'note_accuracy_records',
   achievements: 'achievements',
   customRollPatterns: 'custom_roll_patterns',
+  goals: 'goals',
+  itemTags: 'item_tags',
+  // Note: `checkInRecords` is intentionally NOT synced. Transcripts contain
+  // full LLM conversation history per check-in, which is too large to sync
+  // efficiently and is treated as local-only for privacy. Goal deltas
+  // produced by check-ins are persisted via the synced `goals` table.
 }
 
 // Fields to exclude from sync (blobs, local-only data)
@@ -260,6 +267,42 @@ export async function pullRemoteChanges(userId: string): Promise<{ pulled: numbe
         .first()
       if (!existing) {
         await db.achievements.put(local)
+        pulled++
+      }
+    }
+  }
+
+  // Pull goals (coach overhaul)
+  const { data: remoteGoals } = await supabase
+    .from('goals')
+    .select('*')
+    .eq('user_id', userId)
+    .gt('updated_at', lastSynced)
+
+  if (remoteGoals) {
+    for (const remote of remoteGoals) {
+      const local = toCamel(remote) as unknown as Goal
+      const existing = await db.goals.get(local.id)
+      if (!existing || (existing.updatedAt ?? '') < (local.updatedAt ?? '')) {
+        await db.goals.put(local)
+        pulled++
+      }
+    }
+  }
+
+  // Pull item tags (coach overhaul)
+  const { data: remoteItemTags } = await supabase
+    .from('item_tags')
+    .select('*')
+    .eq('user_id', userId)
+    .gt('updated_at', lastSynced)
+
+  if (remoteItemTags) {
+    for (const remote of remoteItemTags) {
+      const local = toCamel(remote) as unknown as ItemTag
+      const existing = await db.itemTags.get(local.id)
+      if (!existing || (existing.updatedAt ?? '') < (local.updatedAt ?? '')) {
+        await db.itemTags.put(local)
         pulled++
       }
     }
