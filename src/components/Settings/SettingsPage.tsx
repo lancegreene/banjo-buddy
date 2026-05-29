@@ -117,6 +117,28 @@ export function SettingsPage() {
         </button>
       </section>
 
+      {/* API Connection */}
+      <section className="settings-section">
+        <div className="settings-section-header">
+          <div>
+            <h2 className="settings-section-title">API Connection</h2>
+            <p className="settings-section-desc">
+              Your Anthropic API key is stored locally. Disconnect to clear it and
+              run the setup gate again on next load.
+            </p>
+          </div>
+          <button
+            className="btn btn-sm"
+            onClick={() => {
+              localStorage.removeItem('banjo-buddy-anthropic-key')
+              location.reload()
+            }}
+          >
+            Disconnect API key
+          </button>
+        </div>
+      </section>
+
       {/* Recording Studio */}
       <section className="settings-section">
         <div className="settings-section-header">

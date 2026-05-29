@@ -23,6 +23,7 @@ import { Library } from './components/Library/Library'
 import { SettingsPage } from './components/Settings/SettingsPage'
 import { ProfilePage } from './components/Profile/ProfilePage'
 import { FretboardLab } from './components/Fretboard/FretboardLab'
+import { ApiKeyGate } from './components/ApiKeyGate/ApiKeyGate'
 import { supabase } from './db/supabase'
 import { startAutoSync, stopAutoSync, uploadLocalData } from './db/sync'
 
@@ -50,6 +51,25 @@ function NavBar() {
   )
 }
 
+function AssessmentPlaceholder() {
+  return (
+    <div className="api-key-gate">
+      <h1>Assessment</h1>
+      <p>Chat-based assessment coming in Task 3.5.</p>
+    </div>
+  )
+}
+
+// Decide where the user belongs after auth/skip-auth completes. The gates are
+// linear: no API key → collect one; key but no assessment → run assessment;
+// otherwise → land on the plan dashboard.
+function determineNextPage(): Page {
+  const { apiKey, assessmentCompletedAt } = useStore.getState()
+  if (!apiKey) return 'api-key-gate'
+  if (!assessmentCompletedAt) return 'assessment'
+  return 'plan-dashboard'
+}
+
 function PageContent({ page }: { page: Page }) {
   switch (page) {
     case 'splash':
@@ -61,6 +81,10 @@ function PageContent({ page }: { page: Page }) {
       // Same story as splash — AuthScreen is rendered by the shell with the
       // bootstrap callbacks. NavBar is hidden in this state.
       return null
+    case 'api-key-gate':
+      return <ApiKeyGate />
+    case 'assessment':
+      return <AssessmentPlaceholder />
     case 'plan-dashboard':
       return <PlanDashboard />
     case 'library':
@@ -130,7 +154,7 @@ export default function App() {
     if (!authChecked) return
     const hasSkippedAuth = localStorage.getItem('banjo-buddy-auth-skipped') === 'true'
     if (page === 'auth' && (authedUserId || hasSkippedAuth)) {
-      setPage('plan-dashboard')
+      setPage(determineNextPage())
     }
   }, [page, authChecked, authedUserId, setPage])
 
@@ -143,7 +167,11 @@ export default function App() {
     )
   }
 
-  const showNav = page !== 'splash' && page !== 'auth'
+  const showNav =
+    page !== 'splash' &&
+    page !== 'auth' &&
+    page !== 'api-key-gate' &&
+    page !== 'assessment'
 
   return (
     <div className="app">
@@ -154,7 +182,7 @@ export default function App() {
           onEnter={() => {
             const hasSkippedAuth = localStorage.getItem('banjo-buddy-auth-skipped') === 'true'
             if (authedUserId || hasSkippedAuth) {
-              setPage('plan-dashboard')
+              setPage(determineNextPage())
             } else {
               setPage('auth')
             }
@@ -178,12 +206,12 @@ export default function App() {
             }
             startAutoSync(userId)
             await loadUser()
-            setPage('plan-dashboard')
+            setPage(determineNextPage())
           }}
           onSkip={() => {
             localStorage.setItem('banjo-buddy-auth-skipped', 'true')
             loadUser()
-            setPage('plan-dashboard')
+            setPage(determineNextPage())
           }}
         />
       )}

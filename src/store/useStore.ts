@@ -14,6 +14,8 @@ import type { Goal, ItemTag, CheckInRecord, TagValue, ItemRef } from '../types/c
 export type Page =
   | 'splash'
   | 'auth'
+  | 'api-key-gate'
+  | 'assessment'
   | 'plan-dashboard'
   | 'library'
   | 'settings'

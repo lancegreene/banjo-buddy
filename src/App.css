@@ -13844,3 +13844,40 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .app-nav-tab:hover {
   opacity: 0.9;
 }
+
+/* ── Coach: ApiKeyGate ────────────────────────────────────────────────────── */
+.api-key-gate {
+  max-width: 480px;
+  margin: 64px auto;
+  padding: 24px;
+  text-align: center;
+}
+.api-key-gate h1 { margin: 0 0 12px; font-size: 22px; }
+.api-key-gate p { font-size: 14px; opacity: 0.8; margin: 0 0 12px; }
+.api-key-gate input {
+  width: 100%;
+  padding: 12px;
+  margin: 16px 0 0;
+  background: #1a1a1a;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  color: inherit;
+  font-family: monospace;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.api-key-gate-error { color: #f87171; font-size: 13px; margin: 4px 0; }
+.api-key-gate-hint { font-size: 12px; opacity: 0.6; margin-top: 16px; }
+.api-key-gate-hint a { color: var(--accent, #d4a04a); }
+.api-key-gate button {
+  margin-top: 8px;
+  padding: 10px 24px;
+  background: var(--accent, #d4a04a);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+}
+.api-key-gate button:disabled { opacity: 0.4; cursor: not-allowed; }
