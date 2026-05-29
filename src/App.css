@@ -13778,3 +13778,40 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   font-size: 12px;
   cursor: pointer;
 }
+
+/* ── Coach: PlanDashboard ─────────────────────────────────────────────────── */
+.plan-dashboard { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+.plan-dashboard-header { margin-bottom: 24px; }
+.plan-dashboard-header h1 { margin: 0; font-size: 24px; }
+.plan-dashboard-subtitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.6;
+}
+.plan-dashboard-see-all {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--accent, #d4a04a);
+  padding: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  margin-top: 16px;
+  font: inherit;
+}
+.plan-dashboard-backlog { margin-top: 24px; }
+.plan-dashboard-backlog h2 {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.7;
+  margin: 24px 0 8px;
+}
+.plan-dashboard--empty {
+  text-align: center;
+  padding: 64px 24px;
+  opacity: 0.7;
+}
+.plan-dashboard--empty h2 { margin: 0 0 8px; }
