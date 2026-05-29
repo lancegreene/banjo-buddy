@@ -13972,18 +13972,58 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   cursor: pointer;
 }
 
-/* Library confirmation stub */
+/* ── Coach: Library Confirmation ─────────────────────────────────────────── */
 .library-confirmation {
   max-width: 640px;
   margin: 32px auto;
-  padding: 24px 16px;
+  padding: 0 16px;
 }
-.library-confirmation button {
-  margin-top: 16px;
-  padding: 10px 18px;
+.library-confirmation header { margin-bottom: 24px; }
+.library-confirmation header h2 { margin: 0; }
+.library-confirmation header p { opacity: 0.7; margin: 4px 0 0; }
+
+.lc-items { list-style: none; padding: 0; margin: 0; }
+.lc-item {
+  background: #2d4a5e;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.lc-item-info { flex: 1; min-width: 200px; }
+.lc-item-name { font-weight: 600; font-size: 14px; }
+.lc-item-brief { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+
+.lc-tag-buttons { display: flex; gap: 6px; }
+.tag-btn {
+  background: transparent;
+  border: 1px solid currentColor;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.6;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+}
+.tag-btn.active { opacity: 1; font-weight: 600; background: rgba(255,255,255,0.05); }
+.tag-btn--got-it { color: #4ade80; }
+.tag-btn--working { color: #d4a04a; }
+.tag-btn--new { color: #c084fc; }
+
+.lc-submit {
+  width: 100%;
+  padding: 14px;
   background: var(--accent, #d4a04a);
   color: #000;
   border: none;
   border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
+  margin-top: 16px;
 }
