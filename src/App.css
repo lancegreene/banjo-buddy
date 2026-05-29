@@ -13714,3 +13714,67 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .placeholder-home-tools button:hover {
   opacity: 0.85;
 }
+
+/* ── Coach: GoalCard ──────────────────────────────────────────────────────── */
+.goal-card {
+  background: var(--surface-elevated, #2d4a5e);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border-left: 3px solid transparent;
+}
+.goal-card--focus { border-left-color: #d4a04a; }
+.goal-card--explore { border-left-color: #4ade80; }
+.goal-card--backlog { border-left-color: #94a3b8; opacity: 0.85; }
+.goal-card--mastered { border-left-color: #c084fc; opacity: 0.7; }
+.goal-card--shelved { opacity: 0.5; }
+
+.goal-card-header { margin-bottom: 10px; }
+.goal-card-status {
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 1px;
+  opacity: 0.7;
+}
+.goal-card-title { margin: 4px 0 6px; font-size: 16px; font-weight: 600; }
+.goal-card-description { font-size: 13px; opacity: 0.8; margin: 0; }
+
+.goal-card-items { list-style: none; padding: 0; margin: 0; }
+.goal-card-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+}
+.goal-card-item:hover { background: rgba(255,255,255,0.05); }
+
+.tag-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 8px;
+}
+.tag-badge--got-it { background: #1f3d1f; color: #4ade80; }
+.tag-badge--working { background: #3d3520; color: #d4a04a; }
+.tag-badge--new { background: #2a1f3d; color: #c084fc; }
+
+.goal-card-start-session {
+  margin-top: 8px;
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
