@@ -6,6 +6,8 @@ import type { Goal, ItemRef } from '../../types/coach'
 export function PlanDashboard() {
   const goals = useStore((s) => s.goals)
   const loadGoals = useStore((s) => s.loadGoals)
+  const setPage = useStore((s) => s.setPage)
+  const setLibrarySelection = useStore((s) => s.setLibrarySelection)
   const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
@@ -25,9 +27,8 @@ export function PlanDashboard() {
   }, [goals])
 
   const handleItemClick = (ref: ItemRef) => {
-    // Phase 3 wires this to open library players; for now, log so devs can verify
-    // eslint-disable-next-line no-console
-    console.log('open item:', ref)
+    setLibrarySelection(ref)
+    setPage('library')
   }
 
   if (goals.length === 0) {

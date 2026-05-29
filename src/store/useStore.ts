@@ -57,6 +57,7 @@ interface AppState {
   lastCheckInAt: string | null
   assessmentCompletedAt: string | null
   apiKey: string | null
+  librarySelection: ItemRef | null    // dashboard → library handoff (Task 3.8)
 
   // Coach actions
   loadGoals: () => Promise<void>
@@ -68,6 +69,7 @@ interface AppState {
   markAssessmentComplete: () => Promise<void>
   setApiKey: (key: string) => Promise<void>
   setLastCheckInAt: (iso: string) => Promise<void>
+  setLibrarySelection: (ref: ItemRef | null) => void
 
   // Auth
   showLoginScreen: boolean
@@ -136,6 +138,7 @@ export const useStore = create<AppState>((set, get) => ({
   lastCheckInAt: null,
   assessmentCompletedAt: localStorage.getItem('banjo-buddy-assessment-at'),
   apiKey: localStorage.getItem('banjo-buddy-anthropic-key'),
+  librarySelection: null,
 
   loadGoals: async () => {
     const userId = get().user?.id
@@ -219,6 +222,8 @@ export const useStore = create<AppState>((set, get) => ({
       await db.userProfiles.update(userId, { lastCheckInAt: iso })
     }
   },
+
+  setLibrarySelection: (ref) => set({ librarySelection: ref }),
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   showLoginScreen: false,

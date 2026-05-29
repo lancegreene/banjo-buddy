@@ -1,5 +1,5 @@
 // ─── Library — Browse rolls, licks, songs, scales, chords with FretLab-style tab viewer ──
-import { useState, useMemo, Fragment } from 'react'
+import { useState, useMemo, useEffect, Fragment } from 'react'
 import { FretboardDiagram } from '../Fretboard/FretboardDiagram'
 import { BanjoChordDiagram } from '../BanjoChordDiagram/BanjoChordDiagram'
 import { CircleOfFifths } from '../CircleOfFifths/CircleOfFifths'
@@ -13,6 +13,8 @@ import { CHORD_DIAGRAMS, getChordRoots, getChordVoicings, type ChordCategory } f
 import { rollPatternToFretNotes, sectionToFretNotes } from '../../engine/rollToFretNotes'
 import { LickPlayer } from '../LickPlayer/LickPlayer'
 import type { FretNote } from '../../data/fretboardNotes'
+import { useStore } from '../../store/useStore'
+import type { ItemRef } from '../../types/coach'
 
 type LibraryCategory = 'rolls' | 'licks' | 'songs' | 'scales' | 'chords' | 'circle' | 'generate'
 
@@ -68,6 +70,38 @@ export function Library() {
   const [lickLeadsTo, setLickLeadsTo] = useState<string | null>(null)
   // Warmup
   const [showWarmup, setShowWarmup] = useState(false)
+
+  // ── Coach → Library handoff (Task 3.8) ──
+  // PlanDashboard sets `librarySelection` and routes to this page. Switch to the
+  // matching category and best-effort auto-select the item.
+  const librarySelection = useStore((s) => s.librarySelection)
+  const setLibrarySelection = useStore((s) => s.setLibrarySelection)
+
+  useEffect(() => {
+    if (!librarySelection) return
+    const categoryByKind: Record<ItemRef['kind'], LibraryCategory> = {
+      lick: 'licks',
+      roll: 'rolls',
+      'song-section': 'songs',
+      chord: 'chords',
+      scale: 'scales',
+    }
+    const target = categoryByKind[librarySelection.kind]
+    if (target) {
+      setCategory(target)
+      // Best-effort: auto-select the item where the Library uses an id-based list.
+      // Chords (standalone grid) don't use selectedId — skip it for that kind.
+      if (librarySelection.kind === 'lick' || librarySelection.kind === 'roll' || librarySelection.kind === 'scale') {
+        setSelectedId(librarySelection.id)
+        setSelectedSectionId(null)
+      } else if (librarySelection.kind === 'song-section') {
+        setSelectedId(librarySelection.songId)
+        setSelectedSectionId(librarySelection.sectionId)
+      }
+    }
+    // Clear once consumed so navigating back to Library doesn't re-trigger.
+    setLibrarySelection(null)
+  }, [librarySelection, setLibrarySelection])
 
   // ── Data sources ──
   const rolls = useMemo(() => getAllPatterns(), [])
