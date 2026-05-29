@@ -24,6 +24,7 @@ import { SettingsPage } from './components/Settings/SettingsPage'
 import { ProfilePage } from './components/Profile/ProfilePage'
 import { FretboardLab } from './components/Fretboard/FretboardLab'
 import { ApiKeyGate } from './components/ApiKeyGate/ApiKeyGate'
+import { AssessmentChat } from './components/Assessment/AssessmentChat'
 import { supabase } from './db/supabase'
 import { startAutoSync, stopAutoSync, uploadLocalData } from './db/sync'
 
@@ -51,15 +52,6 @@ function NavBar() {
   )
 }
 
-function AssessmentPlaceholder() {
-  return (
-    <div className="api-key-gate">
-      <h1>Assessment</h1>
-      <p>Chat-based assessment coming in Task 3.5.</p>
-    </div>
-  )
-}
-
 // Decide where the user belongs after auth/skip-auth completes. The gates are
 // linear: no API key → collect one; key but no assessment → run assessment;
 // otherwise → land on the plan dashboard.
@@ -84,7 +76,7 @@ function PageContent({ page }: { page: Page }) {
     case 'api-key-gate':
       return <ApiKeyGate />
     case 'assessment':
-      return <AssessmentPlaceholder />
+      return <AssessmentChat />
     case 'plan-dashboard':
       return <PlanDashboard />
     case 'library':
