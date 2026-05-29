@@ -7,10 +7,18 @@ import type { Path } from '../types'
 import type { Goal, ItemTag, CheckInRecord, TagValue, ItemRef } from '../types/coach'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Page union — narrowed in Task 0.4 to a Phase-0 placeholder shape.
-// Task 0.6 will replace this with the coach-driven routing.
+// Page union — Task 2.4 expanded this to cover the coach-driven shell:
+// PlanDashboard is the home, Library/Settings/Profile are NavBar siblings,
+// and FretboardLab is reachable from Library (not directly tab-routed).
 // ─────────────────────────────────────────────────────────────────────────────
-export type Page = 'splash' | 'auth' | 'placeholder-home'
+export type Page =
+  | 'splash'
+  | 'auth'
+  | 'plan-dashboard'
+  | 'library'
+  | 'settings'
+  | 'profile'
+  | 'fretboard-lab'
 export type ToolModal = 'metronome' | 'tuner' | 'fretlab'
 
 interface AppState {
@@ -73,8 +81,8 @@ export const useStore = create<AppState>((set, get) => ({
   currentPage: 'splash',
   navMode: 'home',
   appMode: (sessionStorage.getItem('banjo-buddy-mode') as 'quick-pick' | 'deep-dive') || null,
-  setPage: (page) => set({ currentPage: page, navMode: page === 'placeholder-home' ? 'home' : 'section' }),
-  goHome: () => set({ currentPage: 'placeholder-home', navMode: 'home' }),
+  setPage: (page) => set({ currentPage: page, navMode: page === 'plan-dashboard' ? 'home' : 'section' }),
+  goHome: () => set({ currentPage: 'plan-dashboard', navMode: 'home' }),
   setAppMode: (mode) => {
     sessionStorage.setItem('banjo-buddy-mode', mode)
     set({ appMode: mode })

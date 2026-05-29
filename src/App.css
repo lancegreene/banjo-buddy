@@ -13815,3 +13815,32 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   opacity: 0.7;
 }
 .plan-dashboard--empty h2 { margin: 0 0 8px; }
+
+/* ── Coach: NavBar ────────────────────────────────────────────────────────── */
+.app-nav {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px;
+  background: var(--surface, #1a1a1a);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.app-nav-tab {
+  background: transparent;
+  border: none;
+  color: inherit;
+  padding: 8px 16px;
+  cursor: pointer;
+  opacity: 0.6;
+  border-bottom: 2px solid transparent;
+  font: inherit;
+}
+.app-nav-tab.active {
+  opacity: 1;
+  border-bottom-color: var(--accent, #d4a04a);
+}
+.app-nav-tab:hover {
+  opacity: 0.9;
+}

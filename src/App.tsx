@@ -1,39 +1,77 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Banjo Buddy — App shell (Phase 0 placeholder)
+// Banjo Buddy — App shell
 //
-// Task 0.6 of the coach overhaul: minimal routing between splash, auth, and a
-// placeholder home. Tool modals (Metronome, Tuner, FretLab) still float over
-// whatever page is rendered. Dashboard, library, navbar, etc. arrive in Phase 2.
+// Task 2.4 of the coach overhaul: PlanDashboard is the home page, NavBar
+// switches between Plan / Library / Settings / Profile. FretboardLab is
+// reachable from Library (and through the FretLab tool modal). Tool modals
+// (Metronome, Tuner, FretLab) still float over whatever page is rendered.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useState } from 'react'
 import './styles/tokens.css'
 import './App.css'
 import { useStore } from './store/useStore'
+import type { Page } from './store/useStore'
 import { useTheme } from './hooks/useTheme'
 import { Splash } from './components/Splash/Splash'
 import { AuthScreen } from './components/Auth/AuthScreen'
 import { Metronome } from './components/Metronome/Metronome'
 import { Tuner } from './components/Tuner/Tuner'
 import { FretLabPanel } from './components/Fretboard/FretLabPanel'
+import { PlanDashboard } from './components/Plan/PlanDashboard'
+import { Library } from './components/Library/Library'
+import { SettingsPage } from './components/Settings/SettingsPage'
+import { ProfilePage } from './components/Profile/ProfilePage'
+import { FretboardLab } from './components/Fretboard/FretboardLab'
 import { supabase } from './db/supabase'
 import { startAutoSync, stopAutoSync, uploadLocalData } from './db/sync'
 
-function PlaceholderHome() {
-  const toggleTheme = useTheme().toggleTheme
-  const setOpenModal = useStore((s) => s.setOpenModal)
+function NavBar() {
+  const page = useStore((s) => s.currentPage)
+  const setPage = useStore((s) => s.setPage)
+  const tabs: Array<[Page, string]> = [
+    ['plan-dashboard', 'Plan'],
+    ['library', 'Library'],
+    ['settings', 'Settings'],
+    ['profile', 'Profile'],
+  ]
   return (
-    <div className="placeholder-home">
-      <h1>Banjo Buddy</h1>
-      <p>Coach experience under construction.</p>
-      <div className="placeholder-home-tools">
-        <button onClick={() => setOpenModal('metronome')}>Metronome</button>
-        <button onClick={() => setOpenModal('tuner')}>Tuner</button>
-        <button onClick={() => setOpenModal('fretlab')}>FretLab</button>
-        <button onClick={toggleTheme}>Toggle theme</button>
-      </div>
-    </div>
+    <nav className="app-nav">
+      {tabs.map(([p, label]) => (
+        <button
+          key={p}
+          className={`app-nav-tab ${page === p ? 'active' : ''}`}
+          onClick={() => setPage(p)}
+        >
+          {label}
+        </button>
+      ))}
+    </nav>
   )
+}
+
+function PageContent({ page }: { page: Page }) {
+  switch (page) {
+    case 'splash':
+      // Splash is rendered by the App shell directly (it needs the onEnter
+      // callback wired to local auth state), so this branch is unreachable
+      // when showNav is true. Returning null keeps the switch exhaustive.
+      return null
+    case 'auth':
+      // Same story as splash — AuthScreen is rendered by the shell with the
+      // bootstrap callbacks. NavBar is hidden in this state.
+      return null
+    case 'plan-dashboard':
+      return <PlanDashboard />
+    case 'library':
+      return <Library />
+    case 'settings':
+      return <SettingsPage />
+    case 'profile':
+      return <ProfilePage />
+    case 'fretboard-lab':
+      return <FretboardLab />
+  }
 }
 
 export default function App() {
@@ -87,12 +125,12 @@ export default function App() {
   // ── Page advancement once auth is resolved ─────────────────────────────────
   // While we're sitting on the splash, decide where to go next when the user
   // taps "Enter" (handled below). If we land on `auth` but the user is already
-  // authed (or skipped auth previously), jump to placeholder-home immediately.
+  // authed (or skipped auth previously), jump to plan-dashboard immediately.
   useEffect(() => {
     if (!authChecked) return
     const hasSkippedAuth = localStorage.getItem('banjo-buddy-auth-skipped') === 'true'
     if (page === 'auth' && (authedUserId || hasSkippedAuth)) {
-      setPage('placeholder-home')
+      setPage('plan-dashboard')
     }
   }, [page, authChecked, authedUserId, setPage])
 
@@ -105,14 +143,18 @@ export default function App() {
     )
   }
 
+  const showNav = page !== 'splash' && page !== 'auth'
+
   return (
     <div className="app">
+      {showNav && <NavBar />}
+
       {page === 'splash' && (
         <Splash
           onEnter={() => {
             const hasSkippedAuth = localStorage.getItem('banjo-buddy-auth-skipped') === 'true'
             if (authedUserId || hasSkippedAuth) {
-              setPage('placeholder-home')
+              setPage('plan-dashboard')
             } else {
               setPage('auth')
             }
@@ -136,17 +178,17 @@ export default function App() {
             }
             startAutoSync(userId)
             await loadUser()
-            setPage('placeholder-home')
+            setPage('plan-dashboard')
           }}
           onSkip={() => {
             localStorage.setItem('banjo-buddy-auth-skipped', 'true')
             loadUser()
-            setPage('placeholder-home')
+            setPage('plan-dashboard')
           }}
         />
       )}
 
-      {page === 'placeholder-home' && <PlaceholderHome />}
+      {showNav && <PageContent page={page} />}
 
       {/* Tool modals — float over any page that's open */}
       {openModal && (
