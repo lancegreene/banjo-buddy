@@ -11,7 +11,9 @@ import {
   ASSESSMENT_TOOLS,
   CHECKIN_TOOLS,
 } from '../engine/coachPrompts'
+import type { RecentActivityEntry } from '../engine/coachPrompts'
 import { parseToolCall } from '../engine/coachAdapter'
+import { db } from '../db/db'
 import type {
   CoachMessage,
   GoalDelta,
@@ -92,11 +94,41 @@ export function useCoachChat({ kind, onComplete }: UseCoachChatOptions): UseCoac
       dangerouslyAllowBrowser: true,
     })
 
+    // Load the last 14 days of practice from Dexie, aggregated into the shape
+    // buildSystemPrompt expects. NOTE: SessionItem carries no ItemRef today — only a
+    // legacy curriculum `skillId` — so we key activity by skillId with a 'skill' kind.
+    // Also note nothing writes sessionItems post-Phase-0 (the logging path was deleted;
+    // only sync.ts pulls remote rows), so this returns empty for current users until
+    // Phase 5 adds item-keyed practice logging.
+    const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+    const items = await db.sessionItems
+      .where('completedAt')
+      .aboveOrEqual(cutoff)
+      .toArray()
+    const byKey = new Map<string, RecentActivityEntry>()
+    for (const item of items) {
+      if (!item.skillId) continue
+      const existing = byKey.get(item.skillId)
+      if (existing) {
+        existing.count += 1
+        if (item.completedAt > existing.lastAt) existing.lastAt = item.completedAt
+      } else {
+        byKey.set(item.skillId, {
+          itemRef: { kind: 'skill', id: item.skillId },
+          count: 1,
+          lastAt: item.completedAt,
+        })
+      }
+    }
+    const recentActivity = Array.from(byKey.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20)
+
     const systemPrompt = buildSystemPrompt({
       kind,
       goals,
       itemTags: Object.values(itemTags),
-      recentActivity: [], // Phase 4 wires this from sessionItems
+      recentActivity,
     })
 
     try {
