@@ -25,6 +25,7 @@ import { ProfilePage } from './components/Profile/ProfilePage'
 import { FretboardLab } from './components/Fretboard/FretboardLab'
 import { ApiKeyGate } from './components/ApiKeyGate/ApiKeyGate'
 import { AssessmentChat } from './components/Assessment/AssessmentChat'
+import { CheckInChat } from './components/CheckIn/CheckInChat'
 import { supabase } from './db/supabase'
 import { startAutoSync, stopAutoSync, uploadLocalData } from './db/sync'
 
@@ -77,6 +78,8 @@ function PageContent({ page }: { page: Page }) {
       return <ApiKeyGate />
     case 'assessment':
       return <AssessmentChat />
+    case 'check-in':
+      return <CheckInChat />
     case 'plan-dashboard':
       return <PlanDashboard />
     case 'library':
@@ -163,7 +166,8 @@ export default function App() {
     page !== 'splash' &&
     page !== 'auth' &&
     page !== 'api-key-gate' &&
-    page !== 'assessment'
+    page !== 'assessment' &&
+    page !== 'check-in'
 
   return (
     <div className="app">

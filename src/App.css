@@ -13816,6 +13816,38 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 }
 .plan-dashboard--empty h2 { margin: 0 0 8px; }
 
+.check-in-prompt {
+  background: linear-gradient(135deg, #d4a04a 0%, #b8862c 100%);
+  color: #000;
+  padding: 12px 16px;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.check-in-prompt button {
+  background: rgba(0,0,0,0.15);
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  color: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.plan-dashboard-refresh {
+  background: transparent;
+  border: none;
+  color: var(--accent, #d4a04a);
+  padding: 4px 0;
+  margin-top: 4px;
+  cursor: pointer;
+  text-decoration: underline;
+  font: inherit;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
 /* ── Coach: NavBar ────────────────────────────────────────────────────────── */
 .app-nav {
   display: flex;

@@ -16,6 +16,7 @@ export type Page =
   | 'auth'
   | 'api-key-gate'
   | 'assessment'
+  | 'check-in'
   | 'plan-dashboard'
   | 'library'
   | 'settings'

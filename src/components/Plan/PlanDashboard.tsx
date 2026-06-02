@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { GoalCard } from './GoalCard'
+import { CheckInPrompt } from './CheckInPrompt'
 import type { Goal, ItemRef } from '../../types/coach'
 
 export function PlanDashboard() {
@@ -48,7 +49,15 @@ export function PlanDashboard() {
       <header className="plan-dashboard-header">
         <h1>Your Plan</h1>
         <span className="plan-dashboard-subtitle">This week</span>
+        <button
+          className="plan-dashboard-refresh"
+          onClick={() => setPage('check-in')}
+        >
+          Refresh plan
+        </button>
       </header>
+
+      <CheckInPrompt />
 
       {buckets.focus.map((g) => (
         <GoalCard key={g.id} goal={g} onItemClick={handleItemClick} />
