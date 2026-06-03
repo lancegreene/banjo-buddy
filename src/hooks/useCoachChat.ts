@@ -223,8 +223,15 @@ export function useCoachChat({ kind, onComplete }: UseCoachChatOptions): UseCoac
     await sendUserMessage(bootstrap)
   }, [kind, sendUserMessage])
 
+  // Internal state keeps the bootstrap kickoff turn (the API requires the first
+  // message to be role 'user'), but it's an instruction to the model, not user
+  // text — so hide it from the visible transcript.
+  const visibleMessages = messages.filter(
+    (m) => !m.content.startsWith(SYSTEM_BOOTSTRAP_PREFIX),
+  )
+
   return {
-    messages,
+    messages: visibleMessages,
     isStreaming,
     error,
     cumulativeCost,
