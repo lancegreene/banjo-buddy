@@ -1,13 +1,13 @@
 # Banjo Buddy
 
-A progressive web app that helps 5-string banjo players learn Scruggs-style picking through real-time audio feedback, LLM-coach-driven goals, and progress tracking. (Mid-rewrite: Phase 0 of the coach overhaul is complete; Phase 1 will land assessment + goals.)
+A progressive web app that helps 5-string banjo players learn Scruggs-style picking through real-time audio feedback, LLM-coach-driven goals, and progress tracking. The coach-overhaul MVP (Phases 0–4) is complete: cleanup, data model + concept tags, plan dashboard, assessment chat, and the 7-day check-in. Phases 5–7 (guided session, in-app tag editing, polish) are deferred — see `docs/superpowers/plans/2026-05-27-coach-overhaul.md`.
 
 ## Quick Reference
 
-- **Stack**: React 18 + TypeScript + Vite, Zustand (state), Dexie v14/IndexedDB (persistence), Supabase (auth + sync), Tone.js (synth/metronome), pitchy (pitch detection), ONNX Runtime Web (digit/label classification)
-- **Build**: `npm run dev` (dev server), `npm run build` (tsc + vite build)
+- **Stack**: React 18 + TypeScript + Vite, Zustand (state), Dexie v15/IndexedDB (persistence), Supabase (auth + sync), Tone.js (synth/metronome), pitchy (pitch detection), ONNX Runtime Web (digit/label classification), `@anthropic-ai/sdk` (coach LLM)
+- **Build**: `npm run dev` (dev server), `npm run build` (vite build — no tsc gate)
 - **Deploy**: `npm run deploy` (gh-pages)
-- **No test suite** — verify changes with `npx tsc --noEmit` and `npx vite build`
+- **Tests**: `npm test` (Vitest — covers pure-function engine modules only: `itemCatalog`, `coachPrompts`, `coachAdapter`). Typecheck with `npx tsc -p tsconfig.app.json --noEmit` (note: bare `tsc --noEmit` is misconfigured here). UI is verified manually via the dev server.
 - **ESM project**: `"type": "module"` in package.json. Use `.cjs` for any CommonJS scripts.
 - **Offline-first**: Dexie is the source of truth; Supabase sync is optional backup.
 
@@ -15,9 +15,9 @@ A progressive web app that helps 5-string banjo players learn Scruggs-style pick
 
 ```
 src/
-  engine/          14 pure-function modules — no React, no side effects
-  hooks/           7 React hooks wrapping engines (useNoteCapture, useBanjoSynth, etc.)
-  components/      28 feature directories (Practice, Library, Fretboard, CircleOfFifths, etc.)
+  engine/          17 pure-function modules — no React, no side effects
+  hooks/           8 React hooks (useCoachChat, useNoteCapture, useBanjoSynth, etc.)
+  components/      32 feature directories (Plan, CheckIn, Assessment, Library, Fretboard, etc.)
   data/            Static data: roll patterns, lick library, songs, chords, scales, achievements
   store/           Zustand store (useStore.ts) — single source of truth for all app state
   db/              Dexie schema (db.ts), Supabase client (supabase.ts), sync engine (sync.ts)
@@ -31,9 +31,11 @@ public/models/     ONNX models: digit-classifier.onnx, label-classifier.onnx
 
 ### Key Data Flow
 
+The audio/detection path (steps 1–3) is **dormant in the coach MVP** — the engine modules are retained but not wired into any current UI; they return with the guided session (Phase 5). Sync (step 4) is live.
+
 1. **Audio in**: `useNoteCapture` hook → pitchy pitch detection → `detectOnset()` → `CapturedNote[]`
 2. **Roll detection**: `CapturedNote[]` → `RollDetector` (batch, 8-note) or `LiveRollFeedback` (streaming, per-note)
-3. **Session logging**: `logSessionItem()` → Dexie tables → enqueue for Supabase sync
+3. **Session logging**: removed with the curriculum — `sessionItems` is currently populated only by sync pulls (no app code writes new practice items yet)
 4. **Sync**: Dexie → sync queue → push to Supabase (every 30s + on reconnect) → pull remote changes
 
 ## Navigation & Routing
@@ -44,17 +46,23 @@ No React Router — single `<App>` switches on `currentPage` state from the stor
 
 After auth + API key setup, every user takes a one-time chat assessment that produces 5–7 personalized goals. The dashboard surfaces 1 "focus" goal + 1–2 "explore" goals; the rest live behind a "see all" view. A 7-day check-in chat updates goal states based on activity and conversation.
 
-### Startup Gates (in order, post-Phase-0 placeholder)
+### Startup Gates (in order)
 
-Splash → AuthScreen (skippable → guest mode) → PlaceholderHome (Phase 1 will insert ApiKeyGate + AssessmentChat before this)
+Splash → AuthScreen (skippable → guest mode) → ApiKeyGate (Anthropic key required) → AssessmentChat (one-time, if no assessment yet) → PlanDashboard. The gate logic lives in `determineNextPage()` in `App.tsx`: no key → `api-key-gate`; key but no assessment → `assessment`; otherwise → `plan-dashboard`.
 
-### Pages (post-Phase-0)
+### Pages
 
-`splash`, `auth`, `placeholder-home`
-
-Phase 1 adds: `api-key-gate`, `assessment`, `plan-dashboard`, `library`, `check-in`.
+`splash`, `auth`, `api-key-gate`, `assessment`, `plan-dashboard`, `library`, `check-in`, `settings`, `profile`, `fretboard-lab` (the `Page` union lives in `useStore.ts`). The nav bar is hidden on `splash`, `auth`, `api-key-gate`, `assessment`, and `check-in`.
 
 **Tool modals** (float over any page): Metronome, Tuner, FretLab
+
+### Coach LLM Flow
+
+- `useCoachChat` (hook) wraps the Anthropic SDK (`@anthropic-ai/sdk`, browser mode via `dangerouslyAllowBrowser`) and drives both the assessment and the weekly check-in (`kind: 'assessment' | 'checkin'`). Model: `claude-sonnet-4-6`.
+- `coachPrompts.ts` builds the system prompt (persona + concept taxonomy + library catalog + current goals/tags/recent activity) and defines the tool schemas. The system prompt is sent with `cache_control: { type: 'ephemeral' }` for **prompt caching** — the large, stable taxonomy/catalog block is cached across turns.
+- The LLM proposes plan changes via tool calls; `coachAdapter.ts` validates them and converts them to `GoalDelta`s. `applyGoalDelta(delta, goals)` folds a delta onto the goal list.
+- **Cost guard**: a per-conversation budget cap (`PER_CONV_BUDGET_USD = 0.5` in `useCoachChat`); cumulative cost is computed from token usage (cached vs. uncached vs. output) and surfaced in the chat footer.
+- **Assessment** → `LibraryConfirmation` (tag 3–5 items) → goals persisted, `assessmentCompletedAt` set. **Check-in** → `GoalDiffReview` (approve/reject each proposed change) → approved deltas applied, `CheckInRecord` saved, `lastCheckInAt` updated. A `CheckInPrompt` banner appears on the dashboard when the last check-in is >7 days old; the dashboard's "Refresh plan" button triggers a check-in anytime.
 
 ## Tab Scanning Pipeline (Fretboard Lab)
 
@@ -160,9 +168,9 @@ Decision types: `onset`, `locked`, `no_onset`, `unstable`, `string_cooldown`, `o
 | `achievements.ts` | `ACHIEVEMENTS[]` | Achievement unlock conditions (streaks, BPM records, skill counts) |
 | `tourSteps.ts` | Tour step definitions | Guided tour sequence for onboarding |
 
-### Database (Dexie v14 / IndexedDB)
+### Database (Dexie v15 / IndexedDB)
 
-9 tables (post-Phase-0). Phase 1 will bump to v15 and add 3 more (`goals`, `itemTags`, `checkInRecords`).
+12 tables.
 
 | Table | Purpose |
 |-------|---------|
@@ -175,6 +183,9 @@ Decision types: `onset`, `locked`, `no_onset`, `unstable`, `string_cooldown`, `o
 | `achievements` | Earned achievement timestamps |
 | `customRollPatterns` | Custom roll patterns |
 | `tabTrainingPairs` | Tab image + corrected notes for digit model training |
+| `goals` | Coach plan goals: status, supporting item refs, concept tags, history — synced |
+| `itemTags` | Per-user library item tags (got-it / working / new) — synced |
+| `checkInRecords` | Assessment + check-in conversation records (transcript, deltas, cost) — local only, not synced |
 
 ### Sync Engine (src/db/sync.ts)
 
@@ -210,7 +221,7 @@ Retired. The Deep Dive curriculum DAG (`SKILLS[]`), FSRS spaced repetition, skil
 
 ## Library
 
-Browse-only view of static catalogs. Previously the Quick Pick landing page; Quick Pick mode was retired in Phase 0. In Phase 2 the library will return as a secondary tab off the plan dashboard. The 7 categories are still in place:
+Browse-only view of static catalogs, reachable as a secondary tab off the plan dashboard (the former standalone Quick Pick landing page was retired in Phase 0). The 7 categories are still in place:
 
 - **Chord Charts** — 94 voicings across all 12 keys (major, minor, 7th) with BanjoChordDiagram component
 - **Circle of 5ths** — Interactive SVG circle with key selection, diatonic chord display, I-IV-V highlighting with chord diagrams
