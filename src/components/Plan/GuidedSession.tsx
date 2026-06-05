@@ -108,11 +108,15 @@ export function GuidedSession() {
 
   const advance = () => setCursor((c) => c + 1)
 
-  const reflect = async (reflection: Reflection) => {
-    await logPracticeEvent({ goalId: goal.id, sessionId, itemRef: ref, reflection })
-    await setItemTag(ref, reflectionToTag(reflection))
-    setPracticed((n) => n + 1)
+  // Advance the cursor synchronously first so the current item's buttons
+  // unmount immediately — this closes the re-entrancy window where a rapid
+  // second tap would double-log the same item. The captured ref / goal.id /
+  // sessionId remain valid for this render's writes.
+  const reflect = (reflection: Reflection) => {
     advance()
+    setPracticed((n) => n + 1)
+    void logPracticeEvent({ goalId: goal.id, sessionId, itemRef: ref, reflection })
+    void setItemTag(ref, reflectionToTag(reflection))
   }
 
   return (
