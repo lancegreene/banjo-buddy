@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 import type { Path } from '../types'
-import type { Goal, ItemTag, CheckInRecord } from '../types/coach'
+import type { Goal, ItemTag, CheckInRecord, PracticeEvent } from '../types/coach'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Banjo Buddy — Local Database (Dexie / IndexedDB)
@@ -133,6 +133,7 @@ class BanjoBuddyDB extends Dexie {
   goals!: Table<Goal>
   itemTags!: Table<ItemTag>
   checkInRecords!: Table<CheckInRecord>
+  practiceEvents!: Table<PracticeEvent>
 
   constructor() {
     super('BanjoBuddyDB')
@@ -386,6 +387,26 @@ class BanjoBuddyDB extends Dexie {
       goals:              'id, userId, status, updatedAt',
       itemTags:           'id, userId, updatedAt',
       checkInRecords:     'id, userId, kind, startedAt',
+    })
+
+    // v16: Guided session — add practiceEvents (purpose-built practice signal).
+    // No data migration: only adds one table.
+    this.version(16).stores({
+      // Carried forward from v15
+      userProfiles:       'id, role',
+      practiceSessions:   'id, userId, startedAt',
+      sessionItems:       'id, sessionId, completedAt, goalId',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, createdAt',
+      achievements:       '++id, achievementId, userId',
+      customRollPatterns: 'id, createdBy, createdAt',
+      tabTrainingPairs:   'id, createdAt',
+      goals:              'id, userId, status, updatedAt',
+      itemTags:           'id, userId, updatedAt',
+      checkInRecords:     'id, userId, kind, startedAt',
+      // New guided-session table
+      practiceEvents:     'id, userId, goalId, completedAt, sessionId',
     })
   }
 }
