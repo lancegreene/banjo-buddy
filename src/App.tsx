@@ -212,7 +212,11 @@ export default function App() {
         />
       )}
 
-      {showNav && <PageContent page={page} />}
+      {/* PageContent renders the active page; it returns null for splash/auth
+          (handled above by the shell). It must NOT be gated by showNav, or the
+          full-screen pages excluded from the nav (api-key-gate, assessment,
+          check-in, guided-session) would render nothing. */}
+      <PageContent page={page} />
 
       {/* Tool modals — float over any page that's open */}
       {openModal && (
