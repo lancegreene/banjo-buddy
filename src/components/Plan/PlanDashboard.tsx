@@ -9,6 +9,7 @@ export function PlanDashboard() {
   const loadGoals = useStore((s) => s.loadGoals)
   const setPage = useStore((s) => s.setPage)
   const setLibrarySelection = useStore((s) => s.setLibrarySelection)
+  const setActiveSessionGoal = useStore((s) => s.setActiveSessionGoal)
   const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
@@ -30,6 +31,11 @@ export function PlanDashboard() {
   const handleItemClick = (ref: ItemRef) => {
     setLibrarySelection(ref)
     setPage('library')
+  }
+
+  const handleStartSession = (goal: Goal) => {
+    setActiveSessionGoal(goal.id)
+    setPage('guided-session')
   }
 
   if (goals.length === 0) {
@@ -60,10 +66,10 @@ export function PlanDashboard() {
       <CheckInPrompt />
 
       {buckets.focus.map((g) => (
-        <GoalCard key={g.id} goal={g} onItemClick={handleItemClick} />
+        <GoalCard key={g.id} goal={g} onItemClick={handleItemClick} onStartSession={handleStartSession} />
       ))}
       {buckets.explore.map((g) => (
-        <GoalCard key={g.id} goal={g} onItemClick={handleItemClick} />
+        <GoalCard key={g.id} goal={g} onItemClick={handleItemClick} onStartSession={handleStartSession} />
       ))}
 
       {hasHiddenGoals && (
@@ -83,7 +89,7 @@ export function PlanDashboard() {
             <>
               <h2>Up next</h2>
               {buckets.backlog.map((g) => (
-                <GoalCard key={g.id} goal={g} onItemClick={handleItemClick} />
+                <GoalCard key={g.id} goal={g} onItemClick={handleItemClick} onStartSession={handleStartSession} />
               ))}
             </>
           )}
@@ -91,7 +97,7 @@ export function PlanDashboard() {
             <>
               <h2>Mastered</h2>
               {buckets.mastered.map((g) => (
-                <GoalCard key={g.id} goal={g} onItemClick={handleItemClick} />
+                <GoalCard key={g.id} goal={g} onItemClick={handleItemClick} onStartSession={handleStartSession} />
               ))}
             </>
           )}
@@ -99,7 +105,7 @@ export function PlanDashboard() {
             <>
               <h2>Shelved</h2>
               {buckets.shelved.map((g) => (
-                <GoalCard key={g.id} goal={g} onItemClick={handleItemClick} />
+                <GoalCard key={g.id} goal={g} onItemClick={handleItemClick} onStartSession={handleStartSession} />
               ))}
             </>
           )}
