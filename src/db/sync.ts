@@ -13,7 +13,7 @@
 
 import { supabase } from './supabase'
 import { db, type PracticeSession, type SessionItem, type NoteAccuracyRecord } from './db'
-import type { Goal, ItemTag } from '../types/coach'
+import type { Goal, ItemTag, PracticeEvent } from '../types/coach'
 import type { User } from '@supabase/supabase-js'
 
 // ─── Sync Queue (persisted in IndexedDB) ────────────────────────────────────
@@ -93,6 +93,7 @@ const TABLE_MAP: Record<string, string> = {
   customRollPatterns: 'custom_roll_patterns',
   goals: 'goals',
   itemTags: 'item_tags',
+  practiceEvents: 'practice_events',
   // Note: `checkInRecords` is intentionally NOT synced. Transcripts contain
   // full LLM conversation history per check-in, which is too large to sync
   // efficiently and is treated as local-only for privacy. Goal deltas
@@ -303,6 +304,25 @@ export async function pullRemoteChanges(userId: string): Promise<{ pulled: numbe
       const existing = await db.itemTags.get(local.id)
       if (!existing || (existing.updatedAt ?? '') < (local.updatedAt ?? '')) {
         await db.itemTags.put(local)
+        pulled++
+      }
+    }
+  }
+
+  // Pull practice events (guided session). Append-only + immutable, so pull
+  // anything newer than last sync and insert if we don't already have it.
+  const { data: remotePracticeEvents } = await supabase
+    .from('practice_events')
+    .select('*')
+    .eq('user_id', userId)
+    .gt('completed_at', lastSynced)
+
+  if (remotePracticeEvents) {
+    for (const remote of remotePracticeEvents) {
+      const local = toCamel(remote) as unknown as PracticeEvent
+      const existing = await db.practiceEvents.get(local.id)
+      if (!existing) {
+        await db.practiceEvents.put(local)
         pulled++
       }
     }
