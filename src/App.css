@@ -14071,3 +14071,59 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .goal-diff-review .diff-actions button { flex: 1; padding: 12px; border-radius: 6px; cursor: pointer; border: none; font-weight: 600; }
 .goal-diff-review .btn-primary { background: var(--accent, #d4a04a); color: #000; width: auto; margin-top: 0; }
 .goal-diff-review .btn-secondary { background: transparent; color: inherit; border: 1px solid rgba(255,255,255,0.2); }
+
+/* ─── Guided Session ──────────────────────────────────────────────────────── */
+.guided-session {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100vh;
+}
+.guided-session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.guided-session-exit {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.guided-session-progress {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.guided-session-item { text-align: center; margin: 0; }
+.guided-session-noplayer { text-align: center; color: var(--text-secondary); padding: 24px; }
+.guided-session-reflect { text-align: center; display: flex; flex-direction: column; gap: 10px; }
+.guided-session-reflect-buttons { display: flex; gap: 8px; justify-content: center; }
+.guided-session-reflect-buttons button {
+  flex: 1;
+  max-width: 160px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-primary, rgba(255,255,255,0.2));
+  background: var(--bg-secondary, #2d4a5e);
+  color: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.guided-session-skip {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.8rem;
+  align-self: center;
+}
+.guided-session--empty, .guided-session--done {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
