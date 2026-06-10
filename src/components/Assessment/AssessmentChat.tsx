@@ -4,7 +4,7 @@
 // LibraryConfirmation once the LLM has proposed an initial plan.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useCoachChat } from '../../hooks/useCoachChat'
 import { useStore } from '../../store/useStore'
 import { LibraryConfirmation } from './LibraryConfirmation'
@@ -35,7 +35,14 @@ export function AssessmentChat() {
     },
   })
 
+  // Kick off the conversation exactly once on mount. `start` gets a new
+  // identity on every render (its deps churn with chat state), so an
+  // unguarded [start] effect re-fires per render — an infinite loop of
+  // billable API calls.
+  const kickedOff = useRef(false)
   useEffect(() => {
+    if (kickedOff.current) return
+    kickedOff.current = true
     start()
   }, [start])
 
