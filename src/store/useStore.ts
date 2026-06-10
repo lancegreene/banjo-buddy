@@ -3,6 +3,7 @@ import { db, getOrCreateUser, nowISO } from '../db/db'
 import type { UserProfile } from '../db/db'
 import { refreshRollMap } from '../data/rollPatterns'
 import { enqueueSync } from '../db/sync'
+import { supabase } from '../db/supabase'
 import type { Path } from '../types'
 import type { Goal, ItemTag, CheckInRecord, TagValue, ItemRef, PracticeEvent } from '../types/coach'
 
@@ -114,7 +115,11 @@ export const useStore = create<AppState>((set, get) => ({
   loadUser: async () => {
     set({ isLoading: true, error: null })
     try {
-      const localUser = await getOrCreateUser()
+      // Resolve identity from the Supabase session (reads local storage, works
+      // offline). Signed in → profile keyed by the cloud uid so writes sync;
+      // guest → the legacy 'local' profile.
+      const { data: { session } } = await supabase.auth.getSession()
+      const localUser = await getOrCreateUser(session?.user?.id ?? null)
       await refreshRollMap(localUser.id, localUser.role, localUser.teacherId)
       set({
         user: localUser,

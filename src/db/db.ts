@@ -428,7 +428,27 @@ export function todayDate(): string {
 }
 
 // Get or create the local user profile
-export async function getOrCreateUser(): Promise<UserProfile> {
+// When a Supabase session exists, the active profile MUST be keyed by the
+// cloud uid — records written under the guest id 'local' can never sync
+// (user_id is a uuid column guarded by RLS `auth.uid() = user_id`).
+export async function getOrCreateUser(cloudUserId?: string | null): Promise<UserProfile> {
+  if (cloudUserId) {
+    const cloudProfile = await db.userProfiles.get(cloudUserId)
+    if (cloudProfile) return cloudProfile
+
+    const user: UserProfile = {
+      id: cloudUserId,
+      name: 'My Profile',
+      path: 'newby',
+      role: 'solo',
+      teacherId: null,
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    }
+    await db.userProfiles.add(user)
+    return user
+  }
+
   const existing = await db.userProfiles.get('local')
   if (existing) return existing
 

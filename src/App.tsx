@@ -120,6 +120,11 @@ export default function App() {
         setAuthedUserId(session.user.id)
         setAuthUser(session.user.user_metadata?.name ?? null, session.user.email ?? null)
         startAutoSync(session.user.id)
+        // The mount-time loadUser may have raced this restore and resolved the
+        // guest profile — re-resolve so the store operates as the cloud user.
+        if (useStore.getState().user?.id !== session.user.id) {
+          useStore.getState().loadUser()
+        }
       }
       setAuthChecked(true)
     })
@@ -133,6 +138,12 @@ export default function App() {
         setAuthedUserId(null)
         setAuthUser(null, null)
         stopAutoSync()
+      }
+      // Sign-in and sign-out change the active profile; token refreshes fire
+      // this too, so only re-resolve when the identity actually changed.
+      const nextId = session?.user?.id ?? 'local'
+      if (useStore.getState().user?.id !== nextId) {
+        useStore.getState().loadUser()
       }
     })
 
