@@ -1,6 +1,10 @@
 // ─── Site Tour Step Definitions ──────────────────────────────────────────────
+//
+// NOTE: Unused since Task 0.4 — the SiteTour component is a no-op placeholder
+// until a coach-aware onboarding flow is designed. Kept here as the schema
+// + copy reference for when tours come back.
 
-import type { Page, ToolModal } from '../store/useStore'
+import type { ToolModal } from '../store/useStore'
 
 export interface TourStep {
   target: string           // data-tour attribute value to find the element
@@ -8,7 +12,7 @@ export interface TourStep {
   body: string
   placement: 'top' | 'bottom' | 'left' | 'right'
   section: string          // section label for grouped progress indicator
-  navigateTo?: Page        // page to navigate to before showing step
+  navigateTo?: string      // page to navigate to before showing step (string until routing is redesigned)
   openModal?: ToolModal    // modal to open before showing step
   closeModal?: boolean     // close any open modal before this step
 }
@@ -17,15 +21,6 @@ export interface TourStep {
 
 export const STUDENT_TOUR: TourStep[] = [
   // ── Home ──
-  {
-    target: 'home-logo',
-    title: 'Welcome to Banjo Buddy!',
-    body: 'This is your home base for learning Scruggs-style banjo. Let\'s take a quick tour of everything the app has to offer.',
-    placement: 'bottom',
-    section: 'Home',
-    navigateTo: 'dashboard',
-    closeModal: true,
-  },
   {
     target: 'home-streak',
     title: 'Practice Streak',
@@ -55,27 +50,7 @@ export const STUDENT_TOUR: TourStep[] = [
     section: 'Home',
   },
 
-  // ── Pathway ──
-  {
-    target: 'pathway-sidebar',
-    title: 'Your Pathway',
-    body: 'The Pathway shows every skill in your learning path in order. It\'s a road map from your first roll to full songs.',
-    placement: 'right',
-    section: 'Pathway',
-    navigateTo: 'pathway',
-    closeModal: true,
-  },
-
   // ── Skills ──
-  {
-    target: 'skill-tree-sidebar',
-    title: 'Skill Categories',
-    body: 'Browse skills organized into collectible card categories — Rolls, Techniques, Licks, Songs, and more. Expand the sidebar for a full skill list.',
-    placement: 'right',
-    section: 'Skills',
-    navigateTo: 'skill-tree',
-    closeModal: true,
-  },
   {
     target: 'skill-tree-main',
     title: 'Skill Cards & Practice',
@@ -85,15 +60,6 @@ export const STUDENT_TOUR: TourStep[] = [
   },
 
   // ── Progress ──
-  {
-    target: 'progress-stats',
-    title: 'Your Stats',
-    body: 'A snapshot of your practice — total sessions, time spent, skills mastered, and your best streak.',
-    placement: 'bottom',
-    section: 'Progress',
-    navigateTo: 'progress',
-    closeModal: true,
-  },
   {
     target: 'progress-heatmap',
     title: 'Activity Map',
@@ -107,17 +73,6 @@ export const STUDENT_TOUR: TourStep[] = [
     body: 'Pick a skill to see how your speed has improved over time. The chart plots your best BPM from each session.',
     placement: 'top',
     section: 'Progress',
-  },
-
-  // ── Achievements ──
-  {
-    target: 'achievements-page',
-    title: 'Awards',
-    body: 'Earn badges for milestones — practice streaks, speed records, skills mastered. Gold means earned, outlined means still to unlock.',
-    placement: 'bottom',
-    section: 'Awards',
-    navigateTo: 'achievements',
-    closeModal: true,
   },
 
   // ── Tools ──
@@ -137,32 +92,12 @@ export const STUDENT_TOUR: TourStep[] = [
     section: 'Tools',
     openModal: 'tuner',
   },
-
-  // ── Profile ──
-  {
-    target: 'user-badge',
-    title: 'Your Profile',
-    body: 'Click your avatar to access your profile, change themes, switch between student and teacher mode, or sign out.',
-    placement: 'bottom',
-    section: 'Profile',
-    closeModal: true,
-    navigateTo: 'dashboard',
-  },
 ]
 
 // ─── Teacher Tour ────────────────────────────────────────────────────────────
 
 export const TEACHER_TOUR: TourStep[] = [
   // ── Home ──
-  {
-    target: 'home-logo',
-    title: 'Teacher Dashboard',
-    body: 'Welcome! As a teacher you see the same home screen as students, plus extra tools throughout the app for managing curriculum and media.',
-    placement: 'bottom',
-    section: 'Home',
-    navigateTo: 'dashboard',
-    closeModal: true,
-  },
   {
     target: 'home-cards',
     title: 'Section Cards',
@@ -173,42 +108,11 @@ export const TEACHER_TOUR: TourStep[] = [
 
   // ── Skills ──
   {
-    target: 'skill-tree-sidebar',
-    title: 'Skill Categories',
-    body: 'Browse skills as collectible cards organized by category. Expand the sidebar to see all skills. Select any skill to add demo videos, audio, images, or tablature.',
-    placement: 'right',
-    section: 'Skills',
-    navigateTo: 'skill-tree',
-    closeModal: true,
-  },
-  {
     target: 'skill-tree-main',
     title: 'Practice & Teaching',
     body: 'Select a skill card to see the practice view with audio detection. As a teacher, you also get media upload controls and can reorder teaching materials.',
     placement: 'left',
     section: 'Skills',
-  },
-
-  // ── Progress ──
-  {
-    target: 'progress-stats',
-    title: 'Progress Stats',
-    body: 'View your own practice statistics. Use this to stay sharp or demo skills for students.',
-    placement: 'bottom',
-    section: 'Progress',
-    navigateTo: 'progress',
-    closeModal: true,
-  },
-
-  // ── Awards ──
-  {
-    target: 'achievements-page',
-    title: 'Awards',
-    body: 'Students earn badges automatically. Use them as motivation — "Can you unlock the 7-day streak badge this week?"',
-    placement: 'bottom',
-    section: 'Awards',
-    navigateTo: 'achievements',
-    closeModal: true,
   },
 
   // ── Tools ──
@@ -252,16 +156,5 @@ export const TEACHER_TOUR: TourStep[] = [
     body: 'Record demo videos, audio explanations, upload reference images, and tablature. Students see these during practice.',
     placement: 'bottom',
     section: 'Settings',
-  },
-
-  // ── Profile ──
-  {
-    target: 'user-badge',
-    title: 'Your Profile',
-    body: 'Access your profile, switch themes, toggle between teacher and student mode in Settings, or sign out. Happy teaching!',
-    placement: 'bottom',
-    section: 'Profile',
-    closeModal: true,
-    navigateTo: 'dashboard',
   },
 ]

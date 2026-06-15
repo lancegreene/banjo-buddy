@@ -9,6 +9,7 @@ export interface RollPattern {
   strings: (number | null)[]  // Expected string sequence (length = one full roll)
   fingers?: ('T' | 'I' | 'M')[]  // Explicit finger labels; if absent, derived automatically
   description: string
+  tags?: string[]              // concept tag IDs from src/data/conceptTags.ts
 }
 
 export const ROLL_PATTERNS: RollPattern[] = [

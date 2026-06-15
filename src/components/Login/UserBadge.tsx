@@ -1,4 +1,8 @@
 // ─── UserBadge — Shows current user avatar + account menu ─────────────────────
+//
+// Phase 0 placeholder: the "Profile" navigation target was removed when the
+// Page union was narrowed in Task 0.4. The badge still renders the avatar
+// and sign-out actions; profile navigation will return in Phase 1.
 import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { supabase } from '../../db/supabase'
@@ -13,7 +17,6 @@ export function UserBadge({ theme, onToggleTheme }: Props) {
   const user = useStore((s) => s.user)
   const authUserName = useStore((s) => s.authUserName)
   const authUserEmail = useStore((s) => s.authUserEmail)
-  const setPage = useStore((s) => s.setPage)
   const [open, setOpen] = useState(false)
 
   if (!user) return null
@@ -25,9 +28,7 @@ export function UserBadge({ theme, onToggleTheme }: Props) {
   async function handleSignOut() {
     setOpen(false)
     stopAutoSync()
-    // Sign out from Supabase (clears session from localStorage)
     await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
-    // Clear local state so reload lands on the sign-in screen
     useStore.getState().setAuthUser(null, null)
     localStorage.removeItem('banjo-buddy-auth-skipped')
     localStorage.removeItem('banjo-buddy-data-migrated')
@@ -53,9 +54,6 @@ export function UserBadge({ theme, onToggleTheme }: Props) {
               {!isAuthed && <span className="user-badge-menu-role">Local account</span>}
             </div>
             <div className="user-badge-menu-divider" />
-            <button className="user-badge-menu-item" onClick={() => { setOpen(false); setPage('profile') }}>
-              Profile
-            </button>
             <button className="user-badge-menu-item" onClick={() => { onToggleTheme(); }}>
               {theme === 'dark' ? '☀ Light mode' : '☾ Dark mode'}
             </button>

@@ -234,6 +234,7 @@ export function CircleOfFifths() {
   const [selection, setSelection] = useState<Selection>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [show145, setShow145] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const isLight = useIsLight();
   const p = isLight ? PALETTE.light : PALETTE.dark;
 
@@ -415,6 +416,66 @@ export function CircleOfFifths() {
           </text>
         )}
       </svg>
+
+      {/* Guide toggle */}
+      <button
+        onClick={() => setShowGuide(v => !v)}
+        style={{
+          padding: '5px 12px',
+          borderRadius: '16px',
+          border: `1px solid ${p.badgeBorder}`,
+          background: showGuide ? p.badgeBg : 'transparent',
+          color: p.textMuted,
+          fontSize: '12px',
+          fontWeight: 500,
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+        }}
+      >
+        {showGuide ? 'Hide guide' : 'What is this?'}
+      </button>
+
+      {showGuide && (
+        <div style={{
+          maxWidth: '360px',
+          padding: '14px 16px',
+          borderRadius: '10px',
+          background: p.badgeBg,
+          border: `1px solid ${p.badgeBorder}`,
+          fontSize: '13px',
+          lineHeight: 1.55,
+          color: p.textNormal,
+        }}>
+          <p style={{ margin: '0 0 10px', fontWeight: 600 }}>The Circle of Fifths</p>
+          <p style={{ margin: '0 0 8px' }}>
+            Moving clockwise, each key is a <em>fifth</em> up from the last —
+            for example, G to D is 7 frets up on a single string. Keys
+            next to each other share most of the same notes, so switching
+            between them sounds natural. That's why G, C, and D show up
+            together in so many bluegrass songs.
+          </p>
+          <p style={{ margin: '0 0 8px' }}>
+            The <span style={{ color: '#ffa726', fontWeight: 600 }}>orange dots</span> mark
+            the common bluegrass keys (G, C, D, A, E, F) — you'll spend
+            most of your time here on banjo.
+          </p>
+          <p style={{ margin: '0 0 8px' }}>
+            <strong>How to use it:</strong> Tap a key to see its diatonic chords
+            (the chords that naturally fit). The <strong>I</strong>, <strong>IV</strong>,
+            and <strong>V</strong> are highlighted — these three chords carry
+            most bluegrass songs.
+          </p>
+          <p style={{ margin: '0 0 8px' }}>
+            For example, in <strong>G major</strong>: I = G, IV = C, V = D.
+            If someone calls a song in G, you know those three chords
+            will cover 90% of the changes.
+          </p>
+          <p style={{ margin: 0, color: p.textMuted, fontSize: '12px' }}>
+            Inner ring = relative minor keys. Each minor key shares the
+            same notes as its paired major key (e.g., Em goes with G).
+          </p>
+        </div>
+      )}
 
       {/* I-IV-V toggle */}
       {selection && (

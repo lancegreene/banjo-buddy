@@ -24,6 +24,7 @@ export interface ChordDiagram {
   baseFret?: number  // fret the diagram starts at (default 1)
   category: ChordCategory
   position?: string  // position label (Open, 5th, 9th, etc.)
+  tags?: string[]    // concept tag IDs from src/data/conceptTags.ts
 }
 
 export const CHORD_DIAGRAMS: ChordDiagram[] = [
@@ -34,16 +35,16 @@ export const CHORD_DIAGRAMS: ChordDiagram[] = [
   // ── G Major (G, B, D) ──
   { id: 'g_open', root: 'G', name: 'G', position: 'Open',
     frets: [0, 0, 0, 0, 0], category: 'major' },
-    // D4, B3, G3, D3, G4 ✓
+    // D4, B3, G3, D3, G4 — 2nd inversion (5th in bass)
   { id: 'g_3rd', root: 'G', name: 'G', position: '3rd',
     frets: [5, 3, 4, 5, -1], baseFret: 3, fingers: [3, 1, 2, 4, 0], category: 'major' },
-    // G4, D4, B3, G3 ✓
-  { id: 'g_9th', root: 'G', name: 'G', position: '7th',
+    // G4, D4, B3, G3 — Root position (root in bass)
+  { id: 'g_7th', root: 'G', name: 'G', position: '7th',
     frets: [9, 8, 7, 9, -1], baseFret: 7, fingers: [3, 2, 1, 4, 0], category: 'major' },
-    // B4, G4, D4, B3 ✓
+    // B4, G4, D4, B3 — 1st inversion (3rd in bass)
   { id: 'g_12th', root: 'G', name: 'G', position: '12th',
     frets: [12, 12, 12, 12, 0], baseFret: 12, fingers: [1, 1, 1, 1, 0], category: 'major' },
-    // D5, B4, G4, D4, G4 ✓
+    // D5, B4, G4, D4, G4 — 2nd inversion barre (5th in bass)
 
   // ── C Major (C, E, G) ──
   { id: 'c_open', root: 'C', name: 'C', position: 'Open',
@@ -106,6 +107,57 @@ export const CHORD_DIAGRAMS: ChordDiagram[] = [
     frets: [10, 10, 10, 10, -1], baseFret: 10, fingers: [1, 1, 1, 1, 0], category: 'major' },
     // C5, A4, F4, C4 ✓
 
+  // ── Bb Major (Bb, D, F) ──
+  { id: 'bb_8th', root: 'Bb', name: 'Bb', position: '8th',
+    frets: [8, 6, 7, 8, -1], baseFret: 6, fingers: [3, 1, 2, 4, 0], category: 'major' },
+    // Bb4, F4, D4, Bb3 ✓
+  { id: 'bb_15th', root: 'Bb', name: 'Bb', position: '15th',
+    frets: [15, 15, 15, 15, -1], baseFret: 15, fingers: [1, 1, 1, 1, 0], category: 'major' },
+    // F5, D5, Bb4, F4 ✓
+
+  // ── B Major (B, D#, F#) ──
+  { id: 'b_open', root: 'B', name: 'B', position: 'Open',
+    frets: [9, 7, 8, 9, -1], baseFret: 7, fingers: [3, 1, 2, 4, 0], category: 'major' },
+    // B4, F#4, D#4, B3 ✓
+  { id: 'b_16th', root: 'B', name: 'B', position: '16th',
+    frets: [16, 16, 16, 16, -1], baseFret: 16, fingers: [1, 1, 1, 1, 0], category: 'major' },
+    // F#5, D#5, B4, F#4 ✓
+
+  // ── Eb Major (Eb, G, Bb) ──
+  { id: 'eb_8th', root: 'Eb', name: 'Eb', position: '8th',
+    frets: [8, 8, 8, 8, -1], baseFret: 8, fingers: [1, 1, 1, 1, 0], category: 'major' },
+    // Bb4, G4, Eb4, Bb3 ✓
+  { id: 'eb_13th', root: 'Eb', name: 'Eb', position: '13th',
+    frets: [13, 11, 12, 13, -1], baseFret: 11, fingers: [3, 1, 2, 4, 0], category: 'major' },
+    // Eb5, Bb4, G4, Eb4 ✓
+
+  // ── Ab Major (Ab, C, Eb) ──
+  { id: 'ab_6th', root: 'Ab', name: 'Ab', position: '6th',
+    frets: [6, 4, 5, 6, -1], baseFret: 4, fingers: [3, 1, 2, 4, 0], category: 'major' },
+    // Ab4, Eb4, C4, Ab3 ✓
+  { id: 'ab_13th', root: 'Ab', name: 'Ab', position: '13th',
+    frets: [13, 13, 13, 13, -1], baseFret: 13, fingers: [1, 1, 1, 1, 0], category: 'major' },
+    // Eb5, C5, Ab4, Eb4 ✓
+
+  // ── Db Major (Db, F, Ab) ──
+  { id: 'db_6th', root: 'Db', name: 'Db', position: '6th',
+    frets: [6, 6, 6, 6, -1], baseFret: 6, fingers: [1, 1, 1, 1, 0], category: 'major' },
+    // Ab4, F4, Db4, Ab3 ✓
+  { id: 'db_11th', root: 'Db', name: 'Db', position: '11th',
+    frets: [11, 9, 10, 11, -1], baseFret: 9, fingers: [3, 1, 2, 4, 0], category: 'major' },
+    // Db5, Ab4, F4, Db4 ✓
+
+  // ── F# Major (F#, A#, C#) ──
+  { id: 'fsharp_4th', root: 'F#', name: 'F#', position: '4th',
+    frets: [4, 2, 3, 4, -1], baseFret: 2, fingers: [3, 1, 2, 4, 0], category: 'major' },
+    // F#4, C#4, A#3, F#3 ✓
+  { id: 'fsharp_11th', root: 'F#', name: 'F#', position: '11th',
+    frets: [11, 11, 11, 11, -1], baseFret: 11, fingers: [1, 1, 1, 1, 0], category: 'major' },
+    // C#5, A#4, F#4, C#4 ✓
+  { id: 'fsharp_16th', root: 'F#', name: 'F#', position: '16th',
+    frets: [16, 14, 15, 16, -1], baseFret: 14, fingers: [3, 1, 2, 4, 0], category: 'major' },
+    // F#5, C#5, A#4, F#4 ✓
+
   // ═══════════════════════════════════════════════════════════════════════════
   // MINOR — root, minor 3rd, perfect 5th
   // ═══════════════════════════════════════════════════════════════════════════
@@ -114,10 +166,10 @@ export const CHORD_DIAGRAMS: ChordDiagram[] = [
   { id: 'em_open', root: 'Em', name: 'Em', position: 'Open',
     frets: [0, 0, 0, 2, 0], fingers: [0, 0, 0, 2, 0], category: 'minor' },
     // D4, B3, G3, E3, G4 — D makes it Em7, but standard open banjo voicing
-  { id: 'em_5th', root: 'Em', name: 'Em', position: '4th',
+  { id: 'em_4th', root: 'Em', name: 'Em', position: '4th',
     frets: [5, 5, 4, 5, -1], baseFret: 4, fingers: [2, 3, 1, 4, 0], category: 'minor' },
     // G4, E4, B3, G3 ✓
-  { id: 'em_9th', root: 'Em', name: 'Em', position: '7th',
+  { id: 'em_7th', root: 'Em', name: 'Em', position: '7th',
     frets: [9, 8, 9, 9, -1], baseFret: 7, fingers: [2, 1, 3, 4, 0], category: 'minor' },
     // B4, G4, E4, B3 ✓
   { id: 'em_12th', root: 'Em', name: 'Em', position: '12th',
@@ -147,7 +199,7 @@ export const CHORD_DIAGRAMS: ChordDiagram[] = [
     // A4, F4, D4, A3 ✓
   { id: 'dm_10th', root: 'Dm', name: 'Dm', position: '10th',
     frets: [10, 10, 10, 12, -1], baseFret: 10, fingers: [1, 1, 1, 3, 0], category: 'minor' },
-    // C5, A4, F4, D4 ✓
+    // C5, A4, F4, D4 — C makes it Dm7, but standard barre voicing
   { id: 'dm_12th', root: 'Dm', name: 'Dm', position: '12th',
     frets: [15, 15, 14, 12, -1], baseFret: 12, fingers: [3, 4, 2, 1, 0], category: 'minor' },
     // F5, D5, A4, D4 ✓
@@ -184,6 +236,66 @@ export const CHORD_DIAGRAMS: ChordDiagram[] = [
   { id: 'cm_8th', root: 'Cm', name: 'Cm', position: '8th',
     frets: [10, 8, 8, 10, -1], baseFret: 8, fingers: [3, 1, 1, 4, 0], category: 'minor' },
     // C5, G4, Eb4, C4 ✓
+
+  // ── F#m (F#, A, C#) ──
+  { id: 'fsharpm_7th', root: 'F#m', name: 'F#m', position: '7th',
+    frets: [7, 7, 6, 7, -1], baseFret: 6, fingers: [2, 3, 1, 4, 0], category: 'minor' },
+    // A4, F#4, C#4, A3 ✓
+  { id: 'fsharpm_11th', root: 'F#m', name: 'F#m', position: '11th',
+    frets: [11, 10, 11, 11, -1], baseFret: 10, fingers: [2, 1, 3, 4, 0], category: 'minor' },
+    // C#5, A4, F#4, C#4 ✓
+  { id: 'fsharpm_16th', root: 'F#m', name: 'F#m', position: '16th',
+    frets: [16, 14, 14, 16, -1], baseFret: 14, fingers: [3, 1, 1, 4, 0], category: 'minor' },
+    // F#5, C#5, A4, F#4 ✓
+
+  // ── C#m (C#, E, G#) ──
+  { id: 'csharpm_open', root: 'C#m', name: 'C#m', position: 'Open',
+    frets: [2, 2, 1, 2, -1], fingers: [2, 3, 1, 4, 0], category: 'minor' },
+    // E4, C#4, G#3, E3 ✓
+  { id: 'csharpm_6th', root: 'C#m', name: 'C#m', position: '6th',
+    frets: [6, 5, 6, 6, -1], baseFret: 5, fingers: [2, 1, 3, 4, 0], category: 'minor' },
+    // G#4, E4, C#4, G#3 ✓
+  { id: 'csharpm_11th', root: 'C#m', name: 'C#m', position: '11th',
+    frets: [11, 9, 9, 11, -1], baseFret: 9, fingers: [3, 1, 1, 4, 0], category: 'minor' },
+    // C#5, G#4, E4, C#4 ✓
+
+  // ── G#m (G#, B, D#) ──
+  { id: 'gsharpm_9th', root: 'G#m', name: 'G#m', position: '9th',
+    frets: [9, 9, 8, 9, -1], baseFret: 8, fingers: [2, 3, 1, 4, 0], category: 'minor' },
+    // B4, G#4, D#4, B3 ✓
+  { id: 'gsharpm_13th', root: 'G#m', name: 'G#m', position: '13th',
+    frets: [13, 12, 13, 13, -1], baseFret: 12, fingers: [2, 1, 3, 4, 0], category: 'minor' },
+    // D#5, B4, G#4, D#4 ✓
+
+  // ── Ebm (Eb, Gb, Bb) ──
+  { id: 'ebm_4th', root: 'Ebm', name: 'Ebm', position: '4th',
+    frets: [4, 4, 3, 4, -1], baseFret: 3, fingers: [2, 3, 1, 4, 0], category: 'minor' },
+    // Gb4, Eb4, Bb3, Gb3 ✓
+  { id: 'ebm_8th', root: 'Ebm', name: 'Ebm', position: '8th',
+    frets: [8, 7, 8, 8, -1], baseFret: 7, fingers: [2, 1, 3, 4, 0], category: 'minor' },
+    // Bb4, Gb4, Eb4, Bb3 ✓
+  { id: 'ebm_13th', root: 'Ebm', name: 'Ebm', position: '13th',
+    frets: [13, 11, 11, 13, -1], baseFret: 11, fingers: [3, 1, 1, 4, 0], category: 'minor' },
+    // Eb5, Bb4, Gb4, Eb4 ✓
+
+  // ── Bbm (Bb, Db, F) ──
+  { id: 'bbm_11th', root: 'Bbm', name: 'Bbm', position: '11th',
+    frets: [11, 11, 10, 11, -1], baseFret: 10, fingers: [2, 3, 1, 4, 0], category: 'minor' },
+    // Db5, Bb4, F4, Db4 ✓
+  { id: 'bbm_15th', root: 'Bbm', name: 'Bbm', position: '15th',
+    frets: [15, 14, 15, 15, -1], baseFret: 14, fingers: [2, 1, 3, 4, 0], category: 'minor' },
+    // F5, Db5, Bb4, F4 ✓
+
+  // ── Fm (F, Ab, C) ──
+  { id: 'fm_6th', root: 'Fm', name: 'Fm', position: '6th',
+    frets: [6, 6, 5, 6, -1], baseFret: 5, fingers: [2, 3, 1, 4, 0], category: 'minor' },
+    // Ab4, F4, C4, Ab3 ✓
+  { id: 'fm_10th', root: 'Fm', name: 'Fm', position: '10th',
+    frets: [10, 9, 10, 10, -1], baseFret: 9, fingers: [2, 1, 3, 4, 0], category: 'minor' },
+    // C5, Ab4, F4, C4 ✓
+  { id: 'fm_15th', root: 'Fm', name: 'Fm', position: '15th',
+    frets: [15, 13, 13, 15, -1], baseFret: 13, fingers: [3, 1, 1, 4, 0], category: 'minor' },
+    // F5, C5, Ab4, F4 ✓
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 7TH — root, major 3rd, perfect 5th, minor 7th
@@ -230,7 +342,57 @@ export const CHORD_DIAGRAMS: ChordDiagram[] = [
     // E4, B3, G#3, D3 ✓
   { id: 'e7_7th', root: 'E7', name: 'E7', position: '7th',
     frets: [9, 9, 7, 9, -1], baseFret: 7, fingers: [2, 3, 1, 4, 0], category: '7th' },
-    // B4, G#4, D4, B3 ✓
+    // B4, G#4, D4, B3 — rootless voicing (no E), standard
+
+  // ── B7 (B, D#, F#, A) ──
+  { id: 'b7_13th', root: 'B7', name: 'B7', position: '13th',
+    frets: [13, 12, 14, 13, -1], baseFret: 12, fingers: [2, 1, 4, 3, 0], category: '7th' },
+    // D#5, B4, A4, D#4 ✓
+
+  // ── Bb7 (Bb, D, F, Ab) ──
+  { id: 'bb7_12th', root: 'Bb7', name: 'Bb7', position: '12th',
+    frets: [12, 11, 13, 12, -1], baseFret: 11, fingers: [2, 1, 4, 3, 0], category: '7th' },
+    // D5, Bb4, Ab4, D4 ✓
+
+  // ── F7 (F, A, C, Eb) ──
+  { id: 'f7_open', root: 'F7', name: 'F7', position: 'Open',
+    frets: [7, 6, 8, 7, -1], baseFret: 6, fingers: [2, 1, 4, 3, 0], category: '7th' },
+    // A4, F4, Eb4, A3 ✓
+  { id: 'f7_10th', root: 'F7', name: 'F7', position: '10th',
+    frets: [10, 10, 10, 13, -1], baseFret: 10, fingers: [1, 1, 1, 4, 0], category: '7th' },
+    // C5, A4, F4, Eb4 ✓
+
+  // ── F#7 (F#, A#, C#, E) ──
+  { id: 'fsharp7_8th', root: 'F#7', name: 'F#7', position: '8th',
+    frets: [8, 7, 9, 8, -1], baseFret: 7, fingers: [2, 1, 4, 3, 0], category: '7th' },
+    // A#4, F#4, E4, A#3 ✓
+  { id: 'fsharp7_11th', root: 'F#7', name: 'F#7', position: '11th',
+    frets: [11, 11, 11, 14, -1], baseFret: 11, fingers: [1, 1, 1, 4, 0], category: '7th' },
+    // C#5, A#4, F#4, E4 ✓
+
+  // ── Ab7 (Ab, C, Eb, Gb) ──
+  { id: 'ab7_10th', root: 'Ab7', name: 'Ab7', position: '10th',
+    frets: [10, 9, 11, 10, -1], baseFret: 9, fingers: [2, 1, 4, 3, 0], category: '7th' },
+    // C5, Ab4, Gb4, C4 ✓
+  { id: 'ab7_13th', root: 'Ab7', name: 'Ab7', position: '13th',
+    frets: [13, 13, 13, 16, -1], baseFret: 13, fingers: [1, 1, 1, 4, 0], category: '7th' },
+    // Eb5, C5, Ab4, Gb4 ✓
+
+  // ── Eb7 (Eb, G, Bb, Db) ──
+  { id: 'eb7_5th', root: 'Eb7', name: 'Eb7', position: '5th',
+    frets: [5, 4, 6, 5, -1], baseFret: 4, fingers: [2, 1, 4, 3, 0], category: '7th' },
+    // G4, Eb4, Db4, G3 ✓
+  { id: 'eb7_8th', root: 'Eb7', name: 'Eb7', position: '8th',
+    frets: [8, 8, 8, 11, -1], baseFret: 8, fingers: [1, 1, 1, 4, 0], category: '7th' },
+    // Bb4, G4, Eb4, Db4 ✓
+
+  // ── Db7 (Db, F, Ab, B) ──
+  { id: 'db7_3rd', root: 'Db7', name: 'Db7', position: '3rd',
+    frets: [3, 2, 4, 3, -1], baseFret: 2, fingers: [2, 1, 4, 3, 0], category: '7th' },
+    // F4, Db4, B3, F3 ✓
+  { id: 'db7_6th', root: 'Db7', name: 'Db7', position: '6th',
+    frets: [6, 6, 6, 9, -1], baseFret: 6, fingers: [1, 1, 1, 4, 0], category: '7th' },
+    // Ab4, F4, Db4, B3 ✓
 ]
 
 export const CHORD_MAP = new Map(CHORD_DIAGRAMS.map((c) => [c.id, c]))

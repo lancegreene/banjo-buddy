@@ -20,6 +20,7 @@ export interface LickReference {
   referenceBpm: number
   source?: string          // e.g. 'Splitting the Licks, p.11'
   tab: TabNote[]
+  tags?: string[]          // concept tag IDs from src/data/conceptTags.ts
 }
 
 export const LICK_LIBRARY: LickReference[] = [

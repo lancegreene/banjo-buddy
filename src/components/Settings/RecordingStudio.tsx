@@ -6,9 +6,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { db, newId, nowISO } from '../../db/db'
 import type { Recording } from '../../db/db'
-import { SKILL_MAP, getAllSkills } from '../../data/curriculum'
-import { ROLL_MAP } from '../../data/rollPatterns'
-import { useStore } from '../../store/useStore'
 import {
   getStorageUsage,
   deleteRecording,
@@ -18,13 +15,11 @@ import {
 type StudioView = 'library' | 'record' | 'import'
 
 export function RecordingStudio() {
-  const user = useStore((s) => s.user)
   const [view, setView] = useState<StudioView>('library')
   const [recordings, setRecordings] = useState<Recording[]>([])
   const [storage, setStorage] = useState<StorageUsage | null>(null)
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
-  const [filterSkill, setFilterSkill] = useState<string>('all')
   const audioUrlsRef = useRef<Map<string, string>>(new Map())
 
   const loadRecordings = useCallback(async () => {
@@ -54,12 +49,7 @@ export function RecordingStudio() {
     loadRecordings()
   }
 
-  const filtered = filterSkill === 'all'
-    ? recordings
-    : recordings.filter((r) => r.skillId === filterSkill)
-
-  // Unique skill IDs that have recordings
-  const skillsWithRecordings = [...new Set(recordings.map((r) => r.skillId))]
+  const filtered = recordings
 
   if (view === 'record') {
     return (
@@ -117,27 +107,10 @@ export function RecordingStudio() {
         </div>
       )}
 
-      {/* Filter */}
-      {skillsWithRecordings.length > 1 && (
-        <div className="rs-filter">
-          <select
-            className="rs-filter-select"
-            value={filterSkill}
-            onChange={(e) => setFilterSkill(e.target.value)}
-          >
-            <option value="all">All skills</option>
-            {skillsWithRecordings.map((sid) => (
-              <option key={sid} value={sid}>{SKILL_MAP.get(sid)?.name ?? sid}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
       {/* Recording list */}
       {filtered.length > 0 ? (
         <div className="rs-list">
           {filtered.map((rec) => {
-            const skillName = SKILL_MAP.get(rec.skillId)?.name ?? rec.skillId
             const isPlaying = playingId === rec.id
             const url = audioUrlsRef.current.get(rec.id)
             const date = new Date(rec.createdAt)
@@ -146,7 +119,7 @@ export function RecordingStudio() {
             return (
               <div key={rec.id} className={`rs-card ${isPlaying ? 'rs-card-playing' : ''}`}>
                 <div className="rs-card-info">
-                  <span className="rs-card-skill">{skillName}</span>
+                  <span className="rs-card-skill">{rec.skillId && rec.skillId !== 'general' ? rec.skillId : 'Recording'}</span>
                   <span className="rs-card-meta">
                     {duration > 0 && <>{Math.floor(duration / 60)}:{String(Math.floor(duration % 60)).padStart(2, '0')} · </>}
                     {rec.bpm && <>{rec.bpm} BPM · </>}
@@ -180,9 +153,7 @@ export function RecordingStudio() {
         </div>
       ) : (
         <div className="settings-empty">
-          {recordings.length === 0
-            ? 'No recordings yet. Hit "Record" to capture your first take, or "Import" to add an audio file.'
-            : 'No recordings match this filter.'}
+          No recordings yet. Hit "Record" to capture your first take, or "Import" to add an audio file.
         </div>
       )}
     </div>
@@ -192,14 +163,11 @@ export function RecordingStudio() {
 // ── Standalone Recorder (owns its own mic stream) ────────────────────────────
 
 function StudioRecorder({ onSaved }: { onSaved: () => void }) {
-  const user = useStore((s) => s.user)
   const [state, setState] = useState<'idle' | 'recording' | 'recorded'>('idle')
   const [duration, setDuration] = useState(0)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
-  const [skillId, setSkillId] = useState('')
   const [bpm, setBpm] = useState<string>('')
-  const [label, setLabel] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const streamRef = useRef<MediaStream | null>(null)
@@ -212,10 +180,6 @@ function StudioRecorder({ onSaved }: { onSaved: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const rafRef = useRef<number>(0)
-
-  const skills = getAllSkills().filter((s) =>
-    user ? (s.path === user.path || s.path === 'all') : true
-  )
 
   async function startRecording() {
     setError(null)
@@ -280,11 +244,10 @@ function StudioRecorder({ onSaved }: { onSaved: () => void }) {
 
   async function save() {
     if (!audioBlob) return
-    const sid = skillId || 'general'
     const recording: Recording = {
       id: newId(),
       sessionItemId: '',
-      skillId: sid,
+      skillId: 'general',
       audioBlob,
       durationSeconds: duration,
       bpm: bpm ? parseInt(bpm) : null,
@@ -377,15 +340,6 @@ function StudioRecorder({ onSaved }: { onSaved: () => void }) {
             {/* Metadata */}
             <div className="sr-meta">
               <div className="sr-meta-row">
-                <label className="sr-meta-label">Skill</label>
-                <select className="sr-meta-select" value={skillId} onChange={(e) => setSkillId(e.target.value)}>
-                  <option value="">General / Unassigned</option>
-                  {skills.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="sr-meta-row">
                 <label className="sr-meta-label">BPM</label>
                 <input
                   type="number"
@@ -415,17 +369,11 @@ function StudioRecorder({ onSaved }: { onSaved: () => void }) {
 // ── File Importer ────────────────────────────────────────────────────────────
 
 function FileImporter({ onSaved }: { onSaved: () => void }) {
-  const user = useStore((s) => s.user)
   const [file, setFile] = useState<File | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [duration, setDuration] = useState(0)
-  const [skillId, setSkillId] = useState('')
   const [bpm, setBpm] = useState<string>('')
   const audioRef = useRef<HTMLAudioElement>(null)
-
-  const skills = getAllSkills().filter((s) =>
-    user ? (s.path === user.path || s.path === 'all') : true
-  )
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
@@ -445,11 +393,10 @@ function FileImporter({ onSaved }: { onSaved: () => void }) {
   async function save() {
     if (!file) return
     const blob = new Blob([await file.arrayBuffer()], { type: file.type })
-    const sid = skillId || 'general'
     const recording: Recording = {
       id: newId(),
       sessionItemId: '',
-      skillId: sid,
+      skillId: 'general',
       audioBlob: blob,
       durationSeconds: duration,
       bpm: bpm ? parseInt(bpm) : null,
@@ -481,15 +428,6 @@ function FileImporter({ onSaved }: { onSaved: () => void }) {
           </div>
 
           <div className="sr-meta">
-            <div className="sr-meta-row">
-              <label className="sr-meta-label">Skill</label>
-              <select className="sr-meta-select" value={skillId} onChange={(e) => setSkillId(e.target.value)}>
-                <option value="">General / Unassigned</option>
-                {skills.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
             <div className="sr-meta-row">
               <label className="sr-meta-label">BPM</label>
               <input

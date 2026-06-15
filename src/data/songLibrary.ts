@@ -16,6 +16,7 @@ export interface SongSection {
   id: string               // 'cripple_creek_a'
   name: string             // 'A Part'
   measures: Measure[]
+  tags?: string[]          // concept tag IDs from src/data/conceptTags.ts
 }
 
 export interface Song {

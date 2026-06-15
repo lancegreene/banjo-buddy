@@ -1,9 +1,14 @@
 // ─── ProfilePage — User profile and account settings ──────────────────────────
+//
+// NOTE: Heavily simplified for the coach overhaul (Phase 0). The path-selection
+// UI, teacher-mode toggle, and streak stat all depended on store slices that
+// were removed in Task 0.4. They'll be rebuilt in Phase 1 once the coach has
+// real state to drive.
 import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { supabase } from '../../db/supabase'
 import { stopAutoSync } from '../../db/sync'
-import type { Path } from '../../data/curriculum'
+import type { Path } from '../../types'
 
 const PATH_OPTIONS: { value: Path; label: string; desc: string }[] = [
   { value: 'newby', label: 'Newby', desc: 'Just getting started — learn the basics of Scruggs-style picking' },
@@ -15,10 +20,6 @@ export function ProfilePage() {
   const user = useStore((s) => s.user)
   const authUserName = useStore((s) => s.authUserName)
   const authUserEmail = useStore((s) => s.authUserEmail)
-  const setUserPath = useStore((s) => s.setUserPath)
-  const activeUserRole = useStore((s) => s.activeUserRole)
-  const streak = useStore((s) => s.streak)
-  const skillRecords = useStore((s) => s.skillRecords)
 
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState(authUserName ?? '')
@@ -29,12 +30,6 @@ export function ProfilePage() {
 
   const displayName = authUserName || authUserEmail || user.name || 'Guest'
   const isAuthed = !!authUserEmail
-
-  // Skill stats
-  const totalSkills = skillRecords.size
-  const mastered = [...skillRecords.values()].filter(r => r.status === 'mastered').length
-  const progressed = [...skillRecords.values()].filter(r => r.status === 'progressed').length
-  const active = [...skillRecords.values()].filter(r => r.status === 'active').length
 
   async function handleSaveName() {
     const trimmed = nameInput.trim()
@@ -62,30 +57,6 @@ export function ProfilePage() {
     localStorage.removeItem('banjo-buddy-auth-skipped')
     localStorage.removeItem('banjo-buddy-data-migrated')
     window.location.reload()
-  }
-
-  const isTeacher = activeUserRole === 'teacher'
-
-  async function handleToggleRole() {
-    const store = useStore.getState()
-    if (isTeacher) {
-      await store.loginAsGuest()
-      store.setPage('profile')
-    } else {
-      let teacherId: string | null = null
-      const existingTeachers = store.teachers
-      if (existingTeachers.length > 0) {
-        teacherId = existingTeachers[0].id
-      } else {
-        await store.createTeacher(user?.name ?? 'Teacher')
-        const updated = useStore.getState().teachers
-        if (updated.length > 0) teacherId = updated[0].id
-      }
-      if (teacherId) {
-        await store.loginAsTeacher(teacherId)
-        store.setPage('profile')
-      }
-    }
   }
 
   return (
@@ -132,66 +103,18 @@ export function ProfilePage() {
 
       {message && <div className="profile-message">{message}</div>}
 
-      {/* Stats */}
-      <section className="profile-section">
-        <h3 className="profile-section-title">Stats</h3>
-        <div className="profile-stats">
-          <div className="profile-stat">
-            <span className="profile-stat-value">{streak}</span>
-            <span className="profile-stat-label">Day streak</span>
-          </div>
-          <div className="profile-stat">
-            <span className="profile-stat-value">{totalSkills}</span>
-            <span className="profile-stat-label">Skills started</span>
-          </div>
-          <div className="profile-stat">
-            <span className="profile-stat-value">{mastered}</span>
-            <span className="profile-stat-label">Mastered</span>
-          </div>
-          <div className="profile-stat">
-            <span className="profile-stat-value">{progressed}</span>
-            <span className="profile-stat-label">Progressed</span>
-          </div>
-          <div className="profile-stat">
-            <span className="profile-stat-value">{active}</span>
-            <span className="profile-stat-label">Active</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Role */}
-      <section className="profile-section">
-        <h3 className="profile-section-title">Mode</h3>
-        <div className="settings-role-toggle">
-          <div className="settings-role-info">
-            <span className="settings-role-badge">
-              {isTeacher ? 'Teacher Mode' : activeUserRole === 'student' ? 'Student Mode' : 'Solo Mode'}
-            </span>
-            <p className="settings-role-desc">
-              {isTeacher
-                ? 'Managing students, curriculum, and teaching media.'
-                : 'Switch to Teacher Mode to manage students and customize the curriculum.'}
-            </p>
-          </div>
-          <button className="btn btn-primary btn-sm" onClick={handleToggleRole}>
-            {isTeacher ? 'Switch to Solo' : 'Switch to Teacher'}
-          </button>
-        </div>
-      </section>
-
-      {/* Learning Path */}
+      {/* Learning Path (read-only placeholder — coach will own this in Phase 1) */}
       <section className="profile-section">
         <h3 className="profile-section-title">Learning Path</h3>
         <div className="profile-paths">
           {PATH_OPTIONS.map((opt) => (
-            <button
+            <div
               key={opt.value}
               className={`profile-path-card ${user.path === opt.value ? 'profile-path-active' : ''}`}
-              onClick={() => setUserPath(opt.value)}
             >
               <span className="profile-path-name">{opt.label}</span>
               <span className="profile-path-desc">{opt.desc}</span>
-            </button>
+            </div>
           ))}
         </div>
       </section>

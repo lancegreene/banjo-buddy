@@ -8,7 +8,6 @@ import { db, newId, nowISO } from '../../db/db'
 import type { CustomRollPattern } from '../../db/db'
 import { enqueueSync } from '../../db/sync'
 import { refreshRollMap } from '../../data/rollPatterns'
-import { refreshSkillMap } from '../../data/curriculum'
 import { useStore } from '../../store/useStore'
 import { BanjoTabDiagram } from '../BanjoTabDiagram/BanjoTabDiagram'
 
@@ -22,7 +21,6 @@ interface RollPatternEditorProps {
 
 export function RollPatternEditor({ pattern, onSave, onCancel }: RollPatternEditorProps) {
   const user = useStore((s) => s.user)
-  const activeUserRole = useStore((s) => s.activeUserRole)
   const [name, setName] = useState(pattern?.name ?? '')
   const [description, setDescription] = useState(pattern?.description ?? '')
   const [strings, setStrings] = useState<(number | null)[]>(
@@ -103,8 +101,7 @@ export function RollPatternEditor({ pattern, onSave, onCancel }: RollPatternEdit
         enqueueSync('customRollPatterns', newPattern.id, 'upsert', newPattern as any)
       }
 
-      await refreshRollMap(user?.id, activeUserRole, user?.teacherId)
-      await refreshSkillMap(user?.id, activeUserRole, user?.teacherId)
+      await refreshRollMap(user?.id, user?.role, user?.teacherId)
       onSave()
     } catch (err) {
       setError(String(err))

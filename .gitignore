@@ -45,3 +45,6 @@ src/components/Setup/
 *.njsproj
 *.sln
 *.sw?
+
+# Bulk-tag script proposals (review-only artifact)
+scripts/.bulk-tag-proposals.json
