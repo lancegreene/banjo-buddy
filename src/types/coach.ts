@@ -75,6 +75,20 @@ export interface CheckInRecord {
   apiCost?: number                    // USD, computed from token usage
 }
 
+export type Reflection = 'solid' | 'sloppy' | 'new'
+
+// One row per item practiced inside a guided session. Purpose-built coach
+// signal: carries the real ItemRef so the check-in can name actual items.
+export interface PracticeEvent {
+  id: string                 // uuid
+  userId: string             // owner (matches userProfiles.id)
+  goalId: string             // the goal the session was launched from
+  sessionId: string          // groups events from one guided-session run
+  itemRef: ItemRef           // the real library item practiced
+  reflection: Reflection     // how it felt
+  completedAt: string        // ISO
+}
+
 export interface GoalDraft {
   title: string
   description: string

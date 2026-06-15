@@ -3,8 +3,9 @@ import { db, getOrCreateUser, nowISO } from '../db/db'
 import type { UserProfile } from '../db/db'
 import { refreshRollMap } from '../data/rollPatterns'
 import { enqueueSync } from '../db/sync'
+import { supabase } from '../db/supabase'
 import type { Path } from '../types'
-import type { Goal, ItemTag, CheckInRecord, TagValue, ItemRef } from '../types/coach'
+import type { Goal, ItemTag, CheckInRecord, TagValue, ItemRef, PracticeEvent } from '../types/coach'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page union — Task 2.4 expanded this to cover the coach-driven shell:
@@ -17,6 +18,7 @@ export type Page =
   | 'api-key-gate'
   | 'assessment'
   | 'check-in'
+  | 'guided-session'
   | 'plan-dashboard'
   | 'library'
   | 'settings'
@@ -67,6 +69,11 @@ interface AppState {
   retireGoal: (goalId: string, reason?: string) => Promise<void>
   setItemTag: (itemRef: ItemRef, tag: TagValue) => Promise<void>
   recordCheckIn: (record: CheckInRecord) => Promise<void>
+  activeSessionGoalId: string | null
+  setActiveSessionGoal: (goalId: string | null) => void
+  logPracticeEvent: (
+    input: Omit<PracticeEvent, 'id' | 'userId' | 'completedAt'>,
+  ) => Promise<void>
   markAssessmentComplete: () => Promise<void>
   setApiKey: (key: string) => Promise<void>
   setLastCheckInAt: (iso: string) => Promise<void>
@@ -108,7 +115,11 @@ export const useStore = create<AppState>((set, get) => ({
   loadUser: async () => {
     set({ isLoading: true, error: null })
     try {
-      const localUser = await getOrCreateUser()
+      // Resolve identity from the Supabase session (reads local storage, works
+      // offline). Signed in → profile keyed by the cloud uid so writes sync;
+      // guest → the legacy 'local' profile.
+      const { data: { session } } = await supabase.auth.getSession()
+      const localUser = await getOrCreateUser(session?.user?.id ?? null)
       await refreshRollMap(localUser.id, localUser.role, localUser.teacherId)
       set({
         user: localUser,
@@ -137,6 +148,7 @@ export const useStore = create<AppState>((set, get) => ({
   itemTags: {},
   currentCheckInId: null,
   lastCheckInAt: null,
+  activeSessionGoalId: null,
   assessmentCompletedAt: localStorage.getItem('banjo-buddy-assessment-at'),
   apiKey: localStorage.getItem('banjo-buddy-anthropic-key'),
   librarySelection: null,
@@ -199,6 +211,21 @@ export const useStore = create<AppState>((set, get) => ({
   recordCheckIn: async (record) => {
     await db.checkInRecords.put(record)
     set({ lastCheckInAt: record.endedAt })
+  },
+
+  setActiveSessionGoal: (goalId) => set({ activeSessionGoalId: goalId }),
+
+  logPracticeEvent: async (input) => {
+    const userId = get().user?.id
+    if (!userId) return
+    const event: PracticeEvent = {
+      id: crypto.randomUUID(),
+      userId,
+      completedAt: nowISO(),
+      ...input,
+    }
+    await db.practiceEvents.put(event)
+    enqueueSync('practiceEvents', event.id, 'upsert', event as unknown as Record<string, unknown>)
   },
 
   markAssessmentComplete: async () => {

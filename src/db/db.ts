@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 import type { Path } from '../types'
-import type { Goal, ItemTag, CheckInRecord } from '../types/coach'
+import type { Goal, ItemTag, CheckInRecord, PracticeEvent } from '../types/coach'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Banjo Buddy — Local Database (Dexie / IndexedDB)
@@ -133,6 +133,7 @@ class BanjoBuddyDB extends Dexie {
   goals!: Table<Goal>
   itemTags!: Table<ItemTag>
   checkInRecords!: Table<CheckInRecord>
+  practiceEvents!: Table<PracticeEvent>
 
   constructor() {
     super('BanjoBuddyDB')
@@ -387,6 +388,26 @@ class BanjoBuddyDB extends Dexie {
       itemTags:           'id, userId, updatedAt',
       checkInRecords:     'id, userId, kind, startedAt',
     })
+
+    // v16: Guided session — add practiceEvents (purpose-built practice signal).
+    // No data migration: only adds one table.
+    this.version(16).stores({
+      // Carried forward from v15
+      userProfiles:       'id, role',
+      practiceSessions:   'id, userId, startedAt',
+      sessionItems:       'id, sessionId, completedAt, goalId',
+      recordings:         'id, sessionItemId, skillId, createdAt',
+      streakRecords:      'id, userId, [userId+date]',
+      noteAccuracyRecords:'id, sessionItemId, createdAt',
+      achievements:       '++id, achievementId, userId',
+      customRollPatterns: 'id, createdBy, createdAt',
+      tabTrainingPairs:   'id, createdAt',
+      goals:              'id, userId, status, updatedAt',
+      itemTags:           'id, userId, updatedAt',
+      checkInRecords:     'id, userId, kind, startedAt',
+      // New guided-session table
+      practiceEvents:     'id, userId, goalId, completedAt, sessionId',
+    })
   }
 }
 
@@ -407,7 +428,27 @@ export function todayDate(): string {
 }
 
 // Get or create the local user profile
-export async function getOrCreateUser(): Promise<UserProfile> {
+// When a Supabase session exists, the active profile MUST be keyed by the
+// cloud uid — records written under the guest id 'local' can never sync
+// (user_id is a uuid column guarded by RLS `auth.uid() = user_id`).
+export async function getOrCreateUser(cloudUserId?: string | null): Promise<UserProfile> {
+  if (cloudUserId) {
+    const cloudProfile = await db.userProfiles.get(cloudUserId)
+    if (cloudProfile) return cloudProfile
+
+    const user: UserProfile = {
+      id: cloudUserId,
+      name: 'My Profile',
+      path: 'newby',
+      role: 'solo',
+      teacherId: null,
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    }
+    await db.userProfiles.add(user)
+    return user
+  }
+
   const existing = await db.userProfiles.get('local')
   if (existing) return existing
 

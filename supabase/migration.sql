@@ -253,3 +253,27 @@ create policy "users can read own item_tags" on public.item_tags
   for select using (auth.uid() = user_id);
 create policy "users can write own item_tags" on public.item_tags
   for all using (auth.uid() = user_id);
+
+-- ─── Guided session: practice events ────────────────────────────────────────
+-- One row per item practiced inside a guided session. Append-only + immutable:
+-- the pull side filters on completed_at (there is no updated_at) and merges
+-- insert-only.
+
+create table if not exists public.practice_events (
+  id uuid primary key,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  goal_id text not null,
+  session_id text not null,
+  item_ref jsonb not null,
+  reflection text not null,
+  completed_at timestamptz not null
+);
+create index if not exists practice_events_user_completed_idx
+  on public.practice_events (user_id, completed_at);
+
+alter table public.practice_events enable row level security;
+
+create policy "users can read own practice_events" on public.practice_events
+  for select using (auth.uid() = user_id);
+create policy "users can write own practice_events" on public.practice_events
+  for all using (auth.uid() = user_id);
